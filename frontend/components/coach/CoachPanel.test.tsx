@@ -264,4 +264,29 @@ describe("CoachPanel — commit-first retires quiz-pin ladder (FR-2)", () => {
     expect(container.querySelector("[data-testid='one-more-nudge']")).toBeNull();
     expect(container.querySelector("[data-testid='hint-ladder-list']")).toBeNull();
   });
+
+  it("T19/V10: wrong-pick suppresses the generic CONVERSATION opener bubble", async () => {
+    await render(
+      <CoachPanel
+        runtime={scriptedRuntime()}
+        hintLadder={LADDER}
+        mode="pre_submit"
+        commitFirstCoach
+        coachedLoop={{
+          wrongLetters: ["B"],
+          activeLetter: "B",
+          rungsRevealed: { B: 1 },
+          exhausted: false,
+          rungCap: 3,
+        }}
+      />,
+    );
+    expect(container.querySelector("[data-testid='coach-opener']")).toBeNull();
+    expect(container.textContent).not.toContain(
+      "You're in the coaching loop for that pick",
+    );
+    expect(
+      container.querySelector("[data-testid='quiz-pick-echo']")?.textContent,
+    ).toBe("I chose B.");
+  });
 });

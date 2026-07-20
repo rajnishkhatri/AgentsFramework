@@ -7,7 +7,7 @@ const path = require("path");
 const fs = require("fs");
 const { chromium } = require("/Users/rajnishkhatri/Documents/AgentsFramework/agent/frontend/node_modules/@playwright/test");
 
-const OUT = __dirname;
+const OUT = path.join(__dirname, "pairs");
 const PROTO_URL =
   "file:///Users/rajnishkhatri/Documents/AgentsFramework/agent/docs/plan/gen2-proto-handoff/English%20Coach%20-%20Gen2%20Slice%20v3%20-desktop-.html";
 const APP = "http://localhost:3000";
@@ -194,7 +194,7 @@ async function captureApp(browser) {
     await shot(page, "05-walkthrough-feedback-app");
   });
 
-  await step("app coached-solve feedback", async () => {
+  await step("app coached-solve confirm (FR-15)", async () => {
     await tid(page, "quiz-next").click();
     await page.locator("[data-skill]").first().waitFor({ timeout: 10000 });
     // wrong first
@@ -202,12 +202,13 @@ async function captureApp(browser) {
     await tid(page, "quiz-submit").click();
     const coached = tid(page, "quiz-coached-section");
     const feedback = tid(page, "feedback-banner");
+    const confirm = tid(page, "quiz-coached-confirm");
     await Promise.race([
       coached.waitFor({ state: "visible", timeout: 8000 }),
       feedback.waitFor({ state: "visible", timeout: 8000 }),
     ]);
     if (await feedback.isVisible()) {
-      // A was correct: this is a first-try feedback; still capture as bonus then move on
+      // A was correct: first-try feedback; capture bonus then start a wrong pick
       await shot(page, "10b-firsttry-feedback-app");
       await tid(page, "quiz-next").click();
       await page.locator("[data-skill]").first().waitFor({ timeout: 10000 });
@@ -215,16 +216,21 @@ async function captureApp(browser) {
       await tid(page, "quiz-submit").click();
       await coached.waitFor({ state: "visible", timeout: 8000 });
     }
-    // now in coached loop: switch letters until correct
+    // Switch letters until coached-solve confirmation (FR-15 — no auto feedback).
     for (const L of ["B", "C", "D", "A"]) {
       const c = tid(page, `choice-${L}`);
       if ((await c.count()) === 0) continue;
       await c.first().click().catch(() => {});
+      // V4: Submit hidden while committed wrong is selected — try-again first.
+      if ((await tid(page, "quiz-submit").count()) === 0) {
+        await tid(page, "quiz-try-again").click().catch(() => {});
+        await c.first().click().catch(() => {});
+      }
       await tid(page, "quiz-submit").click().catch(() => {});
       await page.waitForTimeout(700);
-      if (await feedback.isVisible().catch(() => false)) break;
+      if (await confirm.isVisible().catch(() => false)) break;
     }
-    await feedback.waitFor({ timeout: 5000 });
+    await confirm.waitFor({ timeout: 8000 });
     await shot(page, "10-coached-solve-app");
   });
 

@@ -25,7 +25,11 @@ import { canSubmit, type QuizItemVM } from "@/lib/translators/quiz_item_vm";
 import { formatElapsedFromStartedAt } from "@/lib/translators/quiz_frame_timer";
 import { toQuizWhyItemVM } from "@/lib/translators/quiz_why_item_vm";
 import { CoachedLoopSection } from "@/components/coach/CoachedLoopSection";
-import type { CoachedLoopState } from "./quiz_screen_reducer";
+import { CoachedConfirmSection } from "@/components/coach/CoachedConfirmSection";
+import type {
+  CoachedConfirmState,
+  CoachedLoopState,
+} from "./quiz_screen_reducer";
 
 export interface QuizFrameChromeProps {
   /** Q-7: joined skill name; omit chip when null (FR-Q7-1). */
@@ -163,11 +167,14 @@ export interface QuizViewProps {
    */
   readonly commitFirstCoach?: boolean;
   readonly coachedLoop?: CoachedLoopState | null;
+  /** FR-15: in-place confirmation after a coached solve. */
+  readonly coachedConfirm?: CoachedConfirmState | null;
   /** Current ladder bodies (choice-keyed or fallback), rung-ascending. */
   readonly hintLadder?: ReadonlyArray<{ rung: number; body_md: string }>;
   readonly onNudge?: () => void;
   readonly onTryAgain?: () => void;
   readonly onEscape?: () => void;
+  readonly onSeeBreakdown?: () => void;
   /**
    * When true, render the coached loop under the choices (fullscreen / tests).
    * Default false — v3 hosts the loop in CoachPanel.
@@ -204,27 +211,38 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
     startedAtIso = null,
     commitFirstCoach = false,
     coachedLoop = null,
+    coachedConfirm = null,
     hintLadder = [],
     onNudge,
     onTryAgain,
     onEscape,
+    onSeeBreakdown,
     renderCoachedInline = false,
     ackQuestion,
     whyItemPosition,
     whyItemTotal,
   } = props;
   const submittable = canSubmit(selectedLetter);
+  // V4: hide Submit only while the committed wrong letter is still selected.
+  // After "Let me try again" (selection cleared) or a re-pick, Submit returns.
+  // FR-15: also hide while coached confirmation is showing.
+  const hideSubmitForCoachedLoop =
+    (commitFirstCoach && coachedConfirm != null) ||
+    (commitFirstCoach &&
+      coachedLoop != null &&
+      selectedLetter != null &&
+      selectedLetter === coachedLoop.activeLetter);
   const showFrame =
     onEndSession != null || vm.skillName != null || startedAtIso != null;
 
-  const whyItemLine =
+  const whyItem =
     whyItemPosition != null
       ? toQuizWhyItemVM({
           skillName: vm.skillName,
           difficulty: vm.difficulty,
           position: whyItemPosition,
           total: whyItemTotal ?? null,
-        }).line
+        })
       : null;
 
   return (
@@ -246,13 +264,24 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
         />
       ) : null}
 
-      {whyItemLine != null ? (
-        <p
+      {whyItem != null ? (
+        <aside
           data-testid="quiz-why-item"
-          className="text-xs text-muted"
+          className="rounded-[13px] border border-border bg-selected/60 px-3.5 py-3"
         >
-          {whyItemLine}
-        </p>
+          <p
+            data-testid="quiz-why-item-eyebrow"
+            className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted"
+          >
+            {whyItem.eyebrow}
+          </p>
+          <p
+            data-testid="quiz-why-item-body"
+            className="mt-1 text-sm leading-relaxed text-fg"
+          >
+            {whyItem.body}
+          </p>
+        </aside>
       ) : null}
 
       {/* FR-A6: reviewed engine-authored context carrying the underlined span. */}
@@ -268,31 +297,50 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
       <ul className="flex flex-col gap-2">
         {vm.choices.map((c) => {
           const selected = c.letter === selectedLetter;
+          // V8: committed wrong pick gets filled danger badge + ✗ marker.
+          const committedWrong =
+            commitFirstCoach &&
+            coachedLoop != null &&
+            c.letter === coachedLoop.activeLetter &&
+            selected;
           return (
             <li key={c.letter}>
               <button
                 type="button"
                 data-testid={`choice-${c.letter}`}
                 data-selected={selected ? "true" : "false"}
+                data-committed-wrong={committedWrong ? "true" : "false"}
                 onClick={() => onSelect(c.letter)}
                 className={cn(
                   "flex w-full items-center gap-3 rounded-[16px] border px-4 py-3 text-left",
                   "data-[selected=false]:border-border data-[selected=false]:bg-surface",
-                  "data-[selected=true]:border-accent",
-                  "data-[selected=true]:bg-accent-light",
+                  "data-[selected=true]:border-accent data-[selected=true]:bg-accent-light",
+                  "data-[committed-wrong=true]:border-[color-mix(in_oklab,var(--color-danger)_55%,transparent)]",
+                  "data-[committed-wrong=true]:bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)]",
                 )}
               >
                 <span
                   data-selected={selected ? "true" : "false"}
+                  data-committed-wrong={committedWrong ? "true" : "false"}
                   className={cn(
                     "grid size-7 place-items-center rounded-full font-semibold",
                     "data-[selected=false]:bg-selected data-[selected=false]:text-muted",
                     "data-[selected=true]:bg-accent data-[selected=true]:text-on-accent",
+                    "data-[committed-wrong=true]:bg-danger data-[committed-wrong=true]:text-on-danger",
                   )}
                 >
                   {c.letter}
                 </span>
                 <span className="flex-1">{c.label}</span>
+                {committedWrong ? (
+                  <span
+                    data-testid={`choice-wrong-mark-${c.letter}`}
+                    aria-label="incorrect"
+                    className="text-sm font-bold text-danger"
+                  >
+                    ✗
+                  </span>
+                ) : null}
               </button>
             </li>
           );
@@ -302,7 +350,12 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
       {commitFirstCoach ? (
         // Wrong-pick ladder lives in CoachPanel (v3). Item column keeps idle
         // helper + optional fallback when the host still passes renderInline.
-        coachedLoop != null && props.renderCoachedInline === true ? (
+        coachedConfirm != null && props.renderCoachedInline === true ? (
+          <CoachedConfirmSection
+            confirm={coachedConfirm}
+            {...(onSeeBreakdown != null ? { onSeeBreakdown } : {})}
+          />
+        ) : coachedLoop != null && props.renderCoachedInline === true ? (
           <CoachedLoopSection
             coachedLoop={coachedLoop}
             hintLadder={hintLadder}
@@ -311,7 +364,7 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
             {...(onEscape != null ? { onEscape } : {})}
             {...(ackQuestion != null ? { ackQuestion } : {})}
           />
-        ) : coachedLoop == null ? (
+        ) : coachedLoop == null && coachedConfirm == null ? (
           <p data-testid="quiz-commit-idle-hint" className="text-xs text-muted">
             {COMMIT_FIRST_IDLE_HINT}
           </p>
@@ -356,19 +409,23 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
         </>
       )}
 
-      <button
-        type="button"
-        data-testid="quiz-submit"
-        disabled={!submittable}
-        onClick={onSubmit}
-        data-enabled={submittable ? "true" : "false"}
-        className={cn(
-          "rounded-full bg-accent px-6 py-3 font-semibold text-on-accent",
-          "data-[enabled=false]:opacity-60 data-[enabled=false]:pointer-events-none",
-        )}
-      >
-        Submit answer
-      </button>
+      {!hideSubmitForCoachedLoop ? (
+        <button
+          type="button"
+          data-testid="quiz-submit"
+          disabled={!submittable}
+          onClick={onSubmit}
+          data-enabled={submittable ? "true" : "false"}
+          className={cn(
+            // V13: right-aligned; visually gated until a choice is selected.
+            "ml-auto w-fit rounded-full px-6 py-3 font-semibold",
+            "data-[enabled=true]:bg-accent data-[enabled=true]:text-on-accent",
+            "data-[enabled=false]:border data-[enabled=false]:border-border data-[enabled=false]:bg-selected data-[enabled=false]:text-muted data-[enabled=false]:opacity-70 data-[enabled=false]:pointer-events-none",
+          )}
+        >
+          Submit answer
+        </button>
+      ) : null}
     </section>
   );
 }

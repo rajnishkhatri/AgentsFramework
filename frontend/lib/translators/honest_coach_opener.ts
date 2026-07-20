@@ -1,8 +1,9 @@
 /**
- * honest_coach_opener — optional C-6 seed bubble (BP-3c / FR-12 / C4).
+ * honest_coach_opener — grounded coach-page opener (FR-12 / C4 / T26 V22).
  *
- * Pure T1: one opener ONLY when pin + real misses count + empty transcript.
- * Copy may cite N; never invents "of last 5" / window.
+ * Pure T1: when the transcript is empty, always return an honest opener.
+ * Miss counts are cited only when real; never invents "of last 5" / window.
+ * Empty pin / zero misses degrade to a Ready-when-you-are invite (AP-6).
  */
 
 import type { CoachSurfacePin } from "@/lib/translators/coach_surface_vm";
@@ -14,20 +15,30 @@ export interface HonestCoachOpenerArgs {
   readonly transcriptEmpty: boolean;
 }
 
+const READY_BARE =
+  "Ready when you are. Ask me anything — I never reveal the answer.";
+
 /**
- * Returns opener markdown, or null when the gate fails (leave log empty).
+ * Returns opener markdown, or null when the transcript already has turns.
  */
 export function honestCoachOpener(args: HonestCoachOpenerArgs): string | null {
   const { pin, missesOnSkill, transcriptEmpty } = args;
   if (!transcriptEmpty) return null;
-  if (pin == null) return null;
-  if (missesOnSkill == null || !Number.isFinite(missesOnSkill) || missesOnSkill < 1) {
-    return null;
-  }
-  const n = Math.floor(missesOnSkill);
+
+  if (pin == null) return READY_BARE;
+
   const label = pin.label.trim() || "this skill";
-  return (
-    `I see ${n} miss${n === 1 ? "" : "es"} on ${label}. ` +
-    `Want to unpack what keeps tripping you up?`
-  );
+  const n =
+    missesOnSkill != null && Number.isFinite(missesOnSkill)
+      ? Math.floor(missesOnSkill)
+      : null;
+
+  if (n != null && n >= 1) {
+    return (
+      `Ready when you are. Want to unpack the ${label} item, or work a fresh one? ` +
+      `Your misses cluster on ${label} (${n} miss${n === 1 ? "" : "es"}).`
+    );
+  }
+
+  return `Ready when you are. Want to unpack the ${label} item, or work a fresh one?`;
 }

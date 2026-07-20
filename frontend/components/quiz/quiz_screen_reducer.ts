@@ -85,6 +85,16 @@ export type CoachedLoopState = {
   readonly rungCap: number;
 };
 
+/**
+ * FR-15: in-place confirmation after a coached solve. Learner opts into the
+ * feedback view via `see_breakdown` — feedback does not auto-render.
+ */
+export type CoachedConfirmState = {
+  readonly correctLetter: string;
+  readonly answeredLetter: string;
+  readonly whySummary: string;
+};
+
 interface LoadingPhase {
   readonly phase: "loading";
   readonly score: SessionTally;
@@ -111,6 +121,11 @@ interface AnsweringPhase {
    * `commitFirstCoach: true` (FR-3). Cleared on a fresh `item_loaded`.
    */
   readonly coachedLoop: CoachedLoopState | null;
+  /**
+   * FR-15 coached-solve confirmation. Set when the learner submits the correct
+   * letter after entering the loop; cleared on `item_loaded` / `see_breakdown`.
+   */
+  readonly coachedConfirm: CoachedConfirmState | null;
 }
 
 interface ReviewingPhase {
@@ -190,6 +205,8 @@ export type QuizScreenAction =
   | { type: "try_again" }
   /** Priced escape → walked_through resolution (FR-6). */
   | { type: "escape_taken" }
+  /** FR-15: learner-initiated route from coached confirm → feedback view. */
+  | { type: "see_breakdown" }
   | { type: "next" }
   | { type: "finish" }
   /** Q-8: End session — distinct from `finish` (FR-Q8-6); page routes to /learn. */
@@ -212,6 +229,7 @@ function freshAnswering(
     presentedAt,
     score,
     coachedLoop: null,
+    coachedConfirm: null,
   };
 }
 
@@ -397,16 +415,36 @@ export function quizScreenReducer(
         ? resolution === "first_try"
         : action.verdict.correct;
 
+      const nextScore = {
+        correct: state.score.correct + (bumpCorrect ? 1 : 0),
+        total: state.score.total + 1,
+      };
+
+      // FR-15: coached solve confirms in place — no auto feedback render.
+      if (commitFirst && resolution === "coached") {
+        const correctLetter =
+          action.verdict.correct_letter ?? state.item.question.answer_letter;
+        return {
+          ...state,
+          selectedLetter: action.letter,
+          coachedLoop: null,
+          coachedConfirm: {
+            correctLetter,
+            answeredLetter: action.letter,
+            whySummary: state.item.question.why_correct_md.trim(),
+          },
+          usedHint: true,
+          score: nextScore,
+        };
+      }
+
       return {
         phase: "reviewing",
         item: state.item,
         verdict: action.verdict,
         answeredLetter: action.letter,
         usedHint: state.usedHint,
-        score: {
-          correct: state.score.correct + (bumpCorrect ? 1 : 0),
-          total: state.score.total + 1,
-        },
+        score: nextScore,
         ...(resolution != null ? { resolution } : {}),
       };
     }
@@ -446,6 +484,25 @@ export function quizScreenReducer(
           total: state.score.total + 1,
         },
         resolution: "walked_through",
+      };
+    }
+
+    case "see_breakdown": {
+      if (state.phase !== "answering" || state.coachedConfirm == null) {
+        return state;
+      }
+      const confirm = state.coachedConfirm;
+      return {
+        phase: "reviewing",
+        item: state.item,
+        verdict: {
+          correct: true,
+          correct_letter: confirm.correctLetter,
+        },
+        answeredLetter: confirm.answeredLetter,
+        usedHint: state.usedHint,
+        score: state.score,
+        resolution: "coached",
       };
     }
 

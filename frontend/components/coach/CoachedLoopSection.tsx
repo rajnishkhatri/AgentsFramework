@@ -1,6 +1,11 @@
 /**
- * Commit-first wrong-pick coaching block (FR-3…5 / MOM-4 / ESC-2).
- * Shared by QuizView (always visible) and CoachPanel (v3 coach surface).
+ * Commit-first wrong-pick coaching transcript (FR-3…5 / MOM-4 / ESC-2 / T19).
+ * Shared by QuizView (inline fallback) and CoachPanel (v3 coach surface).
+ *
+ * Medium is a conversation: pick echo → ack turn → per-rung turns with
+ * "I'm still stuck." learner echoes between escalations. Escalation CTA stays
+ * "Show me more →" at every rung (V6); the stuck phrase is the user echo, not
+ * the button label.
  */
 
 "use client";
@@ -9,6 +14,7 @@ import * as React from "react";
 import type { CoachedLoopState } from "@/components/quiz/quiz_screen_reducer";
 import type { Question } from "@/lib/wire/engine_entities";
 import { composeCoachedAck } from "@/lib/translators/coached_ack_vm";
+import { cn } from "@/lib/utils";
 
 export const ESCAPE_COST =
   "The breakdown shows the answer — this one won't count as solved.";
@@ -16,6 +22,56 @@ export const ESCAPE_COST_ID = "quiz-escape-cost";
 
 export const EXHAUSTION_COPY =
   "That's all three nudges — I don't have more, and I never tell the answer. Re-read the sentence with the last prompt in mind and try again — or have the breakdown walk you through it.";
+
+export const SHOW_ME_MORE_LABEL = "Show me more →";
+export const STUCK_ECHO = "I'm still stuck.";
+
+/** MOM-9 stages — least help first. Index = nudge number (1-based). */
+export const LADDER_STAGES = [
+  { id: "pump", label: "PUMP" },
+  { id: "hint", label: "HINT" },
+  { id: "prompt", label: "PROMPT" },
+] as const;
+
+function stageForRung(rung: number): (typeof LADDER_STAGES)[number] {
+  return LADDER_STAGES[Math.min(Math.max(rung, 1), 3) - 1]!;
+}
+
+function UserBubble(props: {
+  readonly testId: string;
+  readonly children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <div className="flex justify-end">
+      <p
+        data-testid={props.testId}
+        className="max-w-[92%] rounded-2xl rounded-br-md bg-accent-light px-3 py-2 text-sm leading-relaxed text-fg"
+      >
+        {props.children}
+      </p>
+    </div>
+  );
+}
+
+function CoachBubble(props: {
+  readonly testId: string;
+  readonly children: React.ReactNode;
+  readonly className?: string;
+}): React.JSX.Element {
+  return (
+    <div className="flex justify-start">
+      <div
+        data-testid={props.testId}
+        className={cn(
+          "max-w-[92%] rounded-2xl rounded-bl-md border border-border bg-surface px-3 py-2 text-sm leading-relaxed text-fg",
+          props.className,
+        )}
+      >
+        {props.children}
+      </div>
+    </div>
+  );
+}
 
 export function CoachedLoopSection(props: {
   readonly coachedLoop: CoachedLoopState;
@@ -25,8 +81,7 @@ export function CoachedLoopSection(props: {
   readonly onEscape?: () => void;
   /**
    * MOM-3 / VOICE-1: when provided with an `activeLetter`, render the
-   * shared-ground acknowledgment above rung 1. Omit for surfaces that host the
-   * ack elsewhere.
+   * shared-ground acknowledgment as its own coach turn above rung 1.
    */
   readonly ackQuestion?: Question;
 }): React.JSX.Element {
@@ -47,9 +102,13 @@ export function CoachedLoopSection(props: {
     .filter((h) => h.rung <= rungsRevealed)
     .sort((a, b) => a.rung - b.rung);
   const letter = coachedLoop.activeLetter ?? "?";
-  // CTRL-2: escalate CTA when one rung remains after this click.
-  const nudgeLabel =
-    rungsRevealed >= rungCap - 1 ? "I'm still stuck →" : "Show me more →";
+  const ackBody =
+    ackQuestion != null && coachedLoop.activeLetter != null
+      ? composeCoachedAck({
+          question: ackQuestion,
+          pickedLetter: coachedLoop.activeLetter,
+        }).body
+      : null;
 
   const [announce, setAnnounce] = React.useState("");
   const prevRungs = React.useRef(0);
@@ -71,7 +130,7 @@ export function CoachedLoopSection(props: {
       data-testid="quiz-coached-section"
       role="region"
       aria-label="Coaching"
-      className="flex flex-col gap-3 rounded-[16px] border border-dashed border-accent bg-accent-light/40 px-4 py-3"
+      className="flex flex-col gap-3"
     >
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-muted">
@@ -85,79 +144,146 @@ export function CoachedLoopSection(props: {
           {rungsRevealed} of {rungCap}
         </span>
       </div>
-      {ackQuestion != null && coachedLoop.activeLetter != null ? (
-        <p
-          data-testid="quiz-coached-ack"
-          className="text-sm leading-relaxed text-fg"
-        >
-          {
-            composeCoachedAck({
-              question: ackQuestion,
-              pickedLetter: coachedLoop.activeLetter,
-            }).body
-          }
-        </p>
-      ) : null}
-      <ul className="flex flex-col gap-2">
-        {revealedBodies.map((h) => (
-          <li
-            key={h.rung}
-            data-testid={`quiz-rung-${h.rung}`}
-            className="text-sm leading-relaxed"
-          >
-            {h.body_md}
-          </li>
-        ))}
-      </ul>
-      {coachedLoop.exhausted ? (
+
+      {rungsRevealed > 0 ? (
         <div
-          data-testid="quiz-exhaustion-actions"
-          className="flex flex-col gap-2"
+          data-testid="quiz-ladder-rail"
+          role="group"
+          aria-label="Least help first: pump, then hint, then prompt"
+          className="grid grid-cols-3 gap-1"
         >
+          {LADDER_STAGES.map((stage, i) => {
+            const filled = rungsRevealed > i;
+            return (
+              <div
+                key={stage.id}
+                data-testid={`quiz-ladder-stage-${stage.id}`}
+                data-filled={filled ? "true" : "false"}
+                className={cn(
+                  "rounded-md px-2 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.08em]",
+                  filled
+                    ? "bg-accent text-on-accent"
+                    : "bg-selected text-muted",
+                )}
+              >
+                {stage.label}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      <div
+        data-testid="quiz-coached-transcript"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+        aria-label="Coached exchange"
+        className="flex flex-col gap-2.5"
+      >
+        {coachedLoop.activeLetter != null ? (
+          <UserBubble testId="quiz-pick-echo">
+            {`I chose ${letter}.`}
+          </UserBubble>
+        ) : null}
+
+        {ackBody != null ? (
+          <CoachBubble testId="quiz-coached-ack">{ackBody}</CoachBubble>
+        ) : null}
+
+        {revealedBodies.map((h) => (
+          <React.Fragment key={h.rung}>
+            {h.rung > 1 ? (
+              <UserBubble testId={`quiz-stuck-echo-${h.rung}`}>
+                {STUCK_ECHO}
+              </UserBubble>
+            ) : null}
+            <CoachBubble testId={`quiz-rung-${h.rung}`}>
+              <p
+                data-testid={`quiz-rung-stage-${h.rung}`}
+                className="mb-1 text-[10px] font-bold uppercase tracking-[0.08em] text-accent"
+              >
+                {stageForRung(h.rung).label}
+                {" · "}
+                <span aria-label="does not name the answer">no answer</span>
+              </p>
+              <p>{h.body_md}</p>
+            </CoachBubble>
+          </React.Fragment>
+        ))}
+      </div>
+
+      <div
+        data-testid={
+          coachedLoop.exhausted
+            ? "quiz-exhaustion-actions"
+            : "quiz-coached-actions"
+        }
+        className={cn(
+          "flex flex-col gap-2",
+          // V4: keep exhaustion CTAs in view at 1440×900 (sticky within panel scroll).
+          coachedLoop.exhausted && "sticky bottom-0 z-10 bg-surface/95 pb-1 pt-2 backdrop-blur-sm",
+        )}
+      >
+        {coachedLoop.exhausted ? (
           <p data-testid="quiz-exhaustion-copy" className="text-sm text-muted">
             {EXHAUSTION_COPY}
           </p>
-          <button
-            type="button"
-            data-testid="quiz-try-again"
-            onClick={onTryAgain}
-            className="min-h-11 w-fit rounded-full border border-accent px-4 py-2 text-sm font-semibold text-accent"
-          >
-            Let me try again
-          </button>
-          <button
-            type="button"
-            data-testid="quiz-escape"
-            aria-describedby={ESCAPE_COST_ID}
-            onClick={onEscape}
-            className="min-h-11 w-fit rounded-full bg-accent px-4 py-2 text-sm font-semibold text-on-accent"
-          >
-            Walk me through it
-          </button>
-          <p
-            id={ESCAPE_COST_ID}
-            data-testid="quiz-escape-cost"
-            className="text-xs text-muted"
-          >
-            {ESCAPE_COST}
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          <button
-            type="button"
-            data-testid="quiz-nudge"
-            onClick={onNudge}
-            className="min-h-11 w-fit rounded-full border border-dashed border-accent px-4 py-2 text-sm font-semibold text-accent"
-          >
-            {nudgeLabel}
-          </button>
-          <p data-testid="quiz-nudge-footnote" className="text-xs text-muted">
-            Nudge {rungsRevealed} of {rungCap} used — these questions follow
-            your pick of {letter}.
-          </p>
-        </div>
-      )}
+        ) : null}
+
+        {/* V5: try-again from rung 1; V7: primary at exhaustion, outline before. */}
+        <button
+          type="button"
+          data-testid="quiz-try-again"
+          data-priority={coachedLoop.exhausted ? "primary" : "secondary"}
+          onClick={onTryAgain}
+          className={cn(
+            "min-h-11 w-fit rounded-full px-4 py-2 text-sm font-semibold",
+            coachedLoop.exhausted
+              ? "bg-accent text-on-accent"
+              : "border border-accent text-accent",
+          )}
+        >
+          Let me try again
+        </button>
+
+        {coachedLoop.exhausted ? (
+          <>
+            <button
+              type="button"
+              data-testid="quiz-escape"
+              data-priority="secondary"
+              aria-describedby={ESCAPE_COST_ID}
+              onClick={onEscape}
+              className="min-h-11 w-fit rounded-full border border-accent px-4 py-2 text-sm font-semibold text-accent"
+            >
+              Walk me through it
+            </button>
+            <p
+              id={ESCAPE_COST_ID}
+              data-testid="quiz-escape-cost"
+              className="text-xs text-muted"
+            >
+              {ESCAPE_COST}
+            </p>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              data-testid="quiz-nudge"
+              onClick={onNudge}
+              className="min-h-11 w-fit rounded-full border border-dashed border-accent px-4 py-2 text-sm font-semibold text-accent"
+            >
+              {SHOW_ME_MORE_LABEL}
+            </button>
+            <p data-testid="quiz-nudge-footnote" className="text-xs text-muted">
+              Nudge {rungsRevealed} of {rungCap} used — these questions follow
+              your pick of {letter}.
+            </p>
+          </>
+        )}
+      </div>
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {announce}
       </div>

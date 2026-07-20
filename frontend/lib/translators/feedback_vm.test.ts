@@ -177,7 +177,74 @@ describe("toFeedbackVM — commit-first resolution labels (FR-6/9)", () => {
     expect(vm.banner).toBe("walked_through");
     expect(vm.resultLabel).toBe("Walked through together");
     expect(vm.chosenLetter).toBe("B");
+    // V14: banner delivers answer + last pick (not cost-only).
+    expect(vm.bannerText).toMatch(/it's A/);
+    expect(vm.bannerText).toMatch(/last pick was B/);
     // FBK-1 walked-through: why_tempted_md for the last wrong letter's gap.
     expect(vm.chosenRationale).toContain("committee");
+  });
+});
+
+describe("toFeedbackVM — T23 composition (V16–V19)", () => {
+  it("builds feed-up / feed-back / feed-forward cards from sourced fields (V16)", () => {
+    const vm = toFeedbackVM(
+      question({
+        misconception: "Learners match the verb to the nearest noun.",
+        why_tempted_md: "Nearest-noun trap.",
+        rule_md: "Find the verb. Ask who or what does it.",
+      }),
+      { correct: false, correct_letter: "A" },
+      { letter: "B" },
+      "walked_through",
+      { skillName: "Grammar & Usage" },
+    );
+    expect(vm.feedCards.map((c) => c.kind)).toEqual([
+      "up",
+      "back",
+      "forward",
+    ]);
+    expect(vm.feedCards[0]!.body).toContain("Grammar & Usage");
+    expect(vm.feedCards[1]!.body).toContain("nearest noun");
+    expect(vm.feedCards[2]!.body).toMatch(/Find the verb/i);
+  });
+
+  it("attaches per-choice rationales for every choice (V17)", () => {
+    const vm = toFeedbackVM(
+      question(),
+      { correct: false, correct_letter: "A" },
+      { letter: "B" },
+    );
+    expect(vm.reviewedChoices).toHaveLength(4);
+    for (const c of vm.reviewedChoices) {
+      expect(c.rationale.length).toBeGreaterThan(0);
+    }
+    expect(vm.reviewedChoices.find((c) => c.letter === "C")?.rationale).toContain(
+      "participle",
+    );
+  });
+
+  it("parses numbered procedure steps from rule_md when present (V19)", () => {
+    const vm = toFeedbackVM(
+      question({
+        rule_md:
+          "1. Find the verb.\n2. Ask who or what does it.\n3. Match the verb to that head.",
+      }),
+      { correct: true, correct_letter: "A" },
+      { letter: "A" },
+    );
+    expect(vm.procedureSteps).toEqual([
+      "Find the verb.",
+      "Ask who or what does it.",
+      "Match the verb to that head.",
+    ]);
+  });
+
+  it("leaves procedureSteps null when rule_md is a single prose sentence", () => {
+    const vm = toFeedbackVM(
+      question({ rule_md: "Collective nouns are singular." }),
+      { correct: true, correct_letter: "A" },
+      { letter: "A" },
+    );
+    expect(vm.procedureSteps).toBeNull();
   });
 });

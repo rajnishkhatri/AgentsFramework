@@ -1,5 +1,5 @@
 /**
- * FeedbackView — the post-answer teaching screen (FR-E1..E5).
+ * FeedbackView — the post-answer teaching screen (FR-E1..E5 / T22–T23).
  *
  * Presentational only (F-R1): it renders a `FeedbackVM` (composed by
  * `feedback_vm` from a graded Verdict) as props. No engine port, no grading, no
@@ -16,10 +16,11 @@ import * as React from "react";
 import { Check, X, Circle, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
+  FeedCardKind,
   FeedbackVM,
   ReviewedChoiceState,
 } from "@/lib/translators/feedback_vm";
-import { WALKED_THROUGH_BANNER } from "@/lib/translators/feedback_vm";
+import { StreamingMarkdown } from "@/components/chat/StreamingMarkdown";
 
 const STATE_ICON: Record<ReviewedChoiceState, LucideIcon> = {
   correct: Check,
@@ -34,18 +35,20 @@ const STATE_LABEL: Record<ReviewedChoiceState, string> = {
   other: "",
 };
 
-const BANNER_TEXT = {
-  celebrate: "Exactly right.",
-  soft: "Not quite — and that's useful.",
-  walked_through: WALKED_THROUGH_BANNER,
-} as const;
+const FEED_CARD_TONE: Record<FeedCardKind, string> = {
+  up: "border-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] bg-accent-light/50",
+  back: "border-[color-mix(in_oklab,var(--color-warning,var(--color-accent))_35%,transparent)] bg-[color-mix(in_oklab,var(--color-warning,var(--color-accent))_10%,transparent)]",
+  forward:
+    "border-[color-mix(in_oklab,var(--color-success)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-success)_10%,transparent)]",
+};
 
 function ReviewedChoiceRow(props: {
   letter: string;
   label: string;
   state: ReviewedChoiceState;
+  rationale: string;
 }): React.JSX.Element {
-  const { letter, label, state } = props;
+  const { letter, label, state, rationale } = props;
   const Icon = STATE_ICON[state];
   const stateLabel = STATE_LABEL[state];
   return (
@@ -53,7 +56,7 @@ function ReviewedChoiceRow(props: {
       data-testid={`choice-${letter}`}
       data-state={state}
       className={cn(
-        "flex items-center gap-3 rounded-[13px] border px-4 py-3",
+        "flex flex-col gap-1.5 rounded-[13px] border px-4 py-3",
         "data-[state=correct]:border-[color-mix(in_oklab,var(--color-success)_45%,transparent)]",
         "data-[state=correct]:bg-[color-mix(in_oklab,var(--color-success)_10%,transparent)]",
         "data-[state=chosen-wrong]:border-[color-mix(in_oklab,var(--color-danger)_45%,transparent)]",
@@ -61,24 +64,34 @@ function ReviewedChoiceRow(props: {
         "data-[state=other]:border-border data-[state=other]:bg-surface",
       )}
     >
-      <span
-        aria-hidden="true"
-        data-state={state}
-        className={cn(
-          "grid size-7 place-items-center rounded-full font-semibold",
-          "data-[state=correct]:bg-success data-[state=correct]:text-on-success",
-          "data-[state=chosen-wrong]:bg-danger data-[state=chosen-wrong]:text-on-danger",
-          "data-[state=other]:bg-selected data-[state=other]:text-muted",
-        )}
-      >
-        {letter}
-      </span>
-      <span className="flex-1">{label}</span>
-      {stateLabel ? (
-        <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide">
-          <Icon aria-hidden="true" className="size-3.5" />
-          {stateLabel}
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden="true"
+          data-state={state}
+          className={cn(
+            "grid size-7 place-items-center rounded-full font-semibold",
+            "data-[state=correct]:bg-success data-[state=correct]:text-on-success",
+            "data-[state=chosen-wrong]:bg-danger data-[state=chosen-wrong]:text-on-danger",
+            "data-[state=other]:bg-selected data-[state=other]:text-muted",
+          )}
+        >
+          {letter}
         </span>
+        <span className="flex-1 font-medium">{label}</span>
+        {stateLabel ? (
+          <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide">
+            <Icon aria-hidden="true" className="size-3.5" />
+            {stateLabel}
+          </span>
+        ) : null}
+      </div>
+      {rationale.length > 0 ? (
+        <div
+          data-testid={`choice-rationale-${letter}`}
+          className="pl-10 text-sm leading-relaxed text-muted"
+        >
+          <StreamingMarkdown text={rationale} tone="plain" />
+        </div>
       ) : null}
     </li>
   );
@@ -90,6 +103,8 @@ export function FeedbackView(props: {
   onAskCoach?: () => void;
 }): React.JSX.Element {
   const { vm, onAskCoach } = props;
+  const [gauge, setGauge] = React.useState<"clicked" | "fuzzy" | null>(null);
+
   return (
     <section aria-label="Answer feedback" className="flex flex-col gap-5">
       <div
@@ -114,7 +129,7 @@ export function FeedbackView(props: {
         ) : (
           <Circle aria-hidden="true" className="size-5" />
         )}
-        {BANNER_TEXT[vm.banner]}
+        {vm.bannerText}
       </div>
 
       {vm.resultLabel != null ? (
@@ -147,6 +162,27 @@ export function FeedbackView(props: {
         </p>
       )}
 
+      <div
+        data-testid="feedback-feed-cards"
+        className="grid gap-3 md:grid-cols-3"
+      >
+        {vm.feedCards.map((card) => (
+          <article
+            key={card.kind}
+            data-testid={`feedback-feed-${card.kind}`}
+            className={cn(
+              "rounded-[13px] border px-3.5 py-3 text-sm leading-relaxed",
+              FEED_CARD_TONE[card.kind],
+            )}
+          >
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
+              {card.eyebrow}
+            </p>
+            <StreamingMarkdown text={card.body} tone="plain" />
+          </article>
+        ))}
+      </div>
+
       <ul className="flex flex-col gap-2">
         {vm.reviewedChoices.map((c) => (
           <ReviewedChoiceRow
@@ -154,31 +190,46 @@ export function FeedbackView(props: {
             letter={c.letter}
             label={c.label}
             state={c.state}
+            rationale={c.rationale}
           />
         ))}
       </ul>
 
       <div className="flex flex-col gap-3 text-base">
-        <p>
+        <div data-testid="feedback-why-correct">
           <span className="font-semibold">
             Why {vm.correctLetter} is correct:{" "}
           </span>
-          {vm.correctRationale}
-        </p>
+          <StreamingMarkdown text={vm.correctRationale} tone="plain" />
+        </div>
         {!vm.correct && vm.chosenLetter ? (
-          <p data-testid="feedback-why-tempted">
+          <div data-testid="feedback-why-tempted">
             <span className="font-semibold">
               Why {vm.chosenLetter} tempted you:{" "}
             </span>
-            {vm.chosenRationale}
-          </p>
+            <StreamingMarkdown text={vm.chosenRationale} tone="plain" />
+          </div>
         ) : null}
-        <p className="rounded-[13px] bg-surface px-4 py-3 text-muted">
+        <div
+          data-testid="feedback-rule"
+          className="rounded-[13px] bg-surface px-4 py-3 text-muted"
+        >
           <span className="font-semibold text-fg">
             One rule decided this item:{" "}
           </span>
-          {vm.ruleMd}
-        </p>
+          {vm.procedureSteps != null ? (
+            <ol
+              data-testid="feedback-procedure"
+              className="mt-2 list-decimal space-y-1 pl-5 text-fg"
+            >
+              {vm.procedureSteps.map((step, i) => (
+                <li key={i}>{step}</li>
+              ))}
+            </ol>
+          ) : (
+            <StreamingMarkdown text={vm.ruleMd} tone="plain" />
+          )}
+        </div>
       </div>
 
       {onAskCoach ? (
@@ -193,25 +244,62 @@ export function FeedbackView(props: {
       ) : null}
 
       {/*
-        FBK-2: optional self-explanation input ("Saying it back makes it
-        stick"). UI affordance parity only for this slice — the value is NOT
-        persisted (no onSubmit gate, no `required`). Advancing past feedback
-        stays possible without typing a word.
+        FBK-2 + V18: optional self-explanation + non-gating gauge chips.
+        Value is NOT persisted; advancing stays possible without interacting.
       */}
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2 rounded-[13px] border border-border bg-accent-light/30 px-4 py-3">
         <label
           htmlFor="feedback-self-explanation"
-          className="text-sm font-medium text-muted"
+          className="text-sm font-medium text-fg"
         >
           Saying it back makes it stick
         </label>
+        <p className="text-xs text-muted">
+          Say the rule back in your own words — what test decided it?
+        </p>
         <textarea
           id="feedback-self-explanation"
           data-testid="feedback-self-explanation"
-          placeholder="Say it back in your own words…"
+          placeholder="Why does the correct answer work here?"
           rows={2}
           className="rounded-[13px] border border-border bg-surface px-4 py-3 text-sm"
         />
+        <div
+          data-testid="feedback-gauge"
+          className="flex flex-wrap items-center gap-2 pt-1"
+        >
+          <span className="text-xs text-muted">
+            Gauge understanding before moving on:
+          </span>
+          <button
+            type="button"
+            data-testid="feedback-gauge-clicked"
+            data-selected={gauge === "clicked" ? "true" : "false"}
+            onClick={() => setGauge("clicked")}
+            className={cn(
+              "min-h-9 rounded-full border px-3 py-1.5 text-sm font-semibold",
+              gauge === "clicked"
+                ? "border-success bg-[color-mix(in_oklab,var(--color-success)_14%,transparent)] text-success"
+                : "border-border text-fg",
+            )}
+          >
+            This clicked ✓
+          </button>
+          <button
+            type="button"
+            data-testid="feedback-gauge-fuzzy"
+            data-selected={gauge === "fuzzy" ? "true" : "false"}
+            onClick={() => setGauge("fuzzy")}
+            className={cn(
+              "min-h-9 rounded-full border px-3 py-1.5 text-sm font-semibold",
+              gauge === "fuzzy"
+                ? "border-accent bg-accent-light text-accent"
+                : "border-border text-fg",
+            )}
+          >
+            Still fuzzy
+          </button>
+        </div>
       </div>
     </section>
   );

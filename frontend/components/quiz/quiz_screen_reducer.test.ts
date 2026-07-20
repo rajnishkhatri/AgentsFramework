@@ -505,7 +505,7 @@ describe("quiz_screen_reducer — commit-first coached loop (flag ON)", () => {
     expect(s.score).toEqual({ correct: 1, total: 1 });
   });
 
-  it("correct after wrong → coached; score_correct unchanged (FR-9/FR-11)", () => {
+  it("correct after wrong → coached confirm in place; score_correct unchanged (FR-9/FR-11/FR-15)", () => {
     let s = answeringCommitFirst();
     s = quizScreenReducer(s, { type: "select", letter: "A" });
     s = quizScreenReducer(s, {
@@ -521,9 +521,15 @@ describe("quiz_screen_reducer — commit-first coached loop (flag ON)", () => {
       letter: "B",
       commitFirstCoach: true,
     });
+    // FR-15: stay answering with confirmation — no auto feedback.
+    expect(s.phase).toBe("answering");
+    expect(s.phase === "answering" && s.coachedConfirm?.answeredLetter).toBe("B");
+    expect(s.phase === "answering" && s.coachedLoop).toBeNull();
+    expect(s.score).toEqual({ correct: 0, total: 1 });
+
+    s = quizScreenReducer(s, { type: "see_breakdown" });
     expect(s.phase).toBe("reviewing");
     expect(s.phase === "reviewing" && s.resolution).toBe("coached");
-    expect(s.score).toEqual({ correct: 0, total: 1 });
   });
 });
 

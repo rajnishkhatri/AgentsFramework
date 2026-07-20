@@ -65,23 +65,11 @@ export function CoachWorkspace(props: {
             type="button"
             data-testid="coach-wrap-up"
             onClick={onWrapUp}
-            className="text-sm font-medium text-accent hover:underline"
+            className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-on-accent"
           >
             Wrap up session →
           </button>
         </header>
-        <div
-          data-testid="coach-context-column"
-          className={cn(isRail ? "w-64 shrink-0" : "w-full shrink-0")}
-        >
-          <CoachChrome
-            vm={vm}
-            busy={busy}
-            onAsk={onAsk}
-            layout={layout}
-            showChips={false}
-          />
-        </div>
       </div>
 
       <div
@@ -91,6 +79,57 @@ export function CoachWorkspace(props: {
           isRail ? "flex-row gap-4" : "mx-auto w-full max-w-[600px] flex-col",
         )}
       >
+        <aside
+          data-testid="coach-context-sidebar"
+          className={cn(
+            "flex shrink-0 flex-col gap-3",
+            isRail ? "w-64" : "w-full",
+          )}
+        >
+          <div data-testid="coach-context-column">
+            <CoachChrome
+              vm={vm}
+              busy={busy}
+              onAsk={onAsk}
+              layout={layout}
+              showChips={false}
+            />
+          </div>
+          <section
+            data-testid="coach-knows-card"
+            className="rounded-[13px] border border-border bg-selected/50 px-3.5 py-3"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
+              The coach knows your last item
+            </p>
+            {vm.historyLine != null && vm.historyLine.length > 0 ? (
+              <p className="mt-1.5 text-sm leading-relaxed text-fg">
+                {vm.historyLine}
+              </p>
+            ) : (
+              <p className="mt-1.5 text-sm text-muted">
+                No current item pinned yet — start a quiz item to ground this
+                chat.
+              </p>
+            )}
+            {vm.currentItemLine != null && vm.currentItemLine.length > 0 ? (
+              <p className="mt-2 text-xs text-muted">{vm.currentItemLine}</p>
+            ) : null}
+          </section>
+          <section
+            data-testid="coach-modes-card"
+            className="rounded-[13px] border border-border px-3.5 py-3"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
+              One coach, three modes
+            </p>
+            <ul className="mt-1.5 list-disc space-y-1 pl-4 text-sm text-fg">
+              <li>In-drill Socratic — least help first while you solve</li>
+              <li>Post-answer deep-dive — unpack the breakdown</li>
+              <li>Miss-pattern review — work what keeps tripping you</li>
+            </ul>
+          </section>
+        </aside>
         <div
           data-testid="coach-chat-column"
           className="flex min-h-0 min-w-0 flex-1 flex-col"

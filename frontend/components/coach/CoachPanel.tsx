@@ -28,21 +28,21 @@ import { CoachChrome, CoachChips } from "./CoachChrome";
 import { CoachView } from "./CoachView";
 import { HintLadderList, NUDGE_EXHAUSTED_REASON } from "./HintLadderList";
 import { CoachedLoopSection } from "./CoachedLoopSection";
+import { CoachedConfirmSection } from "./CoachedConfirmSection";
 import { useCoach } from "./use_coach";
 import { useCoachSurface } from "./use_coach_surface";
 import { setCoachPin } from "./coach_thread_store";
 import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 import { useSurface } from "@/components/shell/use_surface";
-import type { CoachedLoopState } from "@/components/quiz/quiz_screen_reducer";
+import type {
+  CoachedConfirmState,
+  CoachedLoopState,
+} from "@/components/quiz/quiz_screen_reducer";
 
 /** Idle copy when commit-first is ON and the learner has not yet submitted (FR-2). */
 export const COMMIT_FIRST_IDLE_COPY =
   "Commit to a choice — coaching starts from what you pick. Ask me anything below; I never reveal the answer.";
-
-/** Wrong-pick moment opener once a letter is committed (MOM-3 / MOM-8). */
-export const COMMIT_FIRST_WRONG_PICK_COPY =
-  "You're in the coaching loop for that pick — rungs below follow what you chose. I never name the answer.";
 
 export function CoachPanel(props: {
   runtime: AgentRuntimeClient;
@@ -69,9 +69,12 @@ export function CoachPanel(props: {
   commitFirstCoach?: boolean;
   /** Active wrong-pick loop; when set, idle opener is suppressed (MOM-8). */
   coachedLoop?: CoachedLoopState | null;
+  /** FR-15 coached-solve confirmation. */
+  coachedConfirm?: CoachedConfirmState | null;
   readonly onNudge?: () => void;
   readonly onTryAgain?: () => void;
   readonly onEscape?: () => void;
+  readonly onSeeBreakdown?: () => void;
   /**
    * MOM-3 / VOICE-1: the current item, used to compose the shared-ground
    * acknowledgment above rung 1 in the panel's coached section.
@@ -90,9 +93,11 @@ export function CoachPanel(props: {
     inlineHost = false,
     commitFirstCoach = false,
     coachedLoop = null,
+    coachedConfirm = null,
     onNudge,
     onTryAgain,
     onEscape,
+    onSeeBreakdown,
     ackQuestion,
   } = props;
   const surface = useSurface();
@@ -142,9 +147,12 @@ export function CoachPanel(props: {
   );
 
   const openerMarkdown = React.useMemo(() => {
-    if (commitFirstCoach && turns.length === 0) {
-      if (coachedLoop != null) return COMMIT_FIRST_WRONG_PICK_COPY;
-      if (mode === "pre_submit") return COMMIT_FIRST_IDLE_COPY;
+    // V10 / T19 / FR-15: coached loop or confirm owns the exchange.
+    if (commitFirstCoach && (coachedLoop != null || coachedConfirm != null)) {
+      return null;
+    }
+    if (commitFirstCoach && turns.length === 0 && mode === "pre_submit") {
+      return COMMIT_FIRST_IDLE_COPY;
     }
     return honestCoachOpener({
       pin,
@@ -154,6 +162,7 @@ export function CoachPanel(props: {
   }, [
     commitFirstCoach,
     coachedLoop,
+    coachedConfirm,
     mode,
     pin,
     missesOnSkill,
@@ -235,7 +244,14 @@ export function CoachPanel(props: {
             ) : null}
           </>
         ) : null}
-        {commitFirstCoach && coachedLoop != null ? (
+        {commitFirstCoach && coachedConfirm != null ? (
+          <div className="mb-3.5 shrink-0">
+            <CoachedConfirmSection
+              confirm={coachedConfirm}
+              {...(onSeeBreakdown != null ? { onSeeBreakdown } : {})}
+            />
+          </div>
+        ) : commitFirstCoach && coachedLoop != null ? (
           <div className="mb-3.5 shrink-0">
             <CoachedLoopSection
               coachedLoop={coachedLoop}
@@ -300,6 +316,15 @@ export function CoachPanel(props: {
               ? { textareaRef: composerFocusRef }
               : {})}
           />
+          {commitFirstCoach && coachedLoop == null ? (
+            <p
+              data-testid="coach-composer-footer"
+              className="text-xs text-muted"
+            >
+              Coaching starts after you submit — it works from what your pick
+              reveals.
+            </p>
+          ) : null}
         </div>
       </div>
     </aside>

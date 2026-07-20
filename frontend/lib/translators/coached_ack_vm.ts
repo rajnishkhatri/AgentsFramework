@@ -1,12 +1,14 @@
 /**
- * coached_ack_vm — wrong-pick acknowledgment composer (MOM-3 / VOICE-1 / LEAK-1).
+ * coached_ack_vm — wrong-pick acknowledgment composer v2 (MOM-3 / V2 / LEAK-1).
  *
  * Pure T1 map: (Question, picked wrong letter) → the distinct coach statement
- * that precedes ladder rung 1 after a wrong commit. VOICE-1 orders it
- * shared ground → specific complication → hand off to the question. VOICE-3
- * forbids engine vocabulary (ladder, rung, moment, wrong-pick, assertion rung)
- * in learner-facing copy. LEAK-1 forbids naming the correct letter or restating
- * the key — a body that would leak is substituted with a neutral fallback.
+ * that precedes ladder rung 1 after a wrong commit.
+ *
+ * Shape (T20 / V2): verdict → specific diagnosis → "So —" hand-off into the
+ * pump. The prior re-read hand-off competed with rung-1 and is retired.
+ * VOICE-3 forbids engine vocabulary in learner-facing copy. LEAK-1 forbids
+ * naming the correct letter or restating the key — a diagnosis that would
+ * leak is substituted with a neutral fallback.
  *
  * Imports `wire/` only. No I/O, no React, no SDK.
  */
@@ -20,25 +22,26 @@ export interface CoachedAckInput {
 }
 
 export interface CoachedAckVM {
-  readonly sharedGround: string;
-  readonly complication: string;
+  /** Soft negative + usefulness framing. */
+  readonly verdict: string;
+  /** Item-specific trap / misconception (never the answer). */
+  readonly diagnosis: string;
+  /** Lead-in to the pump — not a second question. */
   readonly handoff: string;
-  /** The three parts joined in VOICE-1 order. */
+  /** The three parts joined in verdict → diagnosis → handoff order. */
   readonly body: string;
-  /** LEAK-1: true if any part was substituted to avoid naming the answer. */
+  /** LEAK-1: true if diagnosis was substituted to avoid naming the answer. */
   readonly leaked: boolean;
 }
 
-const SHARED_GROUND =
-  "You read the sentence and saw something to fix — that's the right instinct.";
+const VERDICT = "Not quite — and it's a telling miss.";
 
-const GENERIC_COMPLICATION =
-  "This one turns on a detail that's easy to miss.";
+const GENERIC_DIAGNOSIS =
+  "There's a small detail here that's easy to overlook.";
 
-const HANDOFF =
-  "Re-read the sentence with that in mind — what is it actually testing?";
+const HANDOFF = "So —";
 
-const NEUTRAL_COMPLICATION =
+const NEUTRAL_DIAGNOSIS =
   "There's a small detail here that's easy to overlook — let's look closer.";
 
 /**
@@ -69,23 +72,23 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function pickComplication(question: Question, pickedLetter: string): string {
+function pickDiagnosis(question: Question, pickedLetter: string): string {
   const mc = question.misconception;
   if (mc != null && mc.trim().length > 0) return mc.trim();
   const r = question.per_choice_rationale[pickedLetter] ?? "";
   if (r.trim().length > 0) return r.trim();
-  return GENERIC_COMPLICATION;
+  return GENERIC_DIAGNOSIS;
 }
 
 export function composeCoachedAck(input: CoachedAckInput): CoachedAckVM {
   const { question: q, pickedLetter } = input;
-  const complication = pickComplication(q, pickedLetter);
-  const leaked = leaks(complication, q);
-  const safeComplication = leaked ? NEUTRAL_COMPLICATION : complication;
-  const body = `${SHARED_GROUND} ${safeComplication} ${HANDOFF}`;
+  const diagnosis = pickDiagnosis(q, pickedLetter);
+  const leaked = leaks(diagnosis, q);
+  const safeDiagnosis = leaked ? NEUTRAL_DIAGNOSIS : diagnosis;
+  const body = `${VERDICT} ${safeDiagnosis} ${HANDOFF}`;
   return {
-    sharedGround: SHARED_GROUND,
-    complication: safeComplication,
+    verdict: VERDICT,
+    diagnosis: safeDiagnosis,
     handoff: HANDOFF,
     body,
     leaked,

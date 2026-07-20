@@ -1,11 +1,9 @@
 /**
- * T13 / MOM-3 / VOICE-1 — wrong-pick acknowledgment composer (L1).
+ * T20 / MOM-3 / V2 — wrong-pick acknowledgment composer v2 (L1).
  *
- * The acknowledgment is the distinct coach statement that precedes ladder rung 1
- * after a wrong commit. VOICE-1 orders it: shared ground → specific complication
- * → hand off to the question. VOICE-3 forbids engine vocabulary (ladder, rung,
- * moment, wrong-pick, assertion rung) in learner-facing copy. LEAK-1 forbids
- * naming the correct letter or restating the key.
+ * Shape: verdict → specific diagnosis → "So —" hand-off into the pump.
+ * The old re-read hand-off competed with rung-1 and is retired (V2).
+ * VOICE-3 forbids engine vocabulary; LEAK-1 forbids naming the answer.
  */
 
 import { describe, expect, it } from "vitest";
@@ -43,61 +41,63 @@ function question(over: Partial<Question> & { id: string }): Question {
   };
 }
 
-describe("composeCoachedAck — VOICE-1 order + VOICE-3 vocabulary", () => {
-  it("orders shared ground → complication → handoff, and keys the complication to the picked letter", () => {
+describe("composeCoachedAck — T20 verdict → diagnosis → So —", () => {
+  it("orders verdict → diagnosis → So — handoff, and keys diagnosis to the picked letter", () => {
     const q = question({ id: "q1" });
     const ack = composeCoachedAck({ question: q, pickedLetter: "B" });
-    // VOICE-1 order: shared ground comes first, handoff comes last.
-    const sg = ack.body.indexOf(ack.sharedGround);
-    const cp = ack.body.indexOf(ack.complication);
-    const hf = ack.body.indexOf(ack.handoff);
-    expect(sg).toBeLessThan(cp);
-    expect(cp).toBeLessThan(hf);
-    // The complication is the B rationale (the trap for picking B), not A's.
-    expect(ack.complication).toContain("libraries");
+    const v = ack.body.indexOf(ack.verdict);
+    const d = ack.body.indexOf(ack.diagnosis);
+    const h = ack.body.indexOf(ack.handoff);
+    expect(v).toBeLessThan(d);
+    expect(d).toBeLessThan(h);
+    expect(ack.verdict).toMatch(/not quite/i);
+    expect(ack.handoff).toBe("So —");
+    expect(ack.diagnosis).toContain("libraries");
+    // V2: no competing re-read hand-off
+    expect(ack.body).not.toMatch(/re-read the sentence/i);
   });
 
-  it("produces a different complication for a different picked letter", () => {
+  it("produces a different diagnosis for a different picked letter", () => {
     const q = question({ id: "q1" });
     const b = composeCoachedAck({ question: q, pickedLetter: "B" });
     const c = composeCoachedAck({ question: q, pickedLetter: "C" });
-    expect(b.complication).not.toBe(c.complication);
-    expect(c.complication).toContain("are");
+    expect(b.diagnosis).not.toBe(c.diagnosis);
+    expect(c.diagnosis).toContain("are");
   });
 
   it("prefers the author-captured misconception when present", () => {
     const q = question({
       id: "q2",
-      misconception: "Learners match the verb to the nearest noun, not the true subject.",
+      misconception:
+        "Learners match the verb to the nearest noun, not the true subject.",
     });
     const ack = composeCoachedAck({ question: q, pickedLetter: "B" });
-    expect(ack.complication).toContain("nearest noun");
+    expect(ack.diagnosis).toContain("nearest noun");
   });
 
-  it("falls back to a generic complication when both misconception and the letter rationale are absent", () => {
+  it("falls back to a generic diagnosis when both misconception and the letter rationale are absent", () => {
     const q = question({
       id: "q3",
       misconception: null,
       per_choice_rationale: { A: "Correct.", B: "", C: "", D: "" },
     });
     const ack = composeCoachedAck({ question: q, pickedLetter: "B" });
-    expect(ack.complication.length).toBeGreaterThan(0);
-    // Generic line must not pretend to know the specific trap.
-    expect(ack.complication).not.toContain("libraries");
+    expect(ack.diagnosis.length).toBeGreaterThan(0);
+    expect(ack.diagnosis).not.toContain("libraries");
+    expect(ack.handoff).toBe("So —");
   });
 
   it("never uses engine vocabulary (ladder, rung, moment, wrong-pick, assertion rung) in learner-facing copy", () => {
     const q = question({ id: "q4" });
     const ack = composeCoachedAck({ question: q, pickedLetter: "B" });
     const banned = /\b(ladder|rung|moment|wrong-pick|assertion rung)\b/i;
-    expect(banned.test(ack.sharedGround)).toBe(false);
-    expect(banned.test(ack.complication)).toBe(false);
+    expect(banned.test(ack.verdict)).toBe(false);
+    expect(banned.test(ack.diagnosis)).toBe(false);
     expect(banned.test(ack.handoff)).toBe(false);
     expect(banned.test(ack.body)).toBe(false);
   });
 
-  it("LEAK-1: substitutes a neutral complication when the rationale names the correct letter", () => {
-    // Force a rationale for B that names the answer letter "A".
+  it("LEAK-1: substitutes a neutral diagnosis when the rationale names the correct letter", () => {
     const q = question({
       id: "q5",
       per_choice_rationale: {
@@ -109,21 +109,20 @@ describe("composeCoachedAck — VOICE-1 order + VOICE-3 vocabulary", () => {
     });
     const ack = composeCoachedAck({ question: q, pickedLetter: "B" });
     expect(ack.leaked).toBe(true);
-    // The substituted complication must not contain the answer letter "A".
-    expect(ack.complication).not.toMatch(/\bA\b/);
+    expect(ack.diagnosis).not.toMatch(/\bA\b/);
   });
 
   it("LEAK-1: does not flag a false leak when the rationale merely discusses the trap", () => {
     const q = question({ id: "q6" });
     const ack = composeCoachedAck({ question: q, pickedLetter: "B" });
-    // The B rationale discusses 'libraries' but never names the answer letter.
     expect(ack.leaked).toBe(false);
   });
 
-  it("handoff points back to the sentence without naming the answer", () => {
+  it("handoff is only the lead-in to the pump — never a second question", () => {
     const q = question({ id: "q7" });
     const ack = composeCoachedAck({ question: q, pickedLetter: "B" });
-    expect(ack.handoff).toMatch(/re-read|sentence|asking/i);
-    expect(ack.handoff).not.toMatch(/\bA\b/);
+    expect(ack.handoff).toBe("So —");
+    expect(ack.handoff).not.toMatch(/\?/);
+    expect(ack.body.endsWith("So —")).toBe(true);
   });
 });

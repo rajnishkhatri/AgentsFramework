@@ -44,6 +44,7 @@ export function buildFeedback(
   verdict: Verdict | null,
   answer: Answer,
   resolution?: AttemptResolution | null,
+  opts?: { skillName?: string | null },
 ): FeedbackState {
   if (verdict == null) {
     // No verdict reached feedback (no selection, FR-D2a) — render nothing.
@@ -51,7 +52,7 @@ export function buildFeedback(
   }
   return {
     present: true,
-    vm: toFeedbackVM(question, verdict, answer, resolution),
+    vm: toFeedbackVM(question, verdict, answer, resolution, opts),
     askCoachContext: { questionId: question.id, skillId: question.skill_id },
   };
 }
@@ -61,6 +62,7 @@ export function useFeedback(
   verdict: Verdict | null,
   answer: Answer,
   resolution?: AttemptResolution | null,
+  opts?: { skillName?: string | null },
 ): FeedbackState {
-  return buildFeedback(question, verdict, answer, resolution);
+  return buildFeedback(question, verdict, answer, resolution, opts);
 }

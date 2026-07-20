@@ -63,35 +63,58 @@ export function SummaryView(props: { vm: SummaryVM }): React.JSX.Element {
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">
             The misconception I spotted
           </p>
-          <p className="mt-1 text-sm">{summary.misconception}</p>
+          <p className="mt-1 text-sm leading-relaxed">{summary.misconception}</p>
+          {summary.selfCorrected ? (
+            <p
+              data-testid="summary-misconception-recap"
+              className="mt-2 text-sm text-muted"
+            >
+              Once the coach flagged it, you carried the fix — that pattern is
+              yours to keep.
+            </p>
+          ) : null}
         </section>
       ) : null}
 
       <dl className="grid grid-cols-3 gap-3">
-        <StatTile label="Score" value={summary.scoreTile} testId="summary-score" />
+        <StatTile
+          label="Solved first-try"
+          value={summary.scoreTile}
+          testId="summary-score"
+        />
         <StatTile label="Mastery change" value={deltaValue} testId="summary-delta" />
         <StatTile label="Time" value={summary.timeTile} testId="summary-time" />
       </dl>
 
       {summary.outcomeCounts != null ? (
-        <ul
-          data-testid="summary-outcomes"
-          aria-label="How items resolved"
-          className="flex flex-wrap gap-3 text-sm text-muted"
-        >
-          <li data-testid="summary-outcome-first-try">
-            Solved on first try: {summary.outcomeCounts.firstTry}
-          </li>
-          <li data-testid="summary-outcome-coached">
-            Worked through with the coach: {summary.outcomeCounts.coached}
-          </li>
-          {summary.outcomeCounts.walkedThrough > 0 ? (
-            <li data-testid="summary-outcome-walked-through">
-              Walked through (not counted as solved):{" "}
-              {summary.outcomeCounts.walkedThrough}
+        <div data-testid="summary-outcomes" className="flex flex-col gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
+            Each skill ran until you cleared it
+          </p>
+          <ul
+            aria-label="How items resolved"
+            className="flex flex-col gap-1.5 text-sm text-fg"
+          >
+            <li data-testid="summary-outcome-first-try">
+              ✓ Solved on first try: {summary.outcomeCounts.firstTry}
             </li>
-          ) : null}
-        </ul>
+            <li data-testid="summary-outcome-coached">
+              ↺ Worked through with the coach: {summary.outcomeCounts.coached}
+            </li>
+            {summary.outcomeCounts.walkedThrough > 0 ? (
+              <li data-testid="summary-outcome-walked-through">
+                → Walked through (not counted as solved):{" "}
+                {summary.outcomeCounts.walkedThrough}
+              </li>
+            ) : null}
+          </ul>
+          <p
+            data-testid="summary-outcome-legend"
+            className="text-xs text-muted"
+          >
+            ✓ first-try · ↺ coached · → walked through (not scored)
+          </p>
+        </div>
       ) : null}
 
       <section

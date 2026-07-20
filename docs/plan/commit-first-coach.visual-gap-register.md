@@ -105,6 +105,6 @@ Three roots explain ~80% of the register:
 - **T25 (M):** SEQ-2 purpose card (V11) + idle polish batch (V8, V12, V13).
 - **T26 (M):** Coach page grounding — opener + context sidebar (V22, V23) + V24 polish.
 - **T27 (M):** Summary — per-skill outcome rows + misconception recap (V25, V26; V26 needs a spec-exclusion revisit) + V27 polish.
-- **T28:** Re-run this capture script; extend the v3 conformance suite with form-level assertions (pick-echo exists, rung stage badges, banner names answer, no raw `**` in feedback) so presentation gaps can't pass silently again.
+- **T28:** Form-level e2e assertions (pick-echo, stage badges, banner names answer, no raw `**`) **plus** Phase-3 hard gate: re-run this capture script against localhost after implementation and region-audit the fresh `*-app.png` pairs before declaring convergence.
 
 Routing per sdd-replan: V20 (coached-solve flow shape), V26 (SUM-2 exclusion), V28 (target_count) are **spec-level questions**; everything else is priorities-only → sdd-implement after approval.

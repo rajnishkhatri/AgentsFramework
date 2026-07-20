@@ -1,8 +1,8 @@
 /**
- * quiz_why_item_vm — "why this item" annotation (SEQ-2 / VOICE-5).
+ * quiz_why_item_vm — SEQ-2 purpose card (VOICE-5).
  *
- * Pure T1 map: composes an honest one-line annotation from real session state
- * — skill name (taxonomy join), difficulty (question metadata), position
+ * Pure T1 map: composes an honest purpose card from real session state —
+ * skill name (taxonomy join), difficulty (question metadata), position
  * (session tally + target). VOICE-5: every number is sourced; no decorative
  * figures, and no claim about interleaving/ordering the scheduler doesn't
  * guarantee (never "because you missed this last" or "next up"). VOICE-3: no
@@ -23,19 +23,40 @@ export interface QuizWhyItemInput {
 }
 
 export interface QuizWhyItemVM {
+  /** Card eyebrow — prototype: "THIS ITEM WAS PICKED ON PURPOSE". */
+  readonly eyebrow: string;
+  /** Sourced body line under the eyebrow. */
+  readonly body: string;
+  /**
+   * Flat single-line form (eyebrow + body) for callers that still render a
+   * one-liner; prefer eyebrow/body for the purpose card.
+   */
   readonly line: string;
 }
 
-export function toQuizWhyItemVM(input: QuizWhyItemInput): QuizWhyItemVM {
-  const positionPart =
-    input.total != null
-      ? `Question ${input.position} of ${input.total}`
-      : `Question ${input.position}`;
-  const difficultyPart = `difficulty ${input.difficulty}`;
-  const segments = [positionPart];
-  if (input.skillName != null && input.skillName.length > 0) {
-    segments.push(input.skillName);
+export const WHY_ITEM_EYEBROW = "THIS ITEM WAS PICKED ON PURPOSE";
+
+function positionPhrase(position: number, total: number | null): string {
+  if (total == null) {
+    return position === 1
+      ? "the first reviewed item in this session"
+      : `reviewed item ${position} in this session`;
   }
-  segments.push(difficultyPart);
-  return { line: segments.join(" · ") };
+  if (position === 1) {
+    return `the first of ${total} reviewed items`;
+  }
+  return `item ${position} of ${total} reviewed items`;
+}
+
+export function toQuizWhyItemVM(input: QuizWhyItemInput): QuizWhyItemVM {
+  const opening =
+    input.skillName != null && input.skillName.length > 0
+      ? `Opening in ${input.skillName} at difficulty ${input.difficulty}`
+      : `Opening at difficulty ${input.difficulty}`;
+  const body = `${opening} — ${positionPhrase(input.position, input.total)}.`;
+  return {
+    eyebrow: WHY_ITEM_EYEBROW,
+    body,
+    line: `${WHY_ITEM_EYEBROW} — ${body}`,
+  };
 }

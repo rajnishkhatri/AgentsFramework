@@ -686,3 +686,10 @@ title: 'Lightweight decision log (intent debt, long tail)'
   (c) session `target_count` stays 30 — divergence from the prototype's 15
   accepted (rejected: 15 or flag-dependent sizing; bounded-session sizing is a
   scheduler concern, not a coach-flow concern).
+
+- 2026-07-20 — **Commit-first Phase-3 hard gate: localhost visual re-capture.**
+  After T19–T28 land, Phase 3 cannot close on e2e/unit green alone. Must re-run
+  `visual-audit/capture.cjs` against localhost:3000, audit fresh `pairs/*-app.png`
+  region-by-region against each claimed-fixed V-gap, and paste capture log +
+  verdicts into the T28 checkpoint. Remaining gaps → append-only replan tasks.
+  Rejected: treating the original audit pairs as post-fix proof (stale).

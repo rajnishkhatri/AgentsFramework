@@ -597,6 +597,62 @@ describe("QuizView — commit-first coached section (FR-1/2/4/5)", () => {
     );
   });
 
+  it("T24/V4: hides Submit while the committed wrong letter is still selected", () => {
+    const loop = {
+      wrongLetters: ["A"],
+      activeLetter: "A",
+      rungsRevealed: { A: 1 },
+      exhausted: false,
+      rungCap: 3,
+    };
+    const committed = renderToStaticMarkup(
+      React.createElement(QuizView, {
+        vm: baseVm(),
+        selectedLetter: "A",
+        onSelect: () => {},
+        onSubmit: () => {},
+        hintOpen: false,
+        hint: "",
+        onToggleHint: () => {},
+        commitFirstCoach: true,
+        coachedLoop: loop,
+        renderCoachedInline: true,
+        hintLadder: [{ rung: 1, body_md: "Pump" }],
+        onNudge: () => {},
+        onTryAgain: () => {},
+        onEscape: () => {},
+      }),
+    );
+    expect(
+      new JSDOM(`<!doctype html><html><body>${committed}</body></html>`).window
+        .document.querySelector('[data-testid="quiz-submit"]'),
+    ).toBeNull();
+
+    // After try-again clears the pick, Submit returns (disabled until re-pick).
+    const cleared = renderToStaticMarkup(
+      React.createElement(QuizView, {
+        vm: baseVm(),
+        selectedLetter: null,
+        onSelect: () => {},
+        onSubmit: () => {},
+        hintOpen: false,
+        hint: "",
+        onToggleHint: () => {},
+        commitFirstCoach: true,
+        coachedLoop: loop,
+        renderCoachedInline: true,
+        hintLadder: [{ rung: 1, body_md: "Pump" }],
+        onNudge: () => {},
+        onTryAgain: () => {},
+        onEscape: () => {},
+      }),
+    );
+    const clearedDoc = new JSDOM(
+      `<!doctype html><html><body>${cleared}</body></html>`,
+    ).window.document;
+    expect(clearedDoc.querySelector('[data-testid="quiz-submit"]')).not.toBeNull();
+  });
+
   it("G6/VOICE-3: aria-label on the counter drops 'rung' vocabulary", () => {
     const loop = {
       wrongLetters: ["A"],

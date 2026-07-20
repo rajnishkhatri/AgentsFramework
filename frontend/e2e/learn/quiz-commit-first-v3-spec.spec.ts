@@ -105,6 +105,10 @@ test.describe("v3 spec — wrong-pick moment (MOM-3 / MOM-4 / VOICE-1 / CTRL-2)"
       "[data-testid='quiz-coached-ack'], [data-testid='coach-acknowledgment']",
     );
     await expect(ack).toBeVisible({ timeout: 3_000 });
+    // T19 / V1: pick echo is its own learner turn before the ack.
+    await expect(page.locator("[data-testid='quiz-pick-echo']")).toHaveText(
+      `I chose ${wrong}.`,
+    );
   });
 
   test("MOM-4/CTRL-2: honest n-of-3 counter, escalating CTA labels, letter-named footnote", async ({
@@ -122,7 +126,11 @@ test.describe("v3 spec — wrong-pick moment (MOM-3 / MOM-4 / VOICE-1 / CTRL-2)"
     await expect(nudge).toHaveText("Show me more →");
     await nudge.click();
     await expect(counter).toHaveText("2 of 3");
-    await expect(nudge).toHaveText("I'm still stuck →");
+    // V6 / T19: stuck phrase is a user-echo turn, not the button label.
+    await expect(nudge).toHaveText("Show me more →");
+    await expect(
+      page.locator("[data-testid='quiz-stuck-echo-2']"),
+    ).toHaveText("I'm still stuck.");
     await nudge.click();
     await expect(counter).toHaveText("3 of 3");
   });
@@ -204,6 +212,9 @@ test.describe("v3 spec — resolution moments (ESC-1 / MOM-6 / FBK-1 / FBK-2 / V
     const banner = page.locator("[data-testid='feedback-banner']");
     await expect(banner).toBeVisible({ timeout: 10_000 });
     await expect(banner).toHaveAttribute("data-banner", "walked_through");
+    // V14 / T22: banner names the answer and the last pick.
+    await expect(banner).toContainText(/answer appears here/i);
+    await expect(banner).toContainText(new RegExp(`last pick was ${wrong}`, "i"));
     await expect(
       page.locator("[data-testid='feedback-result-label']"),
     ).toContainText(/walked through/i);
@@ -211,7 +222,7 @@ test.describe("v3 spec — resolution moments (ESC-1 / MOM-6 / FBK-1 / FBK-2 / V
     await expect(page.getByText(new RegExp(`Why ${wrong} tempted`, "i"))).toBeVisible();
   });
 
-  test("MOM-6/VOICE-2/FBK-1: coached solve shows verdict-first 'Worked through it with the coach'", async ({
+  test("FR-15/MOM-6: coached solve confirms in place; breakdown is opt-in", async ({
     page,
   }) => {
     test.skip(!(await quizReady(page)), "quiz not rendered or flag OFF");
@@ -220,17 +231,28 @@ test.describe("v3 spec — resolution moments (ESC-1 / MOM-6 / FBK-1 / FBK-2 / V
     for (const letter of LETTERS.filter((l) => l !== first)) {
       await page.locator(`[data-testid='choice-${letter}']`).click();
       await page.locator("[data-testid='quiz-submit']").click();
-      const feedback = page.locator("[data-testid='feedback-banner']");
+      const confirm = page.locator("[data-testid='quiz-coached-confirm']");
       const coached = page.locator("[data-testid='quiz-coached-section']");
       await Promise.race([
-        feedback.waitFor({ state: "visible", timeout: 8_000 }).catch(() => {}),
+        confirm.waitFor({ state: "visible", timeout: 8_000 }).catch(() => {}),
         coached.waitFor({ state: "visible", timeout: 8_000 }).catch(() => {}),
       ]);
-      if (await feedback.isVisible()) break;
+      if (await confirm.isVisible()) break;
     }
-    const label = page.locator("[data-testid='feedback-result-label']");
-    test.skip((await label.count()) === 0, "never hit the correct letter");
-    await expect(label).toContainText("Worked through it with the coach");
+    const confirm = page.locator("[data-testid='quiz-coached-confirm']");
+    test.skip((await confirm.count()) === 0, "never hit the correct letter");
+    // FR-15: no auto feedback; confirmation + opt-in breakdown.
+    await expect(page.locator("[data-testid='feedback-banner']")).toHaveCount(0);
+    await expect(
+      page.locator("[data-testid='quiz-coached-confirm-label']"),
+    ).toContainText("Worked through it with the coach");
+    await page.locator("[data-testid='quiz-see-breakdown']").click();
+    await expect(page.locator("[data-testid='feedback-banner']")).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(
+      page.locator("[data-testid='feedback-result-label']"),
+    ).toContainText("Worked through it with the coach");
   });
 
   test("FBK-2: feedback view offers the optional self-explanation input", async ({
@@ -255,12 +277,18 @@ test.describe("v3 spec — resolution moments (ESC-1 / MOM-6 / FBK-1 / FBK-2 / V
 });
 
 test.describe("v3 spec — sequencing & summary (SEQ-2 / SUM-1)", () => {
-  test("SEQ-2: item shows an honest 'why this item' line", async ({ page }) => {
+  test("SEQ-2: item shows a labeled purpose card (V11)", async ({ page }) => {
     test.skip(!(await quizReady(page)), "quiz not rendered or flag OFF");
     const why = page.locator(
       "[data-testid='quiz-why-item'], [data-testid='quiz-why-this-item']",
     );
     await expect(why.first()).toBeVisible({ timeout: 3_000 });
+    await expect(
+      page.locator("[data-testid='quiz-why-item-eyebrow']"),
+    ).toContainText(/picked on purpose/i);
+    await expect(
+      page.locator("[data-testid='quiz-why-item-body']"),
+    ).toContainText(/Opening/i);
   });
 
   test("SUM-1: summary shows first-try-only score and honest outcome counts", async ({

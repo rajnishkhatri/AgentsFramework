@@ -452,6 +452,10 @@ export default function QuizPage(): React.JSX.Element {
     dispatch({ type: "try_again" });
   }, []);
 
+  const onSeeBreakdown = React.useCallback(() => {
+    dispatch({ type: "see_breakdown" });
+  }, []);
+
   const onEscape = React.useCallback(() => {
     if (state.phase !== "answering" || session == null) return;
     const lastWrong = state.coachedLoop?.activeLetter;
@@ -584,10 +588,12 @@ export default function QuizPage(): React.JSX.Element {
         startedAtIso={startedAtIso}
         commitFirstCoach={commitFirstCoach}
         coachedLoop={state.coachedLoop}
+        coachedConfirm={state.coachedConfirm}
         hintLadder={state.item.hintLadder}
         onNudge={onNudge}
         onTryAgain={onTryAgain}
         onEscape={onEscape}
+        onSeeBreakdown={onSeeBreakdown}
         // Fullscreen has no CoachPanel — keep the ladder on the item column.
         renderCoachedInline={mode === "fullscreen" || coachRuntime == null}
         ackQuestion={state.item.question}
@@ -607,6 +613,7 @@ export default function QuizPage(): React.JSX.Element {
       state.verdict,
       { letter: state.answeredLetter },
       state.resolution,
+      { skillName: itemVm.skillName },
     );
     // FR-16/17/18: inline pin+focus; drawer open then focus after 220ms; iphone navigate.
     // ADR-0035 (main): pin the wrong letter so the free-ask coach loads the
@@ -736,6 +743,8 @@ export default function QuizPage(): React.JSX.Element {
       surface === "desktop" ? "max-w-[720px]" : "max-w-[560px]";
     const coachedLoop =
       state.phase === "answering" ? state.coachedLoop : null;
+    const coachedConfirm =
+      state.phase === "answering" ? state.coachedConfirm : null;
     const panel = (
       <CoachPanel
         key={item.question.id}
@@ -749,9 +758,11 @@ export default function QuizPage(): React.JSX.Element {
         className="h-full rounded-none border-0 border-l border-border"
         commitFirstCoach={commitFirstCoach}
         coachedLoop={coachedLoop}
+        coachedConfirm={coachedConfirm}
         onNudge={onNudge}
         onTryAgain={onTryAgain}
         onEscape={onEscape}
+        onSeeBreakdown={onSeeBreakdown}
         ackQuestion={item.question}
       />
     );
@@ -787,9 +798,11 @@ export default function QuizPage(): React.JSX.Element {
               className="h-full w-full max-w-none rounded-none border-0"
               commitFirstCoach={commitFirstCoach}
               coachedLoop={coachedLoop}
+              coachedConfirm={coachedConfirm}
               onNudge={onNudge}
               onTryAgain={onTryAgain}
               onEscape={onEscape}
+              onSeeBreakdown={onSeeBreakdown}
               ackQuestion={item.question}
             />
           </CoachDrawer>

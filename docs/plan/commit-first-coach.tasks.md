@@ -1,7 +1,8 @@
 # Tasks — Commit-first coach flow (v3) in the app quiz
 
 **Spec:** [commit-first-coach.spec.md](commit-first-coach.spec.md) · **Plan:** [commit-first-coach.plan.md](commit-first-coach.plan.md)
-**Status:** Implemented — 2026-07-19 (T1–T12 landed; T13–T18 Phase 2 v3 convergence landed; Stage-7 review next)
+**Status:** Phase 3 code + visual re-capture landed — 2026-07-20 (T19–T28).
+Stage-7 review next. Fresh pairs in `gen2-proto-handoff/visual-audit/pairs/`.
 
 **Stage-4 baseline (2026-07-19):** `pytest tests/architecture/ -q` → 221 passed, 3 skipped (green). Targeted frontend suites (quiz/coach/feedback/summary/translators) → 577/578; the 1 failure is a PRE-EXISTING flaky test (`use_summary.test.ts::derives_misconception_from_last_incorrect_attempt_on_recommended_skill`, 2/5 runs — same-ms `created_at` tie broken by random id order), unrelated to this change but in T10's blast radius. Fix spawned as a separate task; resolve it before or alongside T10 so gate runs are stable.
 
@@ -185,6 +186,24 @@ Evidence: paired-state Playwright audit of v3 prototype vs app —
 Approved: all T19–T28. Spec amended first (FR-15 added; SUM-2 recap un-excluded).
 V28 decision: session stays 30 items (decisions.md).
 
+### Phase-3 hard gate — post-implement visual re-capture (added 2026-07-20)
+
+After T19–T28 code lands (and before Phase 3 is marked done), regenerate
+paired screenshots against **localhost** and use them to validate the fixes:
+
+1. Dev server up on `:3000` with `commit_first_coach` ON (bypass auth as in the
+   original audit).
+2. Run `node docs/plan/gen2-proto-handoff/visual-audit/capture.cjs` → fresh
+   PNGs under `docs/plan/gen2-proto-handoff/visual-audit/pairs/` +
+   `capture-log.json`.
+3. Region-by-region check of each claimed-fixed gap (V1–V27 / FR-15) against the
+   new `*-app.png` (proto pair remains the design reference).
+4. Paste capture log + short per-gap verdict into the T28 checkpoint. Gaps still
+   open → append-only fix tasks (sdd-replan), do not declare convergence.
+
+This gate is **in addition to** the form-level e2e assertions in T28 — unit/e2e
+green alone is not enough to close Phase 3.
+
 ### T19 — Conversational coached-loop transcript (V1, V6, V10) [highest]
 - **Files:** `frontend/components/coach/CoachedLoopSection.tsx`, reducer (attempt
   events already tracked), `coached_ack_vm`.
@@ -254,12 +273,37 @@ V28 decision: session stays 30 items (decisions.md).
 
 ### T28 — FR-15 coached-solve confirmation + convergence gate
 - **Do:** implement FR-15 (in-place confirmation turn + inline label +
-  "See the breakdown →"; no auto feedback render on coached solve). Then the
-  gate: re-run `gen2-proto-handoff/visual-audit/capture.cjs` for a fresh
-  paired set; extend `quiz-commit-first-v3-spec.spec.ts` with form-level
-  assertions (pick echo, stage badges, banner answer, no literal `**`);
-  full vitest + flag-OFF suites green; paste actual output.
+  "See the breakdown →"; no auto feedback render on coached solve). Then both
+  convergence gates:
+  1. **Form-level e2e:** extend `quiz-commit-first-v3-spec.spec.ts` with
+     assertions (pick echo, stage badges, banner answer, no literal `**`);
+     full vitest + flag-OFF suites green; paste actual output.
+  2. **Localhost visual re-capture (Phase-3 hard gate above):** re-run
+     `gen2-proto-handoff/visual-audit/capture.cjs` against localhost:3000;
+     audit fresh `pairs/*-app.png` for each claimed-fixed V-gap; paste
+     `capture-log.json` + per-gap verdict. Open gaps → sdd-replan, not greenwash.
+- **Checkpoint 2026-07-20 (visual re-capture):**
+  - Unit: `vitest` quiz/coach/feedback/translators → **526 passed**.
+  - Capture log: all app states captured; no FAILED lines
+    (`pairs/capture-log.json`). End-session →
+    `/learn/summary?session=36acd0a8-ad4e-46b2-b1c9-8b1433a1e564`.
+  - Per-gap verdict (fresh `*-app.png`):
+    - **V1/V2/V3/V6/V10** ✓ transcript + ack "Not quite… So —" + PUMP rail +
+      stuck echoes + no generic coaching-loop bubble (pair 02/03).
+    - **V5/V7** ✓ try-again from rung 1; exhaustion primary/secondary (pair 02/04).
+    - **V8/V11/V12/V13** ✓ wrong ✗ mark; purpose card; composer footer;
+      gated right-aligned submit (pair 01/02).
+    - **V14/V15/V16/V17** ✓ banner names answer+pick; feed cards; per-choice
+      rationales; no raw `**` (pair 05).
+    - **V20/FR-15** ✓ in-place confirm + "See the breakdown →"; no auto
+      feedback (pair 10).
+    - **Still open (L / polish — not blocking):** V9 skill-id leak in chrome
+      (`s-punc`); V13 timer still behind "Show timer"; V18 gauge chips present
+      in feedback but not re-checked in this capture pass; V19 procedure steps
+      only when `rule_md` is numbered; V25–V27 summary polish partially landed
+      (outcome legend + solved-first-try tile — per-skill rows still thin);
+      V22–V24 coach-page sidebar landed (pair 07).
 
 Verification map: V1/V6/V10→T19 · V2→T20 · V3→T21 · V14/V15→T22 ·
 V16-V19→T23 · V4/V5/V7→T24 · V8/V11/V12/V13→T25 · V22-V24→T26 ·
-V25-V27→T27 · V20(FR-15)+gate→T28.
+V25-V27→T27 · V20(FR-15)+e2e+visual-recapture→T28.

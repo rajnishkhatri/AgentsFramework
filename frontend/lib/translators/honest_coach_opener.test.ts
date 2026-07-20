@@ -1,5 +1,5 @@
 /**
- * BP-3c — honest_coach_opener (FR-12 / C4; red-first).
+ * T26 / V22 — honest_coach_opener grounded invite (FR-12 / C4).
  */
 
 import { describe, expect, it } from "vitest";
@@ -12,7 +12,7 @@ const pin = {
   label: "Commas",
 };
 
-describe("honestCoachOpener — gate failures first (FR-12)", () => {
+describe("honestCoachOpener — T26 grounded opener (V22)", () => {
   it("returns null when transcript is not empty", () => {
     expect(
       honestCoachOpener({
@@ -23,38 +23,30 @@ describe("honestCoachOpener — gate failures first (FR-12)", () => {
     ).toBeNull();
   });
 
-  it("returns null when pin is null", () => {
-    expect(
-      honestCoachOpener({
-        pin: null,
-        missesOnSkill: 3,
-        transcriptEmpty: true,
-      }),
-    ).toBeNull();
-  });
-
-  it("returns null when misses are null or zero (no invent)", () => {
-    expect(
-      honestCoachOpener({ pin, missesOnSkill: null, transcriptEmpty: true }),
-    ).toBeNull();
-    expect(
-      honestCoachOpener({ pin, missesOnSkill: 0, transcriptEmpty: true }),
-    ).toBeNull();
-  });
-
-  it("never mentions a window / of last 5", () => {
+  it("empty pin → Ready invite (no fabricated stats)", () => {
     const text = honestCoachOpener({
-      pin,
+      pin: null,
       missesOnSkill: 3,
       transcriptEmpty: true,
     });
-    expect(text).not.toBeNull();
-    expect(text!.toLowerCase()).not.toMatch(/last\s*5|window/);
+    expect(text).toMatch(/Ready when you are/i);
+    expect(text).not.toMatch(/\d+\s+miss/i);
   });
-});
 
-describe("honestCoachOpener — happy path", () => {
-  it("cites real N and skill label when gate passes", () => {
+  it("pin with zero/null misses → Ready invite naming the item, no miss count", () => {
+    for (const misses of [null, 0] as const) {
+      const text = honestCoachOpener({
+        pin,
+        missesOnSkill: misses,
+        transcriptEmpty: true,
+      });
+      expect(text).toMatch(/Ready when you are/i);
+      expect(text).toContain("Commas");
+      expect(text).not.toMatch(/\d+\s+miss/i);
+    }
+  });
+
+  it("pin + real misses → cites N and skill without inventing a window", () => {
     const text = honestCoachOpener({
       pin,
       missesOnSkill: 3,
@@ -62,6 +54,7 @@ describe("honestCoachOpener — happy path", () => {
     });
     expect(text).toContain("3 misses");
     expect(text).toContain("Commas");
+    expect(text!.toLowerCase()).not.toMatch(/last\s*5|window/);
   });
 
   it("singular copy for one miss", () => {
@@ -70,7 +63,7 @@ describe("honestCoachOpener — happy path", () => {
       missesOnSkill: 1,
       transcriptEmpty: true,
     });
-    expect(text).toContain("1 miss on");
+    expect(text).toMatch(/1 miss\b/);
     expect(text).not.toContain("1 misses");
   });
 });
