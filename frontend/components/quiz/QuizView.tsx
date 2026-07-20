@@ -303,6 +303,11 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
             coachedLoop != null &&
             c.letter === coachedLoop.activeLetter &&
             selected;
+          // R4: coached-solve confirm marks the correct letter green + ✓.
+          const resolvedCorrect =
+            commitFirstCoach &&
+            coachedConfirm != null &&
+            c.letter === coachedConfirm.correctLetter;
           return (
             <li key={c.letter}>
               <button
@@ -310,6 +315,7 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
                 data-testid={`choice-${c.letter}`}
                 data-selected={selected ? "true" : "false"}
                 data-committed-wrong={committedWrong ? "true" : "false"}
+                data-resolved-correct={resolvedCorrect ? "true" : "false"}
                 onClick={() => onSelect(c.letter)}
                 className={cn(
                   "flex w-full items-center gap-3 rounded-[16px] border px-4 py-3 text-left",
@@ -317,22 +323,34 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
                   "data-[selected=true]:border-accent data-[selected=true]:bg-accent-light",
                   "data-[committed-wrong=true]:border-[color-mix(in_oklab,var(--color-danger)_55%,transparent)]",
                   "data-[committed-wrong=true]:bg-[color-mix(in_oklab,var(--color-danger)_10%,transparent)]",
+                  "data-[resolved-correct=true]:border-[color-mix(in_oklab,var(--color-success)_45%,transparent)]",
+                  "data-[resolved-correct=true]:bg-[color-mix(in_oklab,var(--color-success)_10%,transparent)]",
                 )}
               >
                 <span
                   data-selected={selected ? "true" : "false"}
                   data-committed-wrong={committedWrong ? "true" : "false"}
+                  data-resolved-correct={resolvedCorrect ? "true" : "false"}
                   className={cn(
                     "grid size-7 place-items-center rounded-full font-semibold",
                     "data-[selected=false]:bg-selected data-[selected=false]:text-muted",
                     "data-[selected=true]:bg-accent data-[selected=true]:text-on-accent",
                     "data-[committed-wrong=true]:bg-danger data-[committed-wrong=true]:text-on-danger",
+                    "data-[resolved-correct=true]:bg-success data-[resolved-correct=true]:text-on-success",
                   )}
                 >
                   {c.letter}
                 </span>
                 <span className="flex-1">{c.label}</span>
-                {committedWrong ? (
+                {resolvedCorrect ? (
+                  <span
+                    data-testid={`choice-correct-mark-${c.letter}`}
+                    aria-label="correct"
+                    className="text-sm font-bold text-success"
+                  >
+                    ✓
+                  </span>
+                ) : committedWrong ? (
                   <span
                     data-testid={`choice-wrong-mark-${c.letter}`}
                     aria-label="incorrect"

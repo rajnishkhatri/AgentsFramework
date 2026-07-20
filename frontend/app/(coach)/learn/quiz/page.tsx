@@ -317,6 +317,7 @@ export default function QuizPage(): React.JSX.Element {
     const { pin, mode } = toQuizCoachPin({
       questionId: state.item.question.id,
       skillId: state.item.question.skill_id,
+      skillName: skillsById.get(state.item.question.skill_id)?.name ?? null,
       position: progressVm.position,
       phase: state.phase,
     });
@@ -623,6 +624,8 @@ export default function QuizPage(): React.JSX.Element {
           const { pin, mode: coachPinMode } = toQuizCoachPin({
             questionId: feedback.askCoachContext.questionId,
             skillId: feedback.askCoachContext.skillId,
+            skillName:
+              skillsById.get(feedback.askCoachContext.skillId)?.name ?? null,
             position: progressVm.position,
             phase: "reviewing",
           });
@@ -736,6 +739,7 @@ export default function QuizPage(): React.JSX.Element {
     const coachPin = toQuizCoachPin({
       questionId: item.question.id,
       skillId: item.question.skill_id,
+      skillName: skillsById.get(item.question.skill_id)?.name ?? null,
       position: progressVm.position,
       phase: state.phase === "reviewing" ? "reviewing" : "answering",
     });

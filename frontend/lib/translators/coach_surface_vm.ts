@@ -86,15 +86,14 @@ function modeDisplays(mode: CoachMode): ReadonlyArray<CoachModeDisplay> {
 }
 
 function historyLine(
-  pin: CoachSurfacePin | null,
+  _pin: CoachSurfacePin | null,
   missesOnSkill: number | null,
   skillLabel: string | null,
 ): string | null {
   if (missesOnSkill === null) return null;
-  const scope =
-    skillLabel?.trim() ||
-    pin?.skillId ||
-    "this skill";
+  // VOICE-3 (R2a): an unresolved display name degrades to "this skill" —
+  // the raw `s-*` id is engine vocabulary and never learner-facing.
+  const scope = skillLabel?.trim() || "this skill";
   return `Sees your history: ${missesOnSkill} misses on ${scope}`;
 }
 

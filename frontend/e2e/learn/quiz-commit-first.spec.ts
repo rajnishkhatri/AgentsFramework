@@ -91,20 +91,27 @@ test.describe("commit-first coach journeys", () => {
     await expect(page.locator("[data-testid='quiz-submit']")).toBeDisabled();
 
     // Pick a different letter; if still wrong, keep trying until correct or escape.
+    // FR-15 (amended 2026-07-20): a coached solve confirms IN PLACE — the
+    // feedback view is learner-initiated via "See the breakdown →", never auto.
+    const confirm = page.locator("[data-testid='quiz-coached-confirm']");
     for (const letter of ["B", "C", "D", "A"]) {
       const choice = page.locator(`[data-testid='choice-${letter}']`);
       if ((await choice.count()) === 0) continue;
       await choice.click();
       await page.locator("[data-testid='quiz-submit']").click();
-      const feedback = page.locator("[data-testid='feedback-banner']");
       const stillCoached = page.locator("[data-testid='quiz-coached-section']");
       await Promise.race([
-        feedback.waitFor({ state: "visible", timeout: 8_000 }),
+        confirm.waitFor({ state: "visible", timeout: 8_000 }),
         stillCoached.waitFor({ state: "visible", timeout: 8_000 }),
       ]);
-      if (await feedback.isVisible()) break;
+      if (await confirm.isVisible()) break;
     }
 
+    await expect(confirm).toBeVisible({ timeout: 5_000 });
+    await expect(
+      page.locator("[data-testid='quiz-coached-confirm-label']"),
+    ).toContainText("Worked through it with the coach");
+    await page.locator("[data-testid='quiz-see-breakdown']").click();
     await expect(page.locator("[data-testid='feedback-banner']")).toBeVisible({
       timeout: 5_000,
     });

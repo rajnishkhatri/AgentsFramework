@@ -111,6 +111,15 @@ export function CoachedLoopSection(props: {
       : null;
 
   const [announce, setAnnounce] = React.useState("");
+  // R1: keep the newest turn + decision controls in view as the transcript
+  // grows inside the panel's scroll area (pair-03/04 fold evidence).
+  const actionsRef = React.useRef<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    // `scrollIntoView` is absent in some test DOMs — skipping the scroll there
+    // degrades to today's behavior (no scroll), never an error.
+    actionsRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [rungsRevealed, coachedLoop.exhausted]);
+
   const prevRungs = React.useRef(0);
   React.useEffect(() => {
     if (rungsRevealed > prevRungs.current) {
@@ -214,6 +223,7 @@ export function CoachedLoopSection(props: {
       </div>
 
       <div
+        ref={actionsRef}
         data-testid={
           coachedLoop.exhausted
             ? "quiz-exhaustion-actions"
@@ -221,8 +231,9 @@ export function CoachedLoopSection(props: {
         }
         className={cn(
           "flex flex-col gap-2",
-          // V4: keep exhaustion CTAs in view at 1440×900 (sticky within panel scroll).
-          coachedLoop.exhausted && "sticky bottom-0 z-10 bg-surface/95 pb-1 pt-2 backdrop-blur-sm",
+          // V4/R1: keep exhaustion CTAs in view (sticky within panel scroll);
+          // fully opaque — a translucent footer bleeds transcript text through.
+          coachedLoop.exhausted && "sticky bottom-0 z-10 bg-surface pb-1 pt-2",
         )}
       >
         {coachedLoop.exhausted ? (

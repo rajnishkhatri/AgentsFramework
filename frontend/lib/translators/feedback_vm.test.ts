@@ -248,3 +248,27 @@ describe("toFeedbackVM — T23 composition (V16–V19)", () => {
     expect(vm.procedureSteps).toBeNull();
   });
 });
+
+describe("toFeedbackVM — feed-up item-type label hygiene (Phase-3 residual R5)", () => {
+  it("humanizes item_type in the goal card (no raw 'mc' token)", () => {
+    const vm = toFeedbackVM(
+      question(),
+      { correct: false, correct_letter: "A", rationale_key: "B" },
+      { letter: "B" },
+      null,
+      { skillName: "Punctuation" },
+    );
+    const up = vm.feedCards[0]!;
+    expect(up.body).toContain("underlined-span item");
+    expect(up.body).not.toMatch(/\bmc\b/i);
+  });
+
+  it("humanizes item_type without a skill name too", () => {
+    const vm = toFeedbackVM(
+      question(),
+      { correct: false, correct_letter: "A", rationale_key: "B" },
+      { letter: "B" },
+    );
+    expect(vm.feedCards[0]!.body).not.toMatch(/\bmc\b/i);
+  });
+});

@@ -157,6 +157,7 @@ export function CoachPanel(props: {
     return honestCoachOpener({
       pin,
       missesOnSkill,
+      skillLabel,
       transcriptEmpty: turns.length === 0,
     });
   }, [
@@ -166,6 +167,7 @@ export function CoachPanel(props: {
     mode,
     pin,
     missesOnSkill,
+    skillLabel,
     turns.length,
   ]);
 

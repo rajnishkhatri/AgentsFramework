@@ -203,3 +203,57 @@ describe("CoachedLoopSection — T21 MOM-9 ladder rail (V3)", () => {
     ).toMatch(/no answer/i);
   });
 });
+
+describe("CoachedLoopSection — Phase-3 residual R1 (fold + bleed)", () => {
+  it("exhaustion action footer is opaque (no translucent bleed-through)", () => {
+    const doc = render({ rungsRevealed: 3, exhausted: true });
+    const actions = doc.querySelector('[data-testid="quiz-exhaustion-actions"]');
+    const cls = actions?.getAttribute("class") ?? "";
+    expect(cls).not.toContain("bg-surface/95");
+    expect(cls).not.toContain("backdrop-blur");
+    expect(cls).toContain("bg-surface");
+  });
+
+  it("scrolls the actions row into view when a rung is revealed", async () => {
+    const { vi } = await import("vitest");
+    const spy = vi.fn();
+    const proto = window.HTMLElement.prototype as unknown as {
+      scrollIntoView?: (o?: unknown) => void;
+    };
+    const orig = proto.scrollIntoView;
+    proto.scrollIntoView = spy;
+    const { createRoot } = await import("react-dom/client");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
+    const props = (rungs: number) =>
+      React.createElement(CoachedLoopSection, {
+        coachedLoop: {
+          wrongLetters: ["B"],
+          activeLetter: "B",
+          rungsRevealed: { B: rungs },
+          exhausted: false,
+          rungCap: 3,
+        },
+        hintLadder: LADDER,
+        onNudge: () => {},
+        onTryAgain: () => {},
+        onEscape: () => {},
+        ackQuestion: question(),
+      });
+
+    root.render(props(1));
+    await flush();
+    spy.mockClear();
+    root.render(props(2));
+    await flush();
+    expect(spy).toHaveBeenCalled();
+
+    root.unmount();
+    container.remove();
+    if (orig != null) proto.scrollIntoView = orig;
+    else delete proto.scrollIntoView;
+  });
+});

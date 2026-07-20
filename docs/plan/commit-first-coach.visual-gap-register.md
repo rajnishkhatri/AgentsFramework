@@ -108,3 +108,31 @@ Three roots explain ~80% of the register:
 - **T28:** Form-level e2e assertions (pick-echo, stage badges, banner names answer, no raw `**`) **plus** Phase-3 hard gate: re-run this capture script against localhost after implementation and region-audit the fresh `*-app.png` pairs before declaring convergence.
 
 Routing per sdd-replan: V20 (coached-solve flow shape), V26 (SUM-2 exclusion), V28 (target_count) are **spec-level questions**; everything else is priorities-only → sdd-implement after approval.
+
+## Phase-3 residual pass (2026-07-20, post T19–T28)
+
+Fresh paired capture after Phase 3 confirmed V1–V8, V11–V17, V22–V24, FR-15
+landed. Residual audit found 7 gaps (R1–R7); 6 fixed red/green this pass:
+
+| ID | Maps to | Status | Fix |
+|---|---|---|---|
+| R1 | V4 | FIXED | transcript auto-scrolls newest turn + actions into view; exhaustion footer opaque (was `bg-surface/95`+blur bleed) |
+| R2a | V9 | FIXED | history line falls back to "this skill", never raw `s-*` id (`coach_surface_vm`) |
+| R2b | V9 | FIXED | pin label = `Q{n} · {skill display name}`, unresolved → `Q{n}` (`quiz_coach_pin` + 3 page call sites) |
+| R2c | V9 | FIXED | opener miss-cluster scope names the skill label, never the item label / raw id (`honest_coach_opener`) |
+| R4 | V20 | FIXED | coached-solve confirm marks the correct choice green + ✓ (`QuizView`) |
+| R5 | V16 | FIXED | feed-up humanizes `item_type` ("underlined-span item", no raw "mc") |
+| R6 | V25 | FIXED | summary heading → "How items resolved this session" (VOICE-5: global counts must not claim a per-skill breakdown) |
+| R7 | V26 | OPEN | misconception recap conditional is FR-12 recommended-skill-scoped (pinned by test); session-narrative recap = spec decision, routed to human |
+
+Remaining polish (L, not blocking): mode-chip overflow clip in panel header;
+per-skill outcome rows (V25 full form); prototype-style banner headline weight;
+sliver of transcript text visible below the sticky footer boundary.
+
+Stale-test fix: `quiz-commit-first.spec.ts` journey (b) updated to the FR-15
+contract (in-place confirm → "See the breakdown →" → feedback), was asserting
+the pre-FR-15 auto-feedback flow.
+
+Gate evidence: vitest 651/651 (affected areas); e2e 16/16 (v3 conformance +
+journeys); tsc clean except 3 pre-existing `use_expandable_list` errors;
+fresh capture 0 FAILED, End session → `/learn/summary?session=…` live.

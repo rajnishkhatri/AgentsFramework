@@ -88,8 +88,10 @@ export function SummaryView(props: { vm: SummaryVM }): React.JSX.Element {
 
       {summary.outcomeCounts != null ? (
         <div data-testid="summary-outcomes" className="flex flex-col gap-2">
+          {/* R6 / VOICE-5: counts are session-global — the heading must not
+              claim a per-skill run-until-cleared breakdown we don't render. */}
           <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
-            Each skill ran until you cleared it
+            How items resolved this session
           </p>
           <ul
             aria-label="How items resolved"

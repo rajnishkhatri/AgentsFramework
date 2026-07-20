@@ -50,6 +50,7 @@ describe("honestCoachOpener — T26 grounded opener (V22)", () => {
     const text = honestCoachOpener({
       pin,
       missesOnSkill: 3,
+      skillLabel: "Punctuation",
       transcriptEmpty: true,
     });
     expect(text).toContain("3 misses");
@@ -61,9 +62,34 @@ describe("honestCoachOpener — T26 grounded opener (V22)", () => {
     const text = honestCoachOpener({
       pin,
       missesOnSkill: 1,
+      skillLabel: "Punctuation",
       transcriptEmpty: true,
     });
     expect(text).toMatch(/1 miss\b/);
     expect(text).not.toContain("1 misses");
+  });
+
+  // Phase-3 residual R2c (VOICE-3): the miss-cluster scope is a SKILL claim, so
+  // it names the skill display label — never the item label, never a raw id.
+  it("miss cluster names the skill label, not the item label (R2c)", () => {
+    const text = honestCoachOpener({
+      pin,
+      missesOnSkill: 3,
+      skillLabel: "Punctuation",
+      transcriptEmpty: true,
+    });
+    expect(text).toMatch(/cluster on Punctuation/);
+    expect(text).not.toMatch(/cluster on Commas/);
+  });
+
+  it("unresolved skill label degrades to 'this skill' — never the raw id (R2c)", () => {
+    const text = honestCoachOpener({
+      pin,
+      missesOnSkill: 2,
+      skillLabel: null,
+      transcriptEmpty: true,
+    });
+    expect(text).toMatch(/cluster on this skill/);
+    expect(text).not.toContain("s-punc");
   });
 });

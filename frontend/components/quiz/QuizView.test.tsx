@@ -686,3 +686,44 @@ describe("QuizView — commit-first coached section (FR-1/2/4/5)", () => {
     expect(counter?.getAttribute("aria-label")).toMatch(/nudge/i);
   });
 });
+
+describe("QuizView — coached-solve confirm marks the correct choice (Phase-3 residual R4)", () => {
+  function renderConfirm(): Document {
+    const html = renderToStaticMarkup(
+      React.createElement(QuizView, {
+        vm: toQuizItemVM(question(), skillsById),
+        selectedLetter: "B",
+        onSelect: () => {},
+        onSubmit: () => {},
+        hintOpen: false,
+        hint: "…",
+        onToggleHint: () => {},
+        commitFirstCoach: true,
+        coachedConfirm: {
+          correctLetter: "B",
+          answeredLetter: "B",
+          whySummary: "Singular subject takes the singular verb.",
+        },
+      }),
+    );
+    return new JSDOM(`<!doctype html><html><body>${html}</body></html>`).window
+      .document;
+  }
+
+  it("flags the confirmed correct letter with a success state and ✓ mark", () => {
+    const doc = renderConfirm();
+    const choice = doc.querySelector('[data-testid="choice-B"]');
+    expect(choice?.getAttribute("data-resolved-correct")).toBe("true");
+    expect(
+      doc.querySelector('[data-testid="choice-correct-mark-B"]')?.textContent,
+    ).toContain("✓");
+  });
+
+  it("other choices carry no success state", () => {
+    const doc = renderConfirm();
+    expect(
+      doc.querySelector('[data-testid="choice-A"]')?.getAttribute("data-resolved-correct"),
+    ).toBe("false");
+    expect(doc.querySelector('[data-testid="choice-correct-mark-A"]')).toBeNull();
+  });
+});

@@ -72,7 +72,9 @@ describe("toCoachSurfaceVM — history (FR-6)", () => {
     expect(vm.historyLine).toBe("Sees your history: 3 misses on Commas");
   });
 
-  it("falls back to skillId when skillLabel is missing", () => {
+  // Superseded 2026-07-20 (Phase-3 residual R2a): the old skillId fallback was
+  // the VOICE-3 leak itself — unresolved display name now reads "this skill".
+  it("falls back to 'this skill' when skillLabel is missing (never the raw id)", () => {
     const vm = toCoachSurfaceVM(
       inputs({
         pin: { kind: "item", questionId: "q1", skillId: "s-punc", label: "Q4" },
@@ -80,7 +82,7 @@ describe("toCoachSurfaceVM — history (FR-6)", () => {
         skillLabel: null,
       }),
     );
-    expect(vm.historyLine).toBe("Sees your history: 2 misses on s-punc");
+    expect(vm.historyLine).toBe("Sees your history: 2 misses on this skill");
   });
 
   it("omits history when missesOnSkill is null even if pin exists", () => {
@@ -163,5 +165,19 @@ describe("CoachSurfacePin union — FR-4 exhaustiveness", () => {
     );
     expect(vm.currentItemLine).toBeNull();
     expect(vm.historyLine).toBe("Sees your history: 2 misses on Punctuation");
+  });
+});
+
+describe("toCoachSurfaceVM — VOICE-3 id hygiene (Phase-3 residual R2a)", () => {
+  it("history line falls back to 'this skill', never the raw skill id", () => {
+    const vm = toCoachSurfaceVM(
+      inputs({
+        pin: { kind: "item", questionId: "q1", skillId: "s-punc", label: "Q1" },
+        missesOnSkill: 2,
+        skillLabel: null,
+      }),
+    );
+    expect(vm.historyLine).toBe("Sees your history: 2 misses on this skill");
+    expect(vm.historyLine).not.toContain("s-punc");
   });
 });

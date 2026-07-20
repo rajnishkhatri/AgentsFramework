@@ -157,9 +157,12 @@ function composeFeedCards(
     skillName != null && skillName.trim().length > 0
       ? skillName.trim()
       : null;
+  // R5 / VOICE-3: item_type is an engine id ("underlined-span-mc") — strip the
+  // internal "-mc" (multiple-choice) suffix and present it as "<type> item".
+  const itemTypeLabel = `${question.item_type.replace(/-mc$/, "")} item`;
   const upBody = skill
-    ? `${skill} · ${question.item_type.replace(/-/g, " ")}. Mastering this is part of lifting ${skill}.`
-    : `${question.item_type.replace(/-/g, " ")}. Keep working the pattern this item tests.`;
+    ? `${skill} · ${itemTypeLabel}. Mastering this is part of lifting ${skill}.`
+    : `${itemTypeLabel}. Keep working the pattern this item tests.`;
 
   const mc = question.misconception?.trim() ?? "";
   const tempted = question.why_tempted_md.trim();
