@@ -668,3 +668,21 @@ title: 'Lightweight decision log (intent debt, long tail)'
   keeping dashboard routing + demoting SUM-1 to VM-only verification — hides
   earned outcome data from every early-ended session. Tasks T13–T18 appended
   (append-only) to commit-first-coach.tasks.md.
+
+- 2026-07-20 — **Commit-first Phase-3 replan: paired-state visual audit → V1–V28.**
+  Method: Playwright drove the v3 prototype (file://) AND the app (flag ON) through
+  10 matched journey states, one screenshot pair per state, audited region-by-region
+  (`docs/plan/commit-first-coach.visual-gap-register.md`; script committed at
+  `docs/plan/gen2-proto-handoff/visual-audit/capture.cjs`). Rejected literal
+  pixel-diffing — prototype vs app differs in every pixel by construction, so the
+  diff carries no signal. Root causes: box-render vs conversation medium; data
+  present in fixtures but not composed into UI; 3 plain defects (raw `**md**` in
+  feedback, inverted exhaustion CTA hierarchy, below-fold escape actions).
+  Approved T19–T28. Spec-level calls: (a) FR-15 added — coached solve confirms
+  in place + learner-initiated "See the breakdown →" (rejected: auto-render of
+  the feedback screen, which skips the prototype's confirmation moment);
+  (b) SUM-2 misconception *recap card* un-excluded from spec §10 — the audit
+  showed it is the summary's core narrative (chips stay excluded);
+  (c) session `target_count` stays 30 — divergence from the prototype's 15
+  accepted (rejected: 15 or flag-dependent sizing; bounded-session sizing is a
+  scheduler concern, not a coach-flow concern).

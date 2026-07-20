@@ -1,6 +1,9 @@
 # Spec — Commit-first coach flow (v3) in the app quiz
 
 **Status:** Approved — 2026-07-19 (clarify Q1–Q4 resolved; spec gate passed)
+**Amended 2026-07-20** (visual-gap replan, human-approved): FR-15 added (coached-solve
+in-place confirmation, was V20); SUM-2 recap un-excluded in §10 (was V26). Evidence:
+[commit-first-coach.visual-gap-register.md](commit-first-coach.visual-gap-register.md).
 **Owner:** Rajnish Khatri
 **Related:** [v3 prototype EARS spec](gen2-proto-handoff/03-ears-spec-gen2-coach-v3.md) (source of truth for the interaction design) · replan decision 2026-07-19 in `docs/adr/decisions.md` (supersedes the withdrawn [gen2-item-level-openers.spec.md](gen2-item-level-openers.spec.md)) · ADR-0035 (choice-keyed hint ladders) · ADR-0021 (bank-backed quiz)
 
@@ -114,6 +117,15 @@ Failure paths first.
 - **FR-14 (feature flag).** WHERE the `commit_first_coach` flag is OFF, THE SYSTEM
   SHALL preserve current behavior byte-for-byte (instant feedback view, pre-submit
   hint, no retry loop); the flag defaults ON in dev/bypass and is staged to prod.
+- **FR-15 (coached-solve confirms in place — added 2026-07-20, refines FR-9).**
+  WHEN the learner submits the correct letter AFTER entering the coached loop
+  (resolution = `coached`), THE SYSTEM SHALL confirm in place — an affirmation
+  turn in the coach conversation (affirmation + why-correct summary) plus an
+  inline "Worked through it with the coach" label in the quiz card — and offer
+  "See the breakdown →" as the learner-initiated route to the feedback view.
+  The feedback view SHALL NOT auto-render on a coached solve. `first_try`
+  resolutions keep the direct feedback render of FR-9; `walked_through` keeps
+  FR-6.
 
 ## 4. Data model / contracts
 
@@ -191,6 +203,7 @@ Failure paths first.
 | FR-12 | scheduler.review called once, on first attempt only, across retry + escape sequences | L1 | yes |
 | FR-13 | shared-layer test: all three surfaces driven by identical reducer state (no per-surface branches on flow) | L1 | yes |
 | FR-14 | flag OFF: reducer + views reproduce current snapshot behavior (regression suite still green un-forked) | L1 | yes |
+| FR-15 | coached solve: no auto feedback render; confirmation turn + inline label present; "See the breakdown →" navigates to feedback | L1 | yes |
 | e2e | Playwright: commit → wrong → 3 nudges → escape → walked-through breakdown; and wrong → retry → coached solve | T1 (chromium smoke) | on-demand |
 
 ## 9. Definition of Done
@@ -210,8 +223,10 @@ Failure paths first.
 - **LEAK-1/2 runtime regex guard** — bank content is leak-linted at generation;
   the live coach chat keeps its existing server-side guardrails. No new client
   leak checker.
-- **SUM-2 run-length chips** — summary ships outcome counts, not per-item chips
-  (clarify Q2; chips are a later, separate slice if wanted).
+- **SUM-2 run-length chips** — per-item chips stay excluded (clarify Q2).
+  **Amended 2026-07-20:** the SUM-2 *misconception recap card* (session-sourced
+  misconception narrative) is UN-excluded and ships in Phase 3 (T27) — the
+  visual audit (V26) showed it is the summary's core narrative in the prototype.
 - **SEQ-1 fixed 15-item `SESSION_ORDER`** — the app keeps its live scheduler
   (adaptive/drill/review); the prototype's fixed order was a demo constraint.
 - **MOM-7 free-ask stub** — the app already has the real guarded coach chat.

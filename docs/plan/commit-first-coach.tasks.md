@@ -174,3 +174,92 @@ the Phase-2-free baseline, unrelated). Decisions captured in `docs/adr/decisions
   green; paste actual output; commit.
 
 Verification map: G1→T13 · G2→T14 · G3→T15 · G4→T16 · G5-G9→T17 · gate→T18.
+
+---
+
+## Phase 3 — visual/presentation convergence (replan 2026-07-20, append-only)
+
+Evidence: paired-state Playwright audit of v3 prototype vs app —
+[commit-first-coach.visual-gap-register.md](commit-first-coach.visual-gap-register.md)
+(V1–V28; capture script committed at `gen2-proto-handoff/visual-audit/capture.cjs`).
+Approved: all T19–T28. Spec amended first (FR-15 added; SUM-2 recap un-excluded).
+V28 decision: session stays 30 items (decisions.md).
+
+### T19 — Conversational coached-loop transcript (V1, V6, V10) [highest]
+- **Files:** `frontend/components/coach/CoachedLoopSection.tsx`, reducer (attempt
+  events already tracked), `coached_ack_vm`.
+- **Do (red→green):** render the loop as a transcript: learner pick echo
+  ("I chose L."), ack as its own coach turn, each rung as its own turn, learner
+  "I'm still stuck." echo per escalation. Escalation button keeps the
+  "Show me more →" label at every rung (V6). Retire the generic CONVERSATION
+  disclaimer bubble (V10).
+- **Pass/fail:** new e2e form-assertions (pick-echo testid, per-turn rungs)
+  green; existing 14/14 v3 suite stays green.
+
+### T20 — Ack composer v2 (V2, MOM-3)
+- **Do:** verdict + specific diagnosis + "So —" hand-off shape; remove the
+  generic re-read hand-off that competes with rung-1's pump.
+- **Pass/fail:** `coached_ack_vm` unit table updated red→green; leak guard
+  (LEAK-1 substitution) retained.
+
+### T21 — MOM-9 ladder rail (V3)
+- **Do:** PUMP → HINT → PROMPT rail with fill-progress above the transcript;
+  per-rung stage badge + "no answer" shield on rung turns.
+- **Pass/fail:** rail testids per stage; fill state matches rungs revealed;
+  aria text stays VOICE-3-clean.
+
+### T22 — Feedback truth fixes (V14, V15)
+- **Do:** walked-through banner delivers the answer + last pick ("The answer
+  appears here, not in the chat: it's X. Your last pick was Y…"); render
+  `*_md` fields as markdown (no literal `**`) across feedback prose.
+- **Pass/fail:** banner-content e2e; a unit test that a `**bold**` fixture
+  renders without literal asterisks. FR-1 leak tests stay green (banner only
+  in resolved states).
+
+### T23 — Feedback composition (V16–V19)
+- **Do:** feed-up/feed-back/feed-forward card triplet; per-choice rationales
+  for all four choices; self-explanation gauge chips ("This clicked ✓" /
+  "Still fuzzy", non-gating); "One rule decided this item" uses the procedure
+  steps content where available.
+- **Pass/fail:** VM unit tables + e2e presence checks; unresolved-state
+  leak tests unchanged.
+
+### T24 — Coached-loop controls (V4, V5, V7)
+- **Do:** "Let me try again" available from rung 1; hide/disable quiz submit
+  while the coached loop is active (re-pick flows through the loop); exhaustion
+  CTA hierarchy: try-again primary, escape secondary; keep exhaustion actions
+  in view (no below-fold scroll at 1440×900).
+- **Pass/fail:** reducer/view tests; FR-5 exactly-two-actions test still green.
+
+### T25 — SEQ-2 purpose card + idle polish (V8, V11, V12, V13)
+- **Do:** labeled "This item was picked on purpose" card with sourced copy
+  (VOICE-5); committed wrong-pick ✗ treatment; composer footer microcopy;
+  session-frame polish (visible timer chip, gated submit styling).
+- **Pass/fail:** SEQ-2 e2e updated to assert the card, not the bare line.
+
+### T26 — Coach page grounding (V22, V23, V24)
+- **Do:** proactive grounded opener from real session state (last item +
+  miss cluster, honest when empty); context sidebar (current item, diagnosed
+  misconception, three modes); "Wrap up session →" CTA styling; chip label
+  review.
+- **Pass/fail:** opener sourced-claims unit test (no fabricated stats — AP-6);
+  e2e presence checks.
+
+### T27 — Summary narrative (V25, V26, V27)
+- **Do:** per-skill outcome rows with legend; misconception recap card
+  (session-sourced; spec §10 amendment); next-drill copy + tile label
+  ("solved first-try") + headline tone polish.
+- **Pass/fail:** summary VM unit tables (legacy null-resolution sessions
+  unchanged — AP-6); SUM-1 e2e extended.
+
+### T28 — FR-15 coached-solve confirmation + convergence gate
+- **Do:** implement FR-15 (in-place confirmation turn + inline label +
+  "See the breakdown →"; no auto feedback render on coached solve). Then the
+  gate: re-run `gen2-proto-handoff/visual-audit/capture.cjs` for a fresh
+  paired set; extend `quiz-commit-first-v3-spec.spec.ts` with form-level
+  assertions (pick echo, stage badges, banner answer, no literal `**`);
+  full vitest + flag-OFF suites green; paste actual output.
+
+Verification map: V1/V6/V10→T19 · V2→T20 · V3→T21 · V14/V15→T22 ·
+V16-V19→T23 · V4/V5/V7→T24 · V8/V11/V12/V13→T25 · V22-V24→T26 ·
+V25-V27→T27 · V20(FR-15)+gate→T28.
