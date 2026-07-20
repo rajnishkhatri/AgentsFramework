@@ -723,3 +723,17 @@ title: 'Lightweight decision log (intent debt, long tail)'
   pinning test was rewritten to the new contract with a superseded-note (G8).
   Live caveat: the dev bank has misconception on only 47/987 items — the card
   stays honestly absent until bank coverage lands (task chip spawned).
+
+- **2026-07-20 — code-reviewer FD2.U_KBD sees through the `<Textarea>` primitive.**
+  `check_composer_keyboard.ts` matched only the lowercase `<textarea>` JSX tag, so
+  the shipped `Composer.tsx` — which wraps the raw element in the shadcn
+  `<Textarea>` primitive per the U7 mandate — got a spurious "No <textarea> element
+  found" FD2.COMPOSER warning, and none of the five U-family contracts were
+  actually evaluated. `findTextareas` now matches the tag case-insensitively but
+  EXACTLY (`textarea`/`Textarea` only; not `TextareaGroup`). Surfaced during the
+  ADR-0037 coach-column review as the lone finding, provenance-traced to
+  pre-existing (identical on base). Red/green: two new fixtures (primitive
+  recognized; U-contracts evaluated on it) seen to fail first. Verified: real
+  Composer.tsx now PASSES (0 violations); meta reviewer over the coach range drops
+  to 0 findings; 285 `tests/code_reviewer/` pass. Not an ADR — a bugfix to an
+  existing predicate's tag-matching, no new abstraction/dep/service (G1 clear).
