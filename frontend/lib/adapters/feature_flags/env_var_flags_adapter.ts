@@ -40,18 +40,25 @@ function isExplicitFalsy(v: string | undefined): boolean {
 }
 
 /**
- * commit_first_coach default (FR-14): ON in dev or E2E bypass soak; OFF in
- * prod until staged. Explicit NEXT_PUBLIC_FF_COMMIT_FIRST_COACH wins.
+ * commit_first_coach default: ON everywhere, including prod.
+ *
+ * FR-14 originally staged this OFF in prod until soak completed ("OFF in prod
+ * until staged"). Soak is complete (validated 2026-07-21: bank + commit-first
+ * suites green, live UI walk on the flag-ON build), so v3 commit-first is now
+ * the unconditional default in every environment. Since it is build-time
+ * inlined (NEXT_PUBLIC_*), the prod bundle must be rebuilt for this to take
+ * effect — a runtime env flip alone does nothing.
+ *
+ * An explicit falsy NEXT_PUBLIC_FF_COMMIT_FIRST_COACH=0 is the kill switch back
+ * to the legacy reveal-and-explain coach; explicit truthy is redundant but
+ * honored. See docs/adr/decisions.md.
  */
 function commitFirstCoachDefault(
   env: Readonly<Record<string, string | undefined>>,
 ): boolean {
   const explicit = env.NEXT_PUBLIC_FF_COMMIT_FIRST_COACH;
-  if (isTruthy(explicit)) return true;
   if (isExplicitFalsy(explicit)) return false;
-  if (env.E2E_BYPASS_AUTH === "1") return true;
-  if (env.NODE_ENV === "development") return true;
-  return false;
+  return true;
 }
 
 export interface EnvVarFlagsAdapterOptions {

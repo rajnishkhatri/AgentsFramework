@@ -56,34 +56,52 @@ describe("EnvVarFlagsAdapter env reads at module load (frozen)", () => {
   });
 });
 
-describe("EnvVarFlagsAdapter commit_first_coach (FR-14)", () => {
-  it("defaults OFF when env is unset (prod staging posture)", () => {
+describe("EnvVarFlagsAdapter commit_first_coach (staged ON)", () => {
+  it("defaults ON when env is unset (v3 is now the prod default)", () => {
+    // Rollout complete: commit-first coach is the unconditional default in
+    // every environment, including prod (NODE_ENV unset / production). The
+    // only way to get the legacy reveal-and-explain coach is an explicit
+    // NEXT_PUBLIC_FF_COMMIT_FIRST_COACH=0.
     const flags = new EnvVarFlagsAdapter({ env: {} });
-    expect(flags.isEnabled("commit_first_coach")).toBe(false);
+    expect(flags.isEnabled("commit_first_coach")).toBe(true);
   });
 
-  it("defaults ON when E2E_BYPASS_AUTH=1 (dev/bypass soak)", () => {
+  it("defaults ON under an explicit prod NODE_ENV (no env flag set)", () => {
+    const flags = new EnvVarFlagsAdapter({
+      env: { NODE_ENV: "production" },
+    });
+    expect(flags.isEnabled("commit_first_coach")).toBe(true);
+  });
+
+  it("stays ON when E2E_BYPASS_AUTH=1 (dev/bypass soak)", () => {
     const flags = new EnvVarFlagsAdapter({
       env: { E2E_BYPASS_AUTH: "1" },
     });
     expect(flags.isEnabled("commit_first_coach")).toBe(true);
   });
 
-  it("defaults ON when NODE_ENV=development", () => {
+  it("stays ON when NODE_ENV=development", () => {
     const flags = new EnvVarFlagsAdapter({
       env: { NODE_ENV: "development" },
     });
     expect(flags.isEnabled("commit_first_coach")).toBe(true);
   });
 
-  it("honors explicit NEXT_PUBLIC_FF_COMMIT_FIRST_COACH over bypass default", () => {
-    const off = new EnvVarFlagsAdapter({
+  it("honors an explicit NEXT_PUBLIC_FF_COMMIT_FIRST_COACH=0 kill switch", () => {
+    // Explicit falsy wins over every default — the only way back to the
+    // legacy coach, in prod or anywhere else.
+    const offInProd = new EnvVarFlagsAdapter({
+      env: { NODE_ENV: "production", NEXT_PUBLIC_FF_COMMIT_FIRST_COACH: "0" },
+    });
+    expect(offInProd.isEnabled("commit_first_coach")).toBe(false);
+
+    const offOverBypass = new EnvVarFlagsAdapter({
       env: {
         E2E_BYPASS_AUTH: "1",
         NEXT_PUBLIC_FF_COMMIT_FIRST_COACH: "0",
       },
     });
-    expect(off.isEnabled("commit_first_coach")).toBe(false);
+    expect(offOverBypass.isEnabled("commit_first_coach")).toBe(false);
 
     const on = new EnvVarFlagsAdapter({
       env: { NEXT_PUBLIC_FF_COMMIT_FIRST_COACH: "true" },
