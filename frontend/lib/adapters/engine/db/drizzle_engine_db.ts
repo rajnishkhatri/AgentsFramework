@@ -486,6 +486,14 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       // learner's latest attempt for that question_id. A later correct clears
       // the item from the review pool. NOT EXISTS is portable across PG+SQLite
       // (unlike DISTINCT ON). Matches InMemoryEngineDb.listMisses.
+      //
+      // Ordering: newest-first by `created_at` alone — no secondary key. That is
+      // safe because `DrizzleAttemptRepo.record` stamps `created_at` strictly
+      // increasing per repo instance, so within a session the ordering key is a
+      // total order (no same-tick ties for the summary recap to mis-resolve).
+      // Do NOT add a `desc(id)` tiebreak "for determinism": `id` is a random
+      // UUID, so it would diverge from the in-memory fake's insertion-order
+      // tiebreak instead of agreeing with it.
       const rows = await wrap(
         "listMisses",
         db

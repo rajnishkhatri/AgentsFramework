@@ -299,6 +299,105 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
     expect(misses.map((m) => m.id)).toEqual(["m2", "m1"]); // newest-first, correct excluded
   });
 
+  it("misses tie-breaks a same-created_at collision by insertion order, not by random id (FR-D4)", async () => {
+    // Two misses stamped the SAME created_at (record() landing in one tick, or a
+    // bulk import). `orderBy(desc(created_at))` alone leaves the order undefined,
+    // and the old fake tie-broke on the random UUID `id` — surfacing an arbitrary
+    // row. The summary recap must show the LAST miss recorded, so the deterministic
+    // contract is: newest-inserted first. `id` is set so a naive id-desc tiebreak
+    // would pick "aaa" (older) — proving the fix ignores id.
+    const db = new InMemoryEngineDb();
+    await db.insertSession({
+      id: "sess1",
+      subject: "act-english",
+      learner_id: "alice",
+      mode: "adaptive",
+      skill_focus: null,
+      started_at: "2026-06-30T00:00:00Z",
+      ended_at: null,
+      score_correct: 0,
+      score_total: 0,
+      target_count: null,
+    });
+    const repo = new DrizzleAttemptRepo({ db });
+    const tie = "2026-06-30T00:00:05Z";
+    await db.insertAttempt({
+      id: "zzz-old", // recorded first; larger id string
+      subject: "act-english",
+      session_id: "sess1",
+      question_id: "q-old",
+      chosen_letter: "B",
+      correct: false,
+      elapsed_ms: 1,
+      used_hint: false,
+      created_at: tie,
+    });
+    await db.insertAttempt({
+      id: "aaa-new", // recorded second; smaller id string
+      subject: "act-english",
+      session_id: "sess1",
+      question_id: "q-new",
+      chosen_letter: "C",
+      correct: false,
+      elapsed_ms: 1,
+      used_hint: false,
+      created_at: tie,
+    });
+    const misses = await repo.misses("act-english", "alice");
+    // Newest-inserted (q-new) first, regardless of id ordering.
+    expect(misses.map((m) => m.question_id)).toEqual(["q-new", "q-old"]);
+  });
+
+  it("record keeps created_at strictly increasing within a tick so ties never reach misses (FR-D4)", async () => {
+    // The pg + in-memory adapters both order misses by created_at DESC with no
+    // secondary key. If two record() calls share a wall-clock ms the timestamps
+    // tie and the recap picks the wrong miss. record() must bump each stamp past
+    // the previous one so the sole ordering key stays a total order.
+    const db = new InMemoryEngineDb();
+    await db.insertSession({
+      id: "sess1",
+      subject: "act-english",
+      learner_id: "alice",
+      mode: "adaptive",
+      skill_focus: null,
+      started_at: "2026-06-30T00:00:00Z",
+      ended_at: null,
+      score_correct: 0,
+      score_total: 0,
+      target_count: null,
+    });
+    let n = 0;
+    const repo = new DrizzleAttemptRepo({
+      db,
+      newId: () => `a${n++}`,
+      now: () => new Date("2026-06-30T00:00:00Z"), // frozen clock: every call ties
+    });
+    const first = await repo.record({
+      subject: "act-english",
+      session_id: "sess1",
+      question_id: "q-old",
+      chosen_letter: "B",
+      correct: false,
+      elapsed_ms: 1,
+      used_hint: false,
+    });
+    const second = await repo.record({
+      subject: "act-english",
+      session_id: "sess1",
+      question_id: "q-new",
+      chosen_letter: "C",
+      correct: false,
+      elapsed_ms: 1,
+      used_hint: false,
+    });
+    // First stamp equals the frozen clock; second is bumped +1ms (strictly newer).
+    expect(first.created_at).toBe("2026-06-30T00:00:00.000Z");
+    expect(second.created_at).toBe("2026-06-30T00:00:00.001Z");
+    expect(second.created_at > first.created_at).toBe(true);
+    const misses = await repo.misses("act-english", "alice");
+    expect(misses.map((m) => m.question_id)).toEqual(["q-new", "q-old"]);
+  });
+
   it("misses drops a question after a later correct attempt (clears review pool)", async () => {
     const db = new InMemoryEngineDb();
     await db.insertSession({

@@ -234,10 +234,10 @@ describe("toFeedbackVM — T23 composition (V16–V19)", () => {
       { correct: false, correct_letter: "A" },
       { letter: "B" },
       "walked_through",
-      { skillName: "Grammar & Usage" },
+      { skillName: "Usage" },
     );
     expect(vm.feedCards.map((c) => c.kind)).toEqual(["up", "back", "forward"]);
-    expect(vm.feedCards[0]!.body).toContain("Grammar & Usage");
+    expect(vm.feedCards[0]!.body).toContain("Usage");
     expect(vm.feedCards[1]!.body).toContain("nearest noun");
     expect(vm.feedCards[2]!.body).toMatch(/Find the verb/i);
   });
