@@ -514,7 +514,15 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
               )`,
             ),
           )
-          .orderBy(desc(pg.attempt.created_at)),
+          // `desc(id)` is a deterministic secondary key: `created_at` is stored
+          // to whole-ms precision, so two misses logged in the same ms tie on
+          // it and Postgres would otherwise return them in arbitrary order —
+          // which let the "newest miss" consumer (session-recap misconception)
+          // pick an older row. A uuid `id` is not a true recency signal, so
+          // this fixes DETERMINISM (stable, repeatable ordering), not exact
+          // same-ms recency; the in-memory fake tie-breaks on insertion index,
+          // which is the closest recency proxy available there.
+          .orderBy(desc(pg.attempt.created_at), desc(pg.attempt.id)),
       );
       return rows.map((r) =>
         toAttempt((r as { attempt: Record<string, unknown> }).attempt),

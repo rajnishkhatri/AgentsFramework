@@ -252,12 +252,22 @@ export class InMemoryEngineDb implements EngineDb {
         .filter((s) => s.subject === subject && s.learner_id === learnerId)
         .map((s) => s.id),
     );
+    // Insertion order is the ground truth for recency: `record()` stamps
+    // `created_at` to whole-millisecond ISO, so two attempts logged in the same
+    // ms tie on the timestamp. Tie-breaking on the uuid `id` is arbitrary (a
+    // uuid has no recency meaning), which let `listMisses` return an OLDER miss
+    // as "newest" and surfaced the wrong misconception in the session recap.
+    // Tie-break on the append-only insertion index instead — the array is
+    // push-ordered, so a higher index is strictly more recent. (Mirrors the
+    // deterministic secondary sort added to the Drizzle/pg `listMisses`.)
+    const insertionIndex = new Map<Attempt, number>();
+    this.attempts.forEach((a, i) => insertionIndex.set(a, i));
     const byNewest = (a: Attempt, b: Attempt): number => {
       if (a.created_at !== b.created_at) {
         return a.created_at < b.created_at ? 1 : -1;
       }
-      // Stable tie-break when record() lands in the same ms.
-      return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+      // Same-ms tie: newer insertion (higher index) sorts first.
+      return (insertionIndex.get(b) ?? 0) - (insertionIndex.get(a) ?? 0);
     };
     const learnerAttempts = this.attempts
       .filter(

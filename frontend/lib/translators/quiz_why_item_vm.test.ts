@@ -26,7 +26,7 @@ describe("toQuizWhyItemVM — T25 purpose card (SEQ-2 / V11)", () => {
 
   it("uses 'the first of N' for position 1", () => {
     const vm = toQuizWhyItemVM({
-      skillName: "Grammar & Usage",
+      skillName: "Usage",
       difficulty: 2,
       position: 1,
       total: 15,
