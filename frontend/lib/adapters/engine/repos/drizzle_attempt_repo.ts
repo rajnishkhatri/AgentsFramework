@@ -35,6 +35,17 @@ export class DrizzleAttemptRepo implements AttemptRepo {
   private readonly db: EngineDb;
   private readonly newId: () => string;
   private readonly now: () => Date;
+  /**
+   * Last `created_at` this repo stamped, in epoch ms. `misses()` orders
+   * newest-first by `created_at` alone (that is the SQL contract — see
+   * `listMisses` `orderBy(desc(created_at))`, which has no secondary key).
+   * When two attempts land inside the same clock tick their timestamps tie
+   * and that order is undefined — the recap then surfaces the wrong (older)
+   * miss. Stamping each row at least +1ms past the previous keeps `created_at`
+   * strictly increasing per repo instance, so the sole ordering key is a total
+   * order and both the pg and in-memory adapters agree. -Infinity = none yet.
+   */
+  private lastCreatedAtMs = -Infinity;
 
   constructor(deps: AttemptRepoDeps) {
     this.db = deps.db;
@@ -43,10 +54,14 @@ export class DrizzleAttemptRepo implements AttemptRepo {
   }
 
   async record(attempt: AttemptInput): Promise<Attempt> {
+    const clockMs = this.now().getTime();
+    const createdAtMs =
+      clockMs > this.lastCreatedAtMs ? clockMs : this.lastCreatedAtMs + 1;
+    this.lastCreatedAtMs = createdAtMs;
     const row: Attempt = {
       ...attempt,
       id: this.newId(),
-      created_at: this.now().toISOString(),
+      created_at: new Date(createdAtMs).toISOString(),
     };
     try {
       await this.db.insertAttempt(row);

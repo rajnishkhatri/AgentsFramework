@@ -47,6 +47,16 @@ export class InMemoryEngineDb implements EngineDb {
   private testBlueprints = new Map<string, TestBlueprint>();
   private sessions = new Map<string, QuizSession>();
   private attempts: Attempt[] = [];
+  /**
+   * Monotonic insertion sequence per stored attempt copy. Used only to
+   * tie-break `listMisses` when two rows share a `created_at` (directly-injected
+   * fixtures can still tie; `DrizzleAttemptRepo.record` keeps live writes
+   * strictly increasing). Newest-inserted wins — the deterministic stand-in for
+   * a Postgres heap's physical order, so this fake never disagrees with the pg
+   * adapter's `orderBy(desc(created_at))`. WeakMap keeps it off the wire shape.
+   */
+  private attemptSeq = new WeakMap<Attempt, number>();
+  private nextAttemptSeq = 0;
   private skillState = new Map<string, SkillState>();
   private content = new Map<string, string>();
   private tutorials = new Map<string, Tutorial>(); // key: subject\0skillId
@@ -240,7 +250,9 @@ export class InMemoryEngineDb implements EngineDb {
 
   // --- attempt ---
   async insertAttempt(a: Attempt): Promise<void> {
-    this.attempts.push({ ...a });
+    const stored = { ...a };
+    this.attemptSeq.set(stored, this.nextAttemptSeq++);
+    this.attempts.push(stored);
   }
   async listMisses(subject: string, learnerId: string): Promise<Attempt[]> {
     // Outstanding misses only (FR-D4 / FR-C5): latest attempt per question_id
@@ -256,8 +268,12 @@ export class InMemoryEngineDb implements EngineDb {
       if (a.created_at !== b.created_at) {
         return a.created_at < b.created_at ? 1 : -1;
       }
-      // Stable tie-break when record() lands in the same ms.
-      return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+      // Same-ms tie: fall back to insertion order (newest-inserted first).
+      // The `id` is a random UUID here, so sorting on it would surface an
+      // arbitrary row — the summary recap must show the LAST miss recorded.
+      const seqA = this.attemptSeq.get(a) ?? -1;
+      const seqB = this.attemptSeq.get(b) ?? -1;
+      return seqB - seqA;
     };
     const learnerAttempts = this.attempts
       .filter(
