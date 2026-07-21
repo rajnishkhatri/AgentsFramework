@@ -12,6 +12,24 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-21 — **commit-first coach (v3) flipped ON by default in prod
+  (FR-14 "OFF in prod until staged" superseded).** `commitFirstCoachDefault()`
+  now returns `true` for the unset/prod case; only an explicit
+  `NEXT_PUBLIC_FF_COMMIT_FIRST_COACH=0` returns the legacy reveal-and-explain
+  coach. Human-approved after soak validation (bank 38/38 + commit-first 140/140
+  suites green; live UI walk on the flag-ON build). Chose the code-default flip
+  over threading a `--build-arg` through Dockerfile.frontend + deploy_gcp.sh:
+  rollout is complete, so the flag no longer needs to be an externally-staged
+  gate — a one-line default is simpler and the `=0` kill switch preserves
+  rollback. Trade-off accepted: v3 is now unconditional, so there is no per-env
+  staging knob short of the explicit kill switch. Build-time inlined
+  (`NEXT_PUBLIC_*`), so the prod frontend image must be rebuilt for this to take
+  effect — a runtime Cloud Run env flip alone is a no-op. Red/green: the two
+  defaults-ON assertions in `env_var_flags_adapter.test.ts` were seen to fail
+  first (G8 — the old "defaults OFF when unset" test rewritten to the new
+  contract). Not an ADR: no new abstraction/dep/service/graph node (G1 clear);
+  a single default-branch change to an existing predicate.
+
 - 2026-07-20 — **M7 coach-panel "scroll within scroll" → replan routes to
   sdd-spec, blocked on ADR-0036.** Live DOM proved the boxed rail does NOT scroll;
   the real defects are two H-scroll chip strips (`coach-modes` 489>323,
