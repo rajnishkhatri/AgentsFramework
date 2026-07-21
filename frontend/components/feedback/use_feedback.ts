@@ -14,7 +14,12 @@
 "use client";
 
 import { toFeedbackVM, type FeedbackVM } from "@/lib/translators/feedback_vm";
-import type { Answer, Question, Verdict } from "@/lib/wire/engine_entities";
+import type {
+  Answer,
+  AttemptResolution,
+  Question,
+  Verdict,
+} from "@/lib/wire/engine_entities";
 
 /** Context handed to the Coach when "Ask the coach" is activated (FR-E5). */
 export interface AskCoachContext {
@@ -38,6 +43,8 @@ export function buildFeedback(
   question: Question,
   verdict: Verdict | null,
   answer: Answer,
+  resolution?: AttemptResolution | null,
+  opts?: { skillName?: string | null },
 ): FeedbackState {
   if (verdict == null) {
     // No verdict reached feedback (no selection, FR-D2a) — render nothing.
@@ -45,7 +52,7 @@ export function buildFeedback(
   }
   return {
     present: true,
-    vm: toFeedbackVM(question, verdict, answer),
+    vm: toFeedbackVM(question, verdict, answer, resolution, opts),
     askCoachContext: { questionId: question.id, skillId: question.skill_id },
   };
 }
@@ -54,6 +61,8 @@ export function useFeedback(
   question: Question,
   verdict: Verdict | null,
   answer: Answer,
+  resolution?: AttemptResolution | null,
+  opts?: { skillName?: string | null },
 ): FeedbackState {
-  return buildFeedback(question, verdict, answer);
+  return buildFeedback(question, verdict, answer, resolution, opts);
 }

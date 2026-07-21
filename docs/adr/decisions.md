@@ -12,6 +12,82 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-20 — **M7 coach-panel "scroll within scroll" → replan routes to
+  sdd-spec, blocked on ADR-0036.** Live DOM proved the boxed rail does NOT scroll;
+  the real defects are two H-scroll chip strips (`coach-modes` 489>323,
+  `coach-chips` 540>367) + Zone A/C fixed chrome (444/672px) crushing the Zone B
+  transcript to 226px. Human chose full prototype adoption, spec-first. Finding:
+  the target layout is **locked** (ADR-0036 Direction 2b; FR-11 independent
+  scroll; FR-12 pins the chip row in Zone C). So this is a scope/spec change, not
+  a task reshuffle — routed to sdd-spec. Two readings pending the human gate:
+  P1 = refine within ADR-0036 (de-scroll chips + rebalance heights + close the
+  deferred `min-h-0` L6 spike; amendment note, no supersession); P2 = true
+  prototype adoption (new ADR superseding 0036 + spec rev of
+  preact-wide-layout-coach-panel). Board in commit-first-coach.tasks.md Phase 4;
+  no T-numbers until the spec lands. Rejected: free-hand the layout edit —
+  reverses a locked FR/ADR without a spec (AGENTS.md ⚠️ Ask-first + G1).
+  **RESOLVED same day: human chose P2 — reverting ADR-0036 outright (not
+  amending).** Next: new ADR-0037 supersedes 0036 → spec rev replacing
+  FR-11/FR-12 + Zone contract with prototype layout invariants → then Phase-4
+  impl tasks. Routed to sdd-spec.
+
+- 2026-07-19 — **Phase 2 v3 convergence (T13–T18) — small decisions.**
+  (1) **T13 acknowledgment (MOM-3/VOICE-1):** shared-ground → complication →
+  handoff, composed by a pure `coached_ack_vm` from `misconception` (preferred) →
+  `per_choice_rationale[L]` → generic; LEAK-1 substitutes a neutral complication
+  when the source names the answer letter or restates the key. Rejected: a
+  synthesized "what you did right" line (no field sources it — AP-6, no fabricate).
+  (2) **T14 end-session routing (G2/SUM-1):** under commit-first with ≥1 resolved
+  item, End session routes to Summary (score + outcomes); 0 resolved → dashboard
+  (today's behavior). Flag-OFF path unchanged so legacy `quiz-frame` e2e stays
+  green. (3) **T15 self-explanation (FBK-2):** optional textarea, never gates
+  progression, value NOT persisted this slice (UI affordance parity only).
+  (4) **T16 "why this item" (SEQ-2/VOICE-5):** `quiz_why_item_vm` composes
+  skill + difficulty + position-of-target from real session state; copy never
+  claims ordering/interleaving the scheduler doesn't guarantee. (5) **G7
+  `used_hint` semantics under commit-first:** any item that entered the coached
+  loop is recorded `used_hint=true` (the page sets `usedHint = usedHint ||
+  coachedLoop != null`). Rationale: the coached loop IS the hint affordance in
+  v3 — entering it consumed coaching, so the attempt honestly reflects that
+  coaching was engaged. Rejected: `used_hint=false` for coached items (would
+  under-report coaching engagement and break the legacy "hint consulted ⇒
+  used_hint" invariant). (6) **G8 race guard:** `ladder_loaded` carries
+  `forLetter`; the reducer ignores a stale load whose letter no longer matches
+  `coachedLoop.activeLetter` (backstop behind the page's effect-cleanup
+  cancellation). (7) **G9:** removed a dead branch in `countSessionOutcomes`
+  (under `!anyResolution`, coached/walkedThrough are structurally zero, so the
+  legacy correct-only branch was redundant with the fall-through return).
+
+- 2026-07-19 — **Commit-first coach app implement locks (clarify Q1–Q4 + UI home).**
+  (1) Outcome persisted as nullable `Attempt.resolution` ∈ {first_try, coached,
+  walked_through} on the resolving row only (additive; legacy null = single-attempt
+  semantics). (2) Session `score_correct` = first_try count; Summary shows honest
+  outcome counts (hide walked_through when 0). (3) `scheduler.review` once per item
+  on the first graded attempt. (4) Flag `commit_first_coach` defaults ON in
+  dev/`E2E_BYPASS_AUTH`, OFF in prod until staged; Playwright webServer forces OFF
+  so legacy e2e stay byte-stable (opt-in `NEXT_PUBLIC_FF_COMMIT_FIRST_COACH=1`).
+  (5) Ladder UI lives in shared `QuizView` (not CoachPanel) so fullscreen has no
+  per-surface fork (FR-13). Rejected: a second "coaching moment" store (dual truth
+  with `quiz_screen_reducer`). Spec: [commit-first-coach.spec.md](../plan/commit-first-coach.spec.md).
+
+- 2026-07-19 — **Gen2 item-level opener pilot WITHDRAWN at replan (v3 commit-first).**
+  The approved v3 prototype spec (`docs/plan/gen2-proto-handoff/03-ears-spec-gen2-coach-v3.md`)
+  retires the no-pick moment (DAT-5/MOM-2 RETIRED) — coaching starts only after a
+  committed choice — so item-level (pre-pick) openers lost their serve surface.
+  All 10 pilot tasks dropped unstarted; ~150–300 rows of human review capacity
+  freed; the choice-keyed Gen2 bank the v3 flow needs is already authored+reviewed.
+  Rejected: shelving (keeping the pilot dormant) — commit-first is the product
+  direction, not an experiment; a reversal would re-open from the brainstorm, not
+  this pilot. New scope routes to sdd-spec: app implementation of v3 commit-first.
+
+- 2026-07-17 — **Eng-coach Gen2/v2 adoption — Phase 0 locks (P0.1–P0.8), human-ratified.** Grounding pass: [eng-coach-gen2-v2-adoption.architecture.md](../plan/eng-coach-gen2-v2-adoption.architecture.md) (v1 auditable) / [.v2](../plan/eng-coach-gen2-v2-adoption.architecture.v2.md) (readable). Locks: **P0.1** Path A (Phase-0 → Phase-1 on Gen1 stems → student A/B → selective Gen2 promote); **P0.2** moment-based pedagogy (no-pick / wrong-pick / free-ask) is normative; **P0.3** reject layout-hybrid ("inline=Gen2 coach, standalone/drawer/iPhone=Gen1+freer LLM") and skill-swap-hybrid ("global skill band → different coach species") — *also* reject device/viewport as A/B assignment and treating a Gen2 rationale trailing `(tag)` as MiscLibrary; **P0.4** amend ADR-0012 to allow a rung-4 assertion **post-feedback only** (answer already on-screen) **and item-type-aware** (structural items — placement/deletion/concision/division — where a rule assertion uniquely identifies the key must not reveal mid-ladder), **never a pre-submit reveal** — this *exercises ADR-0012's own built-in "reveal-rung" decision trigger* (§Consequences), not an override; **P0.5** uniqueness `(question_id, choice_letter|null, rung)` via **two partial unique indexes** (`WHERE choice_letter IS NULL` / `IS NOT NULL`) — rejected PG `NULLS NOT DISTINCT` (breaks SQLite/in-memory parity) and app-only enforcement (loses the DB backstop); **P0.6** A/B metrics = first-rechoose accuracy, time-to-correct, nudge count, felt-helpful, leak incidents; **P0.8** (NEW) pilot-emit scope **(a) quiz-engine serve path only** — skip `BANK_RUNGS`, UC-3 (free-ask coach) unchanged, LLD T5 deferred, no `selected_letter` on the coach wire — rejected (b) emit-into-`BANK_RUNGS` (bigger; needs the duplicate-rung merge in `rungs_for_question` resolved first). **Deferred to `sdd-spec` (not fabricated now):** the precise ADR-0012 amendment text (how "structural type" is detected + where the guard lives) lands with the EARS acceptance criteria (P0.4); **P0.7** (human Accept → open `sdd-spec`) is the gate these locks clear. No Gen2 emit until Phase-2 batch gates B1–B5 pass (B5 has a wire-gap caveat: `standard_id` is stripped at the item wire pending "D4").
+
+- 2026-07-16 — **L6 Safari/`dvh` residual (FR-11):** height-chain className contract is locked in `learn/layout.tsx` (`h-dvh` shell + `main` `overflow-hidden` on content screens + Zone B `overflow-y-auto` + Zone C `shrink-0`). Playwright preflight covers `document.scrollingElement.scrollTop === 0` on Quiz; real Safari iPad toolbar/`dvh` collapse remains a manual device checklist before production sign-off (T6.1). Rejected: inventing a JS viewport shim for Safari chrome.
+
+- 2026-07-16 — **Wide-layout Direction 2b clarify locks (Q-C1…Q-C5):** nudge control stays in **Zone C** (FR-12); **amend ADR-0036** for Sheet→CoachDrawer + 64px/no-pin; content-screen sidebar is **layout-local** (always mount collapsed); new **CoachDrawer** chrome (not Sheet product UI); replace `use_collapsible_thread` with **`use_expandable_list`**. Supersedes the earlier same-day Sheet-reuse decision below. Spec: [preact-wide-layout-coach-panel.spec.md](../plan/preact-wide-layout-coach-panel.spec.md).
+
+- 2026-07-16 — **Wide-layout: overlay coach = existing UI Sheet; rail icons = existing set or letter-fallback.** *(Superseded same day by Direction 2b lock / ADR-0036 amendment — CoachDrawer+pill; 38×38 circular rail.)* Narrow/mid-width coach overlay reuses [`frontend/components/ui/sheet.tsx`](../../frontend/components/ui/sheet.tsx) (`side=right`) — rejected a second drawer primitive (G1; covered by ADR-0036). Collapsed AppNav icons: reuse icons already in the app; if missing, first initial in a rounded square (no emoji, no new icon package). Spec: [preact-wide-layout-coach-panel.spec.md](../plan/preact-wide-layout-coach-panel.spec.md).
+
 - 2026-07-15 — **Eng Coach GCP D3 deploy HELD (FR-10) — live env drifted from Terraform (active A/B test); code not shipped.** Groups A–E green; `images` phase built+pushed new backend/frontend/searxng images, digests pinned in `terraform.tfvars` (gitignored). `tofu plan` for the `frontend` phase = **0 add, 3 change, 0 destroy**, but NOT a clean image swap: the live `agent-frontend` + `agent-backend-combined` are wired to **`abtest---` tagged revisions/URLs** (`MIDDLEWARE_URL`/`NEXT_PUBLIC_WORKOS_REDIRECT_URI` → abtest hosts, traffic pinned to a revision + `abtest` 0%-tag block) and the backend runs `MODEL_PROFILE_SET="all"` live vs `"openai"` in TF. Applying would revert ALL of it (tear down the A/B test + flip backend model routing) — blast radius far beyond the `/learn` slice. **FR-10 confirmed clean**: the frontend env diff adds NO `DATABASE_URL` (only MIDDLEWARE_URL/redirect URIs change), F-R9 holds. **Decision (owner, 2026-07-15): HOLD — do not apply.** Owner reconciles TF-vs-live abtest drift first (import abtest state OR intentionally tear down), then deploys `/learn` cleanly. Rejected: apply-anyway (destroys a live experiment), targeted `gcloud`-only frontend deploy (bypasses the policy gate, leaves TF drift). Also found: `terraform-compliance` is NOT in the `[dev]` extra despite the deploy-guide claim (installed ad-hoc into `.venv`). Preflight's `python3<3.10`/`pytest`-missing reds are PATH false-negatives (needs `.venv/bin` on PATH). Nothing applied; images pushed + digests pinned for a future clean deploy. Spec: [eng-coach-gcp-deploy.spec.md](../plan/eng-coach-gcp-deploy.spec.md) FR-10.
 
 - 2026-07-15 — **Eng Coach GCP F1 bundle: keep the D7 static import — measured `/learn` First Load JS = 231 kB, corpus not in the entry.** The plan flagged the ~12K-line corpus (`_test_item_bank.ts` + `_hint_bank.ts`) as a First-Load risk and gated static-vs-lazy on `ANALYZE=true pnpm build`. Two findings at implement time: (1) `@next/bundle-analyzer` is **not installed** and `check_bundle_budget.ts` is a documented stub, so the `ANALYZE` path needs a dep add (⚠️ Ask-first/ADR) that is **out of scope** for this deploy slice — used a plain `next build` per-route First Load JS readout instead (dependency-free, sufficient). (2) The D7 diff adds **zero modules** to any bundle: the corpus `seed*` fns were ALREADY statically imported at `composition_engine_browser.ts:57-62` in both prod and non-prod pre-change (`git diff` shows only a `planEngineSeed` import added); D7 only swaps the *runtime branch*, not the import graph. Measured: `/learn` 231 kB (page 4.29 kB), `/` 225 kB, shared 102 kB — the corpus rides the quiz/coach provider mount, not the `/learn` dashboard entry. **Decision: static import stays** (within budget; no lazy `import()`, no chunk-fetch degrade needed). Deferred: installing `@next/bundle-analyzer` + committing `.bundle-baseline.json` (their own task; the budget checker stays a green stub). Spec: [eng-coach-gcp-deploy.spec.md](../plan/eng-coach-gcp-deploy.spec.md) §7.
@@ -601,3 +677,63 @@ title: 'Lightweight decision log (intent debt, long tail)'
   Registry binding = align FE `learnerId` to JWT `sub` + existing D3
   `subject-coach-english` verify (no new registry service). Q-C3 in-memory / Q-C5 no
   `SEED_GARVIT`. Rejected: widen `IdentityClaim`, per-page `withAuth`, durable store.
+
+- 2026-07-19 — **Commit-first Phase-2 replan: end-session → summary + gap board.**
+  v3-spec conformance e2e (16 tests from the design-agent spec) found 4 gaps:
+  missing MOM-3 acknowledgment turn, summary outcomes unreachable (End session
+  routed to dashboard), no FBK-2 self-explanation, no SEQ-2 why-this-item line.
+  Decided: "End session" with ≥1 resolved item now routes to the session summary
+  (honesty: outcomes must be seeable), 0-resolved keeps dashboard. Rejected:
+  keeping dashboard routing + demoting SUM-1 to VM-only verification — hides
+  earned outcome data from every early-ended session. Tasks T13–T18 appended
+  (append-only) to commit-first-coach.tasks.md.
+
+- 2026-07-20 — **Commit-first Phase-3 replan: paired-state visual audit → V1–V28.**
+  Method: Playwright drove the v3 prototype (file://) AND the app (flag ON) through
+  10 matched journey states, one screenshot pair per state, audited region-by-region
+  (`docs/plan/commit-first-coach.visual-gap-register.md`; script committed at
+  `docs/plan/gen2-proto-handoff/visual-audit/capture.cjs`). Rejected literal
+  pixel-diffing — prototype vs app differs in every pixel by construction, so the
+  diff carries no signal. Root causes: box-render vs conversation medium; data
+  present in fixtures but not composed into UI; 3 plain defects (raw `**md**` in
+  feedback, inverted exhaustion CTA hierarchy, below-fold escape actions).
+  Approved T19–T28. Spec-level calls: (a) FR-15 added — coached solve confirms
+  in place + learner-initiated "See the breakdown →" (rejected: auto-render of
+  the feedback screen, which skips the prototype's confirmation moment);
+  (b) SUM-2 misconception *recap card* un-excluded from spec §10 — the audit
+  showed it is the summary's core narrative (chips stay excluded);
+  (c) session `target_count` stays 30 — divergence from the prototype's 15
+  accepted (rejected: 15 or flag-dependent sizing; bounded-session sizing is a
+  scheduler concern, not a coach-flow concern).
+
+- 2026-07-20 — **Commit-first Phase-3 hard gate: localhost visual re-capture.**
+  After T19–T28 land, Phase 3 cannot close on e2e/unit green alone. Must re-run
+  `visual-audit/capture.cjs` against localhost:3000, audit fresh `pairs/*-app.png`
+  region-by-region against each claimed-fixed V-gap, and paste capture log +
+  verdicts into the T28 checkpoint. Remaining gaps → append-only replan tasks.
+  Rejected: treating the original audit pairs as post-fix proof (stale).
+
+- 2026-07-20 — **R7: summary misconception recap goes session-wide (FR-12 amended).**
+  The recap card derived only from misses on the RECOMMENDED skill, so it almost
+  never rendered (capture sessions: misses on Punctuation/Organization, recommended
+  Usage → null). Human-approved: prefer the recommended-skill miss, else fall back
+  to the newest session miss on any skill; no misses → no card (AP-6 unchanged).
+  Rejected: keeping recommendation-scoped (buried the prototype's core narrative)
+  and always-newest (loses recommendation coherence when both exist). The old
+  pinning test was rewritten to the new contract with a superseded-note (G8).
+  Live caveat: the dev bank has misconception on only 47/987 items — the card
+  stays honestly absent until bank coverage lands (task chip spawned).
+
+- **2026-07-20 — code-reviewer FD2.U_KBD sees through the `<Textarea>` primitive.**
+  `check_composer_keyboard.ts` matched only the lowercase `<textarea>` JSX tag, so
+  the shipped `Composer.tsx` — which wraps the raw element in the shadcn
+  `<Textarea>` primitive per the U7 mandate — got a spurious "No <textarea> element
+  found" FD2.COMPOSER warning, and none of the five U-family contracts were
+  actually evaluated. `findTextareas` now matches the tag case-insensitively but
+  EXACTLY (`textarea`/`Textarea` only; not `TextareaGroup`). Surfaced during the
+  ADR-0037 coach-column review as the lone finding, provenance-traced to
+  pre-existing (identical on base). Red/green: two new fixtures (primitive
+  recognized; U-contracts evaluated on it) seen to fail first. Verified: real
+  Composer.tsx now PASSES (0 violations); meta reviewer over the coach range drops
+  to 0 findings; 285 `tests/code_reviewer/` pass. Not an ADR — a bugfix to an
+  existing predicate's tag-matching, no new abstraction/dep/service (G1 clear).

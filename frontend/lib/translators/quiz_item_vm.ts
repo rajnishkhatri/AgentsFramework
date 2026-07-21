@@ -38,6 +38,11 @@ export interface QuizItemVM {
    * failed (FR-Q7-1).
    */
   readonly accentVar: string | null;
+  /**
+   * SEQ-2: question difficulty 1..5 (author metadata, not answer-bearing —
+   * safe to surface pre-submit). Sourced honestly for the "why this item" line.
+   */
+  readonly difficulty: number;
   // NOTE: no answerLetter / rationale here — FR-D5 non-reveal (see file header).
 }
 
@@ -64,6 +69,7 @@ export function toQuizItemVM(
     })),
     skillName: skill?.name ?? null,
     accentVar: skill?.accent_var ?? null,
+    difficulty: question.difficulty,
   };
 }
 

@@ -38,6 +38,16 @@ describe("dual-dialect schema parity (FR-G3)", () => {
   });
 });
 
+describe("Attempt.resolution — commit-first FR-10 dialect presence", () => {
+  it("pg attempt has nullable resolution column", () => {
+    expect(columnNames(pg.attempt)).toContain("resolution");
+  });
+
+  it("sqlite attempt has nullable resolution column", () => {
+    expect(columnNames(sqlite.attempt)).toContain("resolution");
+  });
+});
+
 describe("Tutorial teaching fields — E1a FR-8b dialect presence", () => {
   const REQUIRED = [
     "ground_md",

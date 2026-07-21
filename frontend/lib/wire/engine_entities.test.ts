@@ -15,7 +15,14 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { Question, QuizSession, TestItem, Tutorial } from "./engine_entities";
+import {
+  Attempt,
+  AttemptInput,
+  Question,
+  QuizSession,
+  TestItem,
+  Tutorial,
+} from "./engine_entities";
 import type { Tutorial as TutorialT } from "./engine_entities";
 
 function session(over: Record<string, unknown> = {}) {
@@ -162,6 +169,64 @@ function validTutorial(over: Record<string, unknown> = {}) {
     ...over,
   };
 }
+
+// --- Attempt.resolution (commit-first coach / FR-10) ----------------------
+
+function validAttempt(over: Record<string, unknown> = {}) {
+  return {
+    id: "a-1",
+    subject: "act-english",
+    session_id: "sess-1",
+    question_id: "q-1",
+    chosen_letter: "B",
+    correct: false,
+    elapsed_ms: 1200,
+    used_hint: false,
+    created_at: "2026-07-19T00:00:00.000Z",
+    ...over,
+  };
+}
+
+describe("Attempt.resolution — commit-first FR-10 (additive nullable)", () => {
+  it("accepts omitting resolution (legacy single-attempt rows)", () => {
+    const parsed = Attempt.parse(validAttempt());
+    expect(parsed.resolution).toBeUndefined();
+  });
+
+  it("accepts resolution: null (legacy readable)", () => {
+    const parsed = Attempt.parse(validAttempt({ resolution: null }));
+    expect(parsed.resolution).toBeNull();
+  });
+
+  it("round-trips each resolution enum value", () => {
+    for (const resolution of ["first_try", "coached", "walked_through"] as const) {
+      const parsed = Attempt.parse(validAttempt({ resolution }));
+      expect(parsed.resolution).toBe(resolution);
+    }
+  });
+
+  it("rejects an unknown resolution string", () => {
+    expect(
+      Attempt.safeParse(validAttempt({ resolution: "solved" })).success,
+    ).toBe(false);
+  });
+
+  it("AttemptInput accepts resolution and omits id/created_at", () => {
+    const input = AttemptInput.parse({
+      subject: "act-english",
+      session_id: "sess-1",
+      question_id: "q-1",
+      chosen_letter: "A",
+      correct: true,
+      elapsed_ms: 500,
+      used_hint: false,
+      resolution: "first_try",
+    });
+    expect(input.resolution).toBe("first_try");
+    expect("id" in input).toBe(false);
+    expect("created_at" in input).toBe(false);
+  });
+});
 
 describe("Tutorial teaching fields — E1a FR-8a (ADR-0028)", () => {
   it("accepts a row without teaching fields (all optional)", () => {

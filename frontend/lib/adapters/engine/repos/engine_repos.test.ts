@@ -197,6 +197,55 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
     expect(saved.used_hint).toBe(true);
   });
 
+  it("record round-trips resolution; legacy omit reads nullish (FR-10)", async () => {
+    const db = new InMemoryEngineDb();
+    await db.insertSession({
+      id: "sess1",
+      subject: "act-english",
+      learner_id: "alice",
+      mode: "adaptive",
+      skill_focus: null,
+      started_at: "2026-07-19T00:00:00Z",
+      ended_at: null,
+      score_correct: 0,
+      score_total: 0,
+      target_count: null,
+    });
+    const repo = new DrizzleAttemptRepo({
+      db,
+      newId: () => "a-res",
+      now: () => new Date("2026-07-19T00:00:00Z"),
+    });
+    const withRes = await repo.record({
+      subject: "act-english",
+      session_id: "sess1",
+      question_id: "q1",
+      chosen_letter: "B",
+      correct: false,
+      elapsed_ms: 100,
+      used_hint: false,
+      resolution: "walked_through",
+    });
+    expect(withRes.resolution).toBe("walked_through");
+    const misses = await repo.misses("act-english", "alice");
+    expect(misses[0]?.resolution).toBe("walked_through");
+
+    const legacy = await new DrizzleAttemptRepo({
+      db: new InMemoryEngineDb(),
+      newId: () => "a-legacy",
+      now: () => new Date("2026-07-19T00:00:01Z"),
+    }).record({
+      subject: "act-english",
+      session_id: "sess2",
+      question_id: "q2",
+      chosen_letter: "A",
+      correct: true,
+      elapsed_ms: 50,
+      used_hint: false,
+    });
+    expect(legacy.resolution == null).toBe(true);
+  });
+
   it("misses returns outstanding incorrect attempts newest-first (FR-D4)", async () => {
     const db = new InMemoryEngineDb();
     // Two sessions for the learner; one attempt each.

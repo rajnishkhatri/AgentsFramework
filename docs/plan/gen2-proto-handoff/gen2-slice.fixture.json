@@ -1,0 +1,1309 @@
+{
+  "_meta": {
+    "source_items": "docs/questionbank/coach-item-bank-gen2.reviewed.json",
+    "source_hints": "docs/questionbank/coach-bank-hints-gen2.reviewed-wire.json",
+    "provenance": "claude-fable-5+claude-opus-4-8 gen2 reviewed-wire",
+    "sample_strategy": "moment-coverage: skill x item_type x answer_letter x difficulty spread, deterministic id-sorted",
+    "audit": {
+      "sampled": 15,
+      "skills_covered": {
+        "s-gram": 4,
+        "s-org": 1,
+        "s-punc": 1,
+        "s-rhet": 4,
+        "s-sent": 2,
+        "s-style": 3
+      },
+      "item_types": {
+        "underlined-span-mc": 11,
+        "rhetorical-mc": 4
+      },
+      "answer_letters": {
+        "A": 3,
+        "B": 4,
+        "C": 5,
+        "D": 3
+      },
+      "wrong_pick_ladders_total": 45,
+      "no_pick_item_level_ladders": 0,
+      "MOMENT_COVERAGE_NOTE": "Gen2 bank is choice-keyed ONLY. There are ZERO item-level (no-pick) ladders in the source, so the no-pick moment has NO Gen2 content to show — the router falls back to rung-1 of some ladder or a generic nudge. The prototype must exercise the no-pick moment with a SYNTHESIZED item-level opener (design decision), or the design agent flags it as a known gap."
+    }
+  },
+  "items": [
+    {
+      "id": "ti-gen-0234d28238192294",
+      "subject": "act-english",
+      "skill_id": "s-gram",
+      "difficulty": 2,
+      "context_html": "Each of the branch libraries <u>keeps</u> a binder of local bus schedules behind its reference desk.",
+      "stem_md": "Which choice is correct for the underlined portion?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "NO CHANGE"
+        },
+        {
+          "letter": "B",
+          "label": "keep"
+        },
+        {
+          "letter": "C",
+          "label": "are keeping"
+        },
+        {
+          "letter": "D",
+          "label": "have kept"
+        }
+      ],
+      "answer_letter": "A",
+      "per_choice_rationale": {
+        "A": "Correct: the subject is the singular pronoun 'Each,' so the singular verb agrees.",
+        "B": "Matches the verb to 'libraries,' the nearest noun, but that noun is the object of 'of,' not the subject.",
+        "C": "Doubles the error: the plural helper 'are' clashes with singular 'Each,' and progressive aspect misfits a routine habit.",
+        "D": "Uses the plural helper 'have' with the singular subject and shifts a present routine into the perfect tense."
+      },
+      "why_correct_md": "The true subject is **Each**, which is always singular, so the singular verb is required.",
+      "why_tempted_md": "The plural noun 'libraries' sits right next to the verb, so students match the verb to the nearest noun instead of the true subject.",
+      "rule_md": "1) Find the verb. 2) Ask 'who or what does this?' 3) Cross out prepositional phrases such as 'of the branch libraries.' 4) Match the verb to the remaining head word — each, one, and everyone are singular. 5) Re-read the sentence with the phrase removed to confirm.",
+      "item_type": "underlined-span-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 17,
+      "misconception": null,
+      "_hint_ladders": {
+        "B": [
+          {
+            "rung": 1,
+            "body_md": "How did you decide which word in the sentence the verb should agree with?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Strip away any prepositional phrase sitting between the opening word and the verb, then test agreement again."
+          },
+          {
+            "rung": 3,
+            "body_md": "Is 'libraries' actually the subject here, or is it just the object of the little word 'of'?"
+          }
+        ],
+        "C": [
+          {
+            "rung": 1,
+            "body_md": "Read the sentence aloud — what did the verb's -ing form add for you?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Run two checks: does the helper verb's number match the true subject, and does an ongoing '-ing' form suit a standing routine?"
+          },
+          {
+            "rung": 3,
+            "body_md": "For a practice that holds true all the time, is an 'is/are …-ing' construction the right aspect — and does 'are' match a singular subject?"
+          }
+        ],
+        "D": [
+          {
+            "rung": 1,
+            "body_md": "What would change if the sentence were describing a completed past action instead of a routine?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Check two things at the same time: the number of the helping verb and the time frame the sentence describes."
+          },
+          {
+            "rung": 3,
+            "body_md": "Does 'have' agree with a singular subject like 'each' — and does a perfect-tense form fit an ongoing routine?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ti-gen-008e6e42275f539a",
+      "subject": "act-english",
+      "skill_id": "s-gram",
+      "difficulty": 3,
+      "context_html": "County health codes <u>prohibit vendors to sell</u> samples that have sat unrefrigerated for more than two hours.",
+      "stem_md": "Which choice conforms to the conventions of standard written English?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "NO CHANGE"
+        },
+        {
+          "letter": "B",
+          "label": "prohibit vendors from selling"
+        },
+        {
+          "letter": "C",
+          "label": "prohibit that vendors sell"
+        },
+        {
+          "letter": "D",
+          "label": "prohibit vendors selling"
+        }
+      ],
+      "answer_letter": "B",
+      "per_choice_rationale": {
+        "A": "'Prohibit' does not take a to-infinitive; this borrows the pattern of 'forbid' (idiom_wrong_pattern).",
+        "B": "Correct — 'prohibit' idiomatically takes an object plus 'from' with an -ing form.",
+        "C": "Hypercorrects with a 'that' clause, a structure 'prohibit' does not allow (idiom_that_clause).",
+        "D": "Drops the required preposition, leaving a nonstandard shortcut (idiom_dropped_prep)."
+      },
+      "why_correct_md": "The verb **prohibit** takes the fixed pattern 'prohibit someone from doing something.'",
+      "why_tempted_md": "'Forbid vendors to sell' is standard English, so students transfer the infinitive pattern onto 'prohibit.'",
+      "rule_md": "1) Identify the verb that controls the underlined pattern. 2) Recall its fixed companion pattern by testing a familiar example ('the sign prohibits visitors ___ feeding the ducks'). 3) Eliminate any option that borrows a different verb's pattern. 4) Eliminate any option missing the required connector. 5) Confirm the survivor reads naturally in the sentence.",
+      "item_type": "underlined-span-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 23,
+      "misconception": null,
+      "_hint_ladders": {
+        "A": [
+          {
+            "rung": 1,
+            "body_md": "Before checking anything else, say the underlined phrase out loud — does it sound like standard usage to you?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Think about which small connecting words the verb 'prohibit' normally travels with."
+          },
+          {
+            "rung": 3,
+            "body_md": "You can 'forbid someone to do' something — but does 'prohibit' follow that same pattern, or does it demand a different connector?"
+          }
+        ],
+        "C": [
+          {
+            "rung": 1,
+            "body_md": "Say more about why a 'that' clause seemed like the right fix here."
+          },
+          {
+            "rung": 2,
+            "body_md": "Consider whether 'prohibit' can hand its action off to a full clause the way 'require' or 'insist' can."
+          },
+          {
+            "rung": 3,
+            "body_md": "Would you ever write 'The rule prohibits that we park here' in careful prose?"
+          }
+        ],
+        "D": [
+          {
+            "rung": 1,
+            "body_md": "Tell me what connects 'vendors' to 'selling' in this version."
+          },
+          {
+            "rung": 2,
+            "body_md": "Check whether the verb's required linking word survived in this shortened phrasing."
+          },
+          {
+            "rung": 3,
+            "body_md": "If a sign 'prohibits visitors feeding the ducks,' is anything missing between the person and the action?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ti-gen-03b4e18d0b336929",
+      "subject": "act-english",
+      "skill_id": "s-gram",
+      "difficulty": 5,
+      "context_html": "By the time the snow finally melted off the pass last June, the crew, working upward from the trailhead, <u>already cleared</u> two hundred downed lodgepoles from the lower switchbacks.",
+      "stem_md": "Which choice best conforms to the conventions of standard English?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "NO CHANGE"
+        },
+        {
+          "letter": "B",
+          "label": "has already cleared"
+        },
+        {
+          "letter": "C",
+          "label": "had already cleared"
+        },
+        {
+          "letter": "D",
+          "label": "will have already cleared"
+        }
+      ],
+      "answer_letter": "C",
+      "per_choice_rationale": {
+        "A": "Simple past cannot show that the clearing was completed before another past event; the 'by the time' frame demands the past perfect.",
+        "B": "Present perfect ties the action to the present moment, which clashes with the finished past time marker 'last June.'",
+        "C": "Correct: past perfect (*had* + participle) marks the earlier of two past events, exactly what 'by the time the snow melted' requires.",
+        "D": "Future perfect points to a deadline that has not yet arrived, contradicting a sentence anchored entirely in the past."
+      },
+      "why_correct_md": "The **past perfect** is required because the clearing was finished *before* another completed past event, the June snowmelt.",
+      "why_tempted_md": "The bare simple past sounds fine to the ear because casual speech routinely drops the perfect helper before 'already.'",
+      "rule_md": "1) Put every event in the sentence on a timeline. 2) Find sequencing signals like 'by the time.' 3) Mark the event completed first and give it the past perfect (had + past participle). 4) Keep the later past event in simple past. 5) Reject any form that reaches into the present or future.",
+      "item_type": "underlined-span-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 27,
+      "misconception": null,
+      "_hint_ladders": {
+        "A": [
+          {
+            "rung": 1,
+            "body_md": "What relationship do you see between the two events in this sentence — which one finished first?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Timeline check: place the melting and the clearing on a line. The phrase 'by the time' is a signal about their order — what kind of signal?"
+          },
+          {
+            "rung": 3,
+            "body_md": "If both events sit in plain past tense, can a reader tell that the clearing was finished before the snow melted?"
+          }
+        ],
+        "B": [
+          {
+            "rung": 1,
+            "body_md": "How did you decide on this tense — what time frame does 'last June' lock the sentence into?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Check compatibility: some verb forms reach forward into the present moment. Ask whether this sentence ever leaves the past."
+          },
+          {
+            "rung": 3,
+            "body_md": "A form built on 'has' connects an action to right now. Can that coexist with a sentence anchored to a specific June that is over?"
+          }
+        ],
+        "D": [
+          {
+            "rung": 1,
+            "body_md": "Before checking anything else, ask: is any part of this sentence happening in the future?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Match the verb's direction to the sentence's anchors. Find every time expression and note whether it points backward or forward."
+          },
+          {
+            "rung": 3,
+            "body_md": "'Will have' projects an action forward toward a future deadline. Does a June that is already over count as a future deadline?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ti-gen-045e89834ca58dcb",
+      "subject": "act-english",
+      "skill_id": "s-gram",
+      "difficulty": 5,
+      "context_html": "The manager credits the shop's longevity to three habits: pricing donations the day they arrive, rotating window displays before shoppers tire of them, and <u>tracking which sections outsell the rest</u>.",
+      "stem_md": "Which choice best maintains the grammatical pattern of the sentence?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "NO CHANGE"
+        },
+        {
+          "letter": "B",
+          "label": "to track which sections outsell the rest"
+        },
+        {
+          "letter": "C",
+          "label": "she tracks which sections outsell the rest"
+        },
+        {
+          "letter": "D",
+          "label": "the tracking of which sections outsell the rest"
+        }
+      ],
+      "answer_letter": "A",
+      "per_choice_rationale": {
+        "A": "Correct: the third habit stays a gerund phrase, matching *pricing* and *rotating*.",
+        "B": "Switches the final item to an infinitive, breaking the gerund pattern of the first two habits.",
+        "C": "Turns the final item into a full clause, which cannot sit in a list of gerund phrases.",
+        "D": "Swaps in a heavy noun phrase, abandoning the -ing pattern and adding clutter."
+      },
+      "why_correct_md": "Items in a series must share one grammatical form, and this list is built on **gerund** (-ing) phrases.",
+      "why_tempted_md": "An infinitive feels like a natural way to name a habit, so the shift away from -ing is easy to miss at the end of a long list.",
+      "rule_md": "1) Find the list. 2) Label the grammatical form of the first item. 3) Check that every later item wears the same form. 4) Reject any option that changes form, even if it sounds fine alone. 5) Prefer the version that keeps the pattern intact.",
+      "item_type": "underlined-span-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 26,
+      "misconception": null,
+      "_hint_ladders": {
+        "B": [
+          {
+            "rung": 1,
+            "body_md": "Before checking the options, how would you describe the pattern this list sets up?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Run a parallelism check: name the form of the first two list items, then test the third against it."
+          },
+          {
+            "rung": 3,
+            "body_md": "The first two habits each start with an -ing verb — does a *to*-form item match that pattern?"
+          }
+        ],
+        "C": [
+          {
+            "rung": 1,
+            "body_md": "What job is the underlined portion doing inside the list after the colon?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Compare shapes: list items should be phrases of matching form, not a mix of phrases and clauses."
+          },
+          {
+            "rung": 3,
+            "body_md": "Could you drop a whole subject-plus-verb statement into a list whose other items are verb phrases without a subject?"
+          }
+        ],
+        "D": [
+          {
+            "rung": 1,
+            "body_md": "Read the sentence aloud — where does the rhythm of the list stumble?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Watch for nominalizations: turning an action into a 'the ___ of' noun phrase often disguises a parallelism break."
+          },
+          {
+            "rung": 3,
+            "body_md": "The other habits are expressed as direct -ing actions — does wrapping the last one in 'the ... of' keep that same shape?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ti-gen-02d1f590eca4d020",
+      "subject": "act-english",
+      "skill_id": "s-org",
+      "difficulty": 4,
+      "context_html": "Duke Ellington rarely wrote for an anonymous trumpet or saxophone part. He composed 'Concerto for Cootie' around Cootie Williams's growling plunger mute, and he shaped ballads to ride the liquid glide of Johnny Hodges's alto. When a musician left the band, Ellington often shelved the pieces built on that player's sound rather than reassign them.",
+      "stem_md": "The writer wants a concluding sentence that reinforces the paragraph's main idea. Which choice best accomplishes that goal?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "Ellington's orchestra crisscrossed the country for decades, outlasting most rival bands."
+        },
+        {
+          "letter": "B",
+          "label": "Several musicians stayed in the orchestra with Ellington for twenty years or more."
+        },
+        {
+          "letter": "C",
+          "label": "Ellington also composed film scores and, later, extended sacred concerts."
+        },
+        {
+          "letter": "D",
+          "label": "The orchestra, Ellington understood, was itself the instrument he truly composed for."
+        }
+      ],
+      "answer_letter": "D",
+      "per_choice_rationale": {
+        "A": "goal_offtopic: touring longevity says nothing about writing for individual voices.",
+        "B": "Long tenures are related trivia; the paragraph is about how Ellington composed, not how long players stayed.",
+        "C": "add_new_topic: film scores and sacred concerts open a new subject instead of closing this one.",
+        "D": "Correct: it distills the paragraph's idea — the band's specific voices were the medium he wrote for."
+      },
+      "why_correct_md": "It restates the paragraph's **central idea** — composing for particular players — in a single closing image.",
+      "why_tempted_md": "Long tenures feel connected to writing for specific players, but tenure is a side effect, not the paragraph's point.",
+      "rule_md": "1) State the paragraph's main idea in one sentence. 2) Test each closer: does it restate or extend that idea? 3) Cross out any option that introduces new information or shifts topic. 4) Choose the option that could stand alone as a one-line summary of the paragraph.",
+      "item_type": "rhetorical-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 36,
+      "misconception": null,
+      "_hint_ladders": {
+        "A": [
+          {
+            "rung": 1,
+            "body_md": "What is this paragraph mostly about, in one sentence?"
+          },
+          {
+            "rung": 2,
+            "body_md": "A closing line should echo the paragraph's central idea; check whether your pick echoes it or drifts to a different achievement."
+          },
+          {
+            "rung": 3,
+            "body_md": "Does the paragraph ever discuss touring or outlasting rivals?"
+          }
+        ],
+        "B": [
+          {
+            "rung": 1,
+            "body_md": "Which sentence in the paragraph does your pick connect back to?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Watch for closers that are merely *related* to the topic; the best one restates the actual point, not a neighboring fact."
+          },
+          {
+            "rung": 3,
+            "body_md": "Is the paragraph about how long musicians stayed, or about how their individual sounds shaped what got written?"
+          }
+        ],
+        "C": [
+          {
+            "rung": 1,
+            "body_md": "What would a reader expect the final sentence here to wrap up?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Endings that introduce brand-new projects reopen the essay instead of closing it; test whether your pick adds new territory."
+          },
+          {
+            "rung": 3,
+            "body_md": "Do film scores or sacred concerts appear anywhere in this paragraph's discussion?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ti-gen-018889691813266d",
+      "subject": "act-english",
+      "skill_id": "s-punc",
+      "difficulty": 4,
+      "context_html": "<u>Sea stars which can regrow lost arms are</u> among the most resilient hunters in the pool.",
+      "stem_md": "Which choice correctly punctuates the sentence?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "NO CHANGE"
+        },
+        {
+          "letter": "B",
+          "label": "Sea stars, which can regrow lost arms are"
+        },
+        {
+          "letter": "C",
+          "label": "Sea stars which can regrow lost arms, are"
+        },
+        {
+          "letter": "D",
+          "label": "Sea stars, which can regrow lost arms, are"
+        }
+      ],
+      "answer_letter": "D",
+      "per_choice_rationale": {
+        "A": "The nonrestrictive clause needs commas on both sides; leaving them out runs the modifier into the sentence (missing_nonrestrictive_commas).",
+        "B": "This opens the clause with a comma but never closes it, so the modifier bleeds into the verb.",
+        "C": "This closes the clause but never opens it, misplacing a single comma before the verb.",
+        "D": "Correct: paired commas set off the nonrestrictive clause 'which can regrow lost arms.'"
+      },
+      "why_correct_md": "A nonrestrictive 'which' clause must be **enclosed by a pair of commas**.",
+      "why_tempted_md": "The single-comma version looks balanced enough that students accept just one.",
+      "rule_md": "1) Find the extra-information clause. 2) Test whether the sentence still makes sense without it. 3) If yes, it is nonrestrictive and needs a comma before and after. 4) Make sure both commas are present.",
+      "item_type": "underlined-span-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 14,
+      "misconception": null,
+      "_hint_ladders": {
+        "A": [
+          {
+            "rung": 1,
+            "body_md": "Try lifting the middle clause out — does the core sentence still stand on its own?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Decide whether that clause is essential or extra, because extra information gets fenced off."
+          },
+          {
+            "rung": 3,
+            "body_md": "If the clause is bonus information, how many commas does it take to wall it off from the sentence?"
+          }
+        ],
+        "B": [
+          {
+            "rung": 1,
+            "body_md": "Notice where your commas open and close — does the clause get both a start and a finish?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Check that a fenced-off clause is closed on the same side of the verb where the sentence resumes."
+          },
+          {
+            "rung": 3,
+            "body_md": "If you mark where the extra clause begins, where must the matching mark go before the verb returns?"
+          }
+        ],
+        "C": [
+          {
+            "rung": 1,
+            "body_md": "Where does the extra clause actually begin in this sentence?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Trace the start of the removable clause and confirm a mark sits right there."
+          },
+          {
+            "rung": 3,
+            "body_md": "You closed the clause before the verb, but did you signal where it opened?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ti-gen-0113496a8c005fe7",
+      "subject": "act-english",
+      "skill_id": "s-rhet",
+      "difficulty": 2,
+      "context_html": "For eleven years, the Maple Street branch has run a delivery route for patrons who cannot travel to the building. Twice a month, a librarian loads crates of requested novels, audiobooks, and large-print mysteries into a small van. At each stop, she collects finished books, takes new requests, and often stays a few minutes to chat about what to read next. Riders who once felt cut off from the library now plan their calendars around her visits.",
+      "stem_md": "Suppose the writer's goal had been to show how one public library serves patrons who cannot visit in person. Would this essay accomplish that goal?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "Yes, because it lists every outreach service the library system offers."
+        },
+        {
+          "letter": "B",
+          "label": "Yes, because it describes the branch's delivery route and its effect on the patrons it reaches."
+        },
+        {
+          "letter": "C",
+          "label": "No, because it centers on the library's annual budget negotiations."
+        },
+        {
+          "letter": "D",
+          "label": "No, because it mentions patrons only in its final sentence."
+        }
+      ],
+      "answer_letter": "B",
+      "per_choice_rationale": {
+        "A": "Right verdict, wrong reason — the essay follows one program closely rather than cataloging every service.",
+        "B": "Correct: the essay details exactly how one branch brings books to homebound readers and how those readers respond.",
+        "C": "Budgets, funding, and negotiations never appear anywhere in the essay.",
+        "D": "The homebound readers are present from the opening sentence onward, not just at the end."
+      },
+      "why_correct_md": "The essay's every sentence develops **one program for homebound readers**, which is precisely what the supposed goal requires.",
+      "why_tempted_md": "The 'yes' option claiming a full list of services tempts students who match the verdict without checking whether the reason describes the essay.",
+      "rule_md": "1) Restate the supposed goal in your own words. 2) Summarize what the essay actually spends its sentences on. 3) Decide yes or no by comparing the two. 4) Then verify the chosen reason is factually true of the essay. 5) Eliminate any option whose reason misstates the essay, even when its verdict matches yours.",
+      "item_type": "rhetorical-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 34,
+      "misconception": null,
+      "_hint_ladders": {
+        "A": [
+          {
+            "rung": 1,
+            "body_md": "In your own words, how many different programs does the essay actually cover?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Verify the justification against the essay: does it really catalog many services, or dwell on one?"
+          },
+          {
+            "rung": 3,
+            "body_md": "Can you name a second or third outreach offering the essay discusses besides the van visits?"
+          }
+        ],
+        "C": [
+          {
+            "rung": 1,
+            "body_md": "What made you connect this essay to money matters?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Scan the essay for its recurring subject — which nouns and actions come up in sentence after sentence?"
+          },
+          {
+            "rung": 3,
+            "body_md": "Where does the essay discuss funding, costs, or negotiations at all?"
+          }
+        ],
+        "D": [
+          {
+            "rung": 1,
+            "body_md": "Where in the essay do the homebound readers first show up?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Trace the readers through the essay sentence by sentence before accepting a claim about when they appear."
+          },
+          {
+            "rung": 3,
+            "body_md": "Are the crates, the stops, and the chats not all in service of those same readers well before the closing line?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ti-gen-023e29cfc2225660",
+      "subject": "act-english",
+      "skill_id": "s-rhet",
+      "difficulty": 2,
+      "context_html": "The crew's real enemy on the mountain is not rock but water. Left alone, runoff follows the packed path downhill, picking up speed and soil with every yard. Most of the season is therefore spent on drainage, and the crew builds features designed to push water off the path before it can dig in.",
+      "stem_md": "The writer wants to add a sentence that gives a specific example of the drainage work described in the paragraph. Which choice best accomplishes that goal?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "Crew members often debate which brand of shovel stands up best to rocky soil."
+        },
+        {
+          "letter": "B",
+          "label": "Runoff is also a problem on gravel roads throughout the national forest."
+        },
+        {
+          "letter": "C",
+          "label": "Every fifty feet of steep grade, the crew carves a shallow channel across the tread to shed runoff."
+        },
+        {
+          "letter": "D",
+          "label": "The tread is raked smooth at the end of each season so the trail photographs well."
+        }
+      ],
+      "answer_letter": "C",
+      "per_choice_rationale": {
+        "A": "Off-topic: a debate about shovel brands is equipment chatter, not an example of water being managed.",
+        "B": "Wrong scope: it wanders to roads elsewhere in the forest instead of showing this crew's drainage work on the trail.",
+        "C": "Correct: it names a specific, concrete drainage feature the crew builds, directly illustrating the paragraph's focus.",
+        "D": "Wrong purpose: raking for photographs is an aesthetic detail; no water is being controlled."
+      },
+      "why_correct_md": "The paragraph's focus is moving water off the path, and only this sentence gives a **specific instance** of the crew doing exactly that.",
+      "why_tempted_md": "The gravel-roads sentence tempts students because it mentions the same problem, even though it abandons the crew and the trail entirely.",
+      "rule_md": "1) State the paragraph's focus in one phrase. 2) State the stem's goal. 3) Test each candidate: does it give a specific instance of that focus, in the right place, by the right people? 4) Reject details that are off-topic, out of scope, or serving a different purpose.",
+      "item_type": "rhetorical-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 35,
+      "misconception": null,
+      "_hint_ladders": {
+        "A": [
+          {
+            "rung": 1,
+            "body_md": "What did the stem ask the added sentence to provide — an opinion, or an example of the work?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Match the sentence's content to the paragraph's focus on managing water. Where does equipment preference fit within that focus?"
+          },
+          {
+            "rung": 3,
+            "body_md": "A debate about shovel brands tells us how the crew feels about its tools. Does it show water being moved off the path?"
+          }
+        ],
+        "B": [
+          {
+            "rung": 1,
+            "body_md": "Where does the sentence you chose take place — on the crew's trail, or somewhere else entirely?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Scope check: the paragraph is about this crew's work on this path. Test whether your sentence stays inside that frame."
+          },
+          {
+            "rung": 3,
+            "body_md": "Gravel roads elsewhere in the forest may erode too, but is that an example of the work this paragraph describes?"
+          }
+        ],
+        "D": [
+          {
+            "rung": 1,
+            "body_md": "What would change if the added sentence described looks instead of water — would it still serve the paragraph's point?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Read the paragraph's last sentence again and note what kind of example it sets up. Then test your sentence against that setup."
+          },
+          {
+            "rung": 3,
+            "body_md": "Raking the surface for photographs concerns appearance. Where in that sentence does any water get moved?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ti-gen-0276d7482d99c6c4",
+      "subject": "act-english",
+      "skill_id": "s-rhet",
+      "difficulty": 3,
+      "context_html": "Loyal readers often say they subscribe to the Sentinel mainly for its community calendar. The calendar lists every gathering in the county, from pancake breakfasts to school-board meetings, and it appears in the same spot on page three each week.",
+      "stem_md": "The writer wants to add a sentence that most strongly supports the paragraph's claim that the calendar keeps subscribers loyal. Which choice best accomplishes that goal?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "The Sentinel's calendar has been edited by the same staff member for eleven years."
+        },
+        {
+          "letter": "B",
+          "label": "In a recent survey, half of the Sentinel's subscribers named the calendar as the top reason they renew."
+        },
+        {
+          "letter": "C",
+          "label": "Subscribers can renew by mail, by phone, or at the newspaper's front counter."
+        },
+        {
+          "letter": "D",
+          "label": "One recent addition to the calendar is a listing of library story hours."
+        }
+      ],
+      "answer_letter": "B",
+      "per_choice_rationale": {
+        "A": "Describes the calendar's staffing, which says nothing about why subscribers stay.",
+        "B": "Correct: it gives direct evidence tying the calendar to subscribers' decisions to renew.",
+        "C": "Lists renewal methods, not motives — the calendar never enters the sentence.",
+        "D": "Adds calendar content but draws no link to subscriber loyalty."
+      },
+      "why_correct_md": "It is the only option that **links both ends** of the claim — the calendar and subscribers' decisions to stay.",
+      "why_tempted_md": "The staffing detail tempts students because an editor's longevity feels like proof of quality, which they mistake for proof of loyalty.",
+      "rule_md": "1) Underline the claim to be supported ('the calendar keeps subscribers loyal'). 2) For each option, ask: does it connect the calendar to subscribers' staying? 3) Discard sentences about the calendar alone or about subscribing alone. 4) Prefer concrete evidence of the link over adjacent facts. 5) Re-read the paragraph with the winner inserted.",
+      "item_type": "rhetorical-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 35,
+      "misconception": null,
+      "_hint_ladders": {
+        "A": [
+          {
+            "rung": 1,
+            "body_md": "What relationship does your sentence draw between the calendar and readers deciding to stick around?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Support must touch both ends of the claim: the feature and the loyalty. Check which ends your sentence touches."
+          },
+          {
+            "rung": 3,
+            "body_md": "Steady staffing might explain the calendar's quality — but does it say anything about subscribers renewing?"
+          }
+        ],
+        "C": [
+          {
+            "rung": 1,
+            "body_md": "Tell me what your sentence proves about why people renew, rather than how."
+          },
+          {
+            "rung": 2,
+            "body_md": "Watch for near-topic traps: a sentence can mention renewal and still not support the claim about what causes it."
+          },
+          {
+            "rung": 3,
+            "body_md": "Mail, phone, or front counter — do those logistics involve the calendar at all?"
+          }
+        ],
+        "D": [
+          {
+            "rung": 1,
+            "body_md": "If you covered up the paragraph's claim, would your sentence still be about loyalty or just about listings?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Distinguish detail-about-the-feature from evidence-for-the-claim. Which is your sentence?"
+          },
+          {
+            "rung": 3,
+            "body_md": "Story hours enrich the calendar, but where is the subscriber in that sentence?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ti-gen-01d759ebba334377",
+      "subject": "act-english",
+      "skill_id": "s-rhet",
+      "difficulty": 4,
+      "context_html": "To raise the studio's tallest planters, Imani <u>works with</u> nearly twenty pounds of clay at a time, coaxing the walls upward through a dozen slow pulls.",
+      "stem_md": "The writer wants to emphasize the physical effort that throwing large forms demands. Which choice best accomplishes that goal?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "NO CHANGE"
+        },
+        {
+          "letter": "B",
+          "label": "shapes"
+        },
+        {
+          "letter": "C",
+          "label": "wrestles"
+        },
+        {
+          "letter": "D",
+          "label": "manages"
+        }
+      ],
+      "answer_letter": "C",
+      "per_choice_rationale": {
+        "A": "'Works with' is neutral about exertion, fitting light tasks as easily as heavy ones (goal-neutral verb).",
+        "B": "'Shapes' emphasizes artistry and skill rather than the muscle the goal demands (wrong emphasis).",
+        "C": "Correct: 'wrestles' turns the clay into a physical opponent, foregrounding strenuous bodily effort.",
+        "D": "'Manages' suggests calm competence at a distance, understating physical labor (weak emphasis)."
+      },
+      "why_correct_md": "Only a verb that conveys **strenuous bodily struggle** fulfills the stated goal of emphasizing physical effort.",
+      "why_tempted_md": "'Shapes' feels apt because the sentence is about pottery, but it spotlights craftsmanship instead of the exertion the goal names.",
+      "rule_md": "1) Restate the writer's goal in one word (here: effort). 2) Ask of each verb: what does it emphasize? 3) Eliminate verbs that are neutral about the goal's idea. 4) Eliminate verbs that emphasize a different quality. 5) Keep the verb whose core meaning is the goal itself.",
+      "item_type": "underlined-span-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 2,
+      "misconception": null,
+      "_hint_ladders": {
+        "A": [
+          {
+            "rung": 1,
+            "body_md": "What is the stated goal asking this verb to accomplish?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Test the verb you kept: does it carry any sense of muscle and strain, or is it neutral about effort?"
+          },
+          {
+            "rung": 3,
+            "body_md": "Could 'works with' describe someone labeling jars just as easily as someone hoisting twenty pounds of clay?"
+          }
+        ],
+        "B": [
+          {
+            "rung": 1,
+            "body_md": "What aspect of Imani's work does your verb spotlight?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Separate artistry from effort — decide which of the two the goal explicitly asks you to emphasize."
+          },
+          {
+            "rung": 3,
+            "body_md": "Does 'shapes' tell us the clay is heavy and hard-fought, or only that it is being formed skillfully?"
+          }
+        ],
+        "D": [
+          {
+            "rung": 1,
+            "body_md": "If a friend asked what your verb adds to the sentence, what would you say?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Some verbs whisper difficulty and others shout it; rank the options by how strongly each conveys hard physical work."
+          },
+          {
+            "rung": 3,
+            "body_md": "Does 'manages' put the reader inside the physical struggle, or merely note that Imani copes?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ti-gen-168f4667ffdca01d",
+      "subject": "act-english",
+      "skill_id": "s-sent",
+      "difficulty": 1,
+      "context_html": "The county's tornado sirens date from the 1950s. <u>Although the sirens are tested on the first Wednesday of every month.</u> Few residents have ever heard them in a real emergency.",
+      "stem_md": "Which choice results in a complete sentence?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "NO CHANGE"
+        },
+        {
+          "letter": "B",
+          "label": "Although the sirens being tested on the first Wednesday of every month."
+        },
+        {
+          "letter": "C",
+          "label": "The sirens are tested on the first Wednesday of every month."
+        },
+        {
+          "letter": "D",
+          "label": "While the sirens are tested on the first Wednesday of every month."
+        }
+      ],
+      "answer_letter": "C",
+      "per_choice_rationale": {
+        "A": "'Although' turns the statement into a dependent clause that never attaches to a main clause — a fragment (misconception: length plus a period equals a sentence).",
+        "B": "'Being tested' supplies no finite verb, so the word group still cannot stand alone (misconception: an -ing form works as a main verb).",
+        "C": "Correct: removing the subordinator leaves a complete statement with a subject and a finite verb.",
+        "D": "'While' subordinates the clause just as 'Although' did, leaving the fragment intact (misconception: swapping subordinators fixes the structure)."
+      },
+      "why_correct_md": "Deleting the **subordinating word** lets the clause stand alone as a complete sentence.",
+      "why_tempted_md": "The original is long and information-rich, so it feels sentence-like despite opening with a word that demands a follow-up clause.",
+      "rule_md": "1) Read the word group alone. 2) Find a subject and a finite verb. 3) Check the first word: does it make the clause lean on another sentence ('although,' 'while,' 'because')? 4) If it leans and nothing follows, delete the leaning word or attach the clause. 5) Re-read to confirm it stands alone.",
+      "item_type": "underlined-span-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 10,
+      "misconception": null,
+      "_hint_ladders": {
+        "A": [
+          {
+            "rung": 1,
+            "body_md": "Read the middle statement by itself, then stop. Are you left waiting for something?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Watch the opener: a word like this one promises a second half, so see whether the period arrives before that promise is kept."
+          },
+          {
+            "rung": 3,
+            "body_md": "'Although the sirens are tested...' — although what? Where does the sentence deliver the contrast its first word sets up?"
+          }
+        ],
+        "B": [
+          {
+            "rung": 1,
+            "body_md": "What is the main verb in the version you picked?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Do a verb audit: a stand-alone statement needs a fully conjugated verb, not just a verb-like word."
+          },
+          {
+            "rung": 3,
+            "body_md": "Can 'the sirens being tested' carry a sentence the way 'the sirens are tested' can?"
+          }
+        ],
+        "D": [
+          {
+            "rung": 1,
+            "body_md": "What changed, structurally, between the original and the version you chose?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Test the swap: replace one subordinating opener with another and ask whether the clause gained any independence."
+          },
+          {
+            "rung": 3,
+            "body_md": "Does 'While the sirens are tested...' complete a thought any better than the original opener did?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ti-gen-063c456b53168b9d",
+      "subject": "act-english",
+      "skill_id": "s-sent",
+      "difficulty": 4,
+      "context_html": "Demand for video relay interpreting has soared over the past decade<u>, the</u> national centers now schedule staff in overlapping around-the-clock shifts.",
+      "stem_md": "Which choice makes the sentence most grammatically acceptable?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "NO CHANGE"
+        },
+        {
+          "letter": "B",
+          "label": ", consequently the"
+        },
+        {
+          "letter": "C",
+          "label": ". The"
+        },
+        {
+          "letter": "D",
+          "label": "the"
+        }
+      ],
+      "answer_letter": "C",
+      "per_choice_rationale": {
+        "A": "A comma alone between two independent clauses is a comma splice.",
+        "B": "'Consequently' is a conjunctive adverb, not a conjunction, so the clauses remain illegally spliced.",
+        "C": "Correct — a period cleanly separates the two independent clauses into two sentences.",
+        "D": "Removing the comma fuses the clauses with no boundary at all."
+      },
+      "why_correct_md": "Two independent clauses can be separated by a **period**; a bare comma or no mark at all cannot join them.",
+      "why_tempted_md": "'Consequently' seems to supply the missing connection, but adverbs cannot legally join clauses across a comma.",
+      "rule_md": "1) Test each side of the underlined punctuation as its own sentence. 2) If both pass, a bare comma is a splice. 3) List legal fixes: period, semicolon, or comma plus a FANBOYS word. 4) Match the options against the legal list and eliminate everything else.",
+      "item_type": "underlined-span-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 20,
+      "misconception": null,
+      "_hint_ladders": {
+        "A": [
+          {
+            "rung": 1,
+            "body_md": "If you covered up everything before the comma, could the remaining words stand as a sentence — and what about the first half?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Run a splice test: count how many complete subject-verb clauses the single comma is being asked to hold together."
+          },
+          {
+            "rung": 3,
+            "body_md": "'Demand ... has soared' and 'the national centers now schedule staff' — is a lone comma a strong enough joint for two full statements?"
+          }
+        ],
+        "B": [
+          {
+            "rung": 1,
+            "body_md": "What role did you want 'consequently' to play between the two statements?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Check the word's category: transition adverbs comment on logic but lack the grammatical power to join clauses."
+          },
+          {
+            "rung": 3,
+            "body_md": "Is 'consequently' on the FANBOYS list of coordinating conjunctions, or is it an adverb riding between two still-unjoined sentences?"
+          }
+        ],
+        "D": [
+          {
+            "rung": 1,
+            "body_md": "What happens at the spot where the first statement ends if all punctuation disappears?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Do a boundary audit: readers need some signal separating one complete thought from the next."
+          },
+          {
+            "rung": 3,
+            "body_md": "Reading 'soared over the past decade the national centers,' can you locate the border between the two claims without help?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ti-gen-00c97e9d5b86e00f",
+      "subject": "act-english",
+      "skill_id": "s-style",
+      "difficulty": 2,
+      "context_html": "A good ballad <u>says</u> a complete story in only a handful of verses.",
+      "stem_md": "Which word most precisely fits the context?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "NO CHANGE"
+        },
+        {
+          "letter": "B",
+          "label": "speaks"
+        },
+        {
+          "letter": "C",
+          "label": "remarks"
+        },
+        {
+          "letter": "D",
+          "label": "tells"
+        }
+      ],
+      "answer_letter": "D",
+      "per_choice_rationale": {
+        "A": "'Says a story' is not idiomatic — 'say' takes words or statements, not stories.",
+        "B": "'Speaks' cannot take 'a story' as its object; one speaks a language, not a story.",
+        "C": "'Remarks' means to comment briefly in passing, the opposite of delivering a full narrative.",
+        "D": "Correct: stories are told; the verb pairs precisely with the object."
+      },
+      "why_correct_md": "Precision here is about **collocation** — the verb that English pairs with 'a story' as its object.",
+      "why_tempted_md": "'Says' tempts students because it is the everyday verb for speech, and the ear forgives it on a quick read.",
+      "rule_md": "1) Find the verb's object ('a story'). 2) Ask which verbs naturally take that object in everyday English. 3) Test each option in the frame 'to ___ a story.' 4) Reject any verb that breaks the pairing or changes the scale of the action. 5) Choose the verb that fits the object exactly.",
+      "item_type": "underlined-span-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 42,
+      "misconception": null,
+      "_hint_ladders": {
+        "A": [
+          {
+            "rung": 1,
+            "body_md": "Read the sentence aloud — does the verb sit naturally with its object?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Test the verb-object pairing in a bare frame: which verbs can take 'a story' as their object?"
+          },
+          {
+            "rung": 3,
+            "body_md": "You can say a word or say a prayer — can you say a story?"
+          }
+        ],
+        "B": [
+          {
+            "rung": 1,
+            "body_md": "What made this verb feel like a fit for a narrative?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Check what this verb usually takes as its object in ordinary usage."
+          },
+          {
+            "rung": 3,
+            "body_md": "One speaks a language or speaks the truth — does one speak a story?"
+          }
+        ],
+        "C": [
+          {
+            "rung": 1,
+            "body_md": "Say more about the size of action this verb describes."
+          },
+          {
+            "rung": 2,
+            "body_md": "Compare each verb's scale: a brief aside versus a full narrative delivered start to finish."
+          },
+          {
+            "rung": 3,
+            "body_md": "Can a word meaning 'to comment in passing' cover a complete story unfolding across verses?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ti-gen-02d2d036c07c5d7e",
+      "subject": "act-english",
+      "skill_id": "s-style",
+      "difficulty": 2,
+      "context_html": "In its final report, the review board <u>commended</u> the team for its meticulous record keeping.",
+      "stem_md": "Which choice best maintains the formal style of the sentence?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "NO CHANGE"
+        },
+        {
+          "letter": "B",
+          "label": "gave a shout-out to"
+        },
+        {
+          "letter": "C",
+          "label": "was totally impressed with"
+        },
+        {
+          "letter": "D",
+          "label": "thought the world of"
+        }
+      ],
+      "answer_letter": "A",
+      "per_choice_rationale": {
+        "A": "'Commended' matches the formal register of 'final report' and 'review board.'",
+        "B": "'Shout-out' is social-media slang, clashing with an official report (slang intrusion).",
+        "C": "'Totally impressed' is conversational intensifier talk, not report language (casual intensifier).",
+        "D": "'Thought the world of' is a cozy idiom too informal for the context (folksy idiom)."
+      },
+      "why_correct_md": "The original verb already matches the sentence's **formal register**, so it should stand.",
+      "why_tempted_md": "'Was totally impressed with' feels vivid and clear, so students trade formality for punch without noticing the register clash.",
+      "rule_md": "1) Identify the context clues for register ('final report,' 'review board'). 2) Label the required register: formal. 3) Grade each option against that label. 4) If the original already matches, keep it; revise only what is broken.",
+      "item_type": "underlined-span-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 43,
+      "misconception": null,
+      "_hint_ladders": {
+        "B": [
+          {
+            "rung": 1,
+            "body_md": "Which words in the sentence set its level of formality?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Grade your phrase against the register of 'final report' — do they belong to the same world?"
+          },
+          {
+            "rung": 3,
+            "body_md": "Would an official review document give anyone a 'shout-out'?"
+          }
+        ],
+        "C": [
+          {
+            "rung": 1,
+            "body_md": "What would happen if a review board wrote 'totally' in its findings?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Check each option for conversational intensifiers that official prose avoids."
+          },
+          {
+            "rung": 3,
+            "body_md": "Does 'totally impressed' sound like a formal report or a text message?"
+          }
+        ],
+        "D": [
+          {
+            "rung": 1,
+            "body_md": "In your own words, what tone does 'thought the world of' carry?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Sort the options into formal and folksy piles before judging meaning."
+          },
+          {
+            "rung": 3,
+            "body_md": "Is a warm, homey idiom the way a review board records its judgment?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ti-gen-038f8016ffed3337",
+      "subject": "act-english",
+      "skill_id": "s-style",
+      "difficulty": 2,
+      "context_html": "Last February, the sorting team <u>made the decision to donate</u> unsold coats to a nearby shelter.",
+      "stem_md": "Which choice expresses the idea most concisely?",
+      "choices": [
+        {
+          "letter": "A",
+          "label": "NO CHANGE"
+        },
+        {
+          "letter": "B",
+          "label": "decided to donate"
+        },
+        {
+          "letter": "C",
+          "label": "decided on making a donation of"
+        },
+        {
+          "letter": "D",
+          "label": "came to the decision that it would be best to donate"
+        }
+      ],
+      "answer_letter": "B",
+      "per_choice_rationale": {
+        "A": "'Made the decision to' is a padded version of a single verb.",
+        "B": "Correct: one verb delivers the entire meaning without padding.",
+        "C": "Trades one padded phrase for another, burying the action in 'making a donation of.'",
+        "D": "Expands the padding further with an empty judgment clause."
+      },
+      "why_correct_md": "When a phrase can shrink to a single verb with **no loss of meaning**, the shorter version is correct.",
+      "why_tempted_md": "'Made the decision' sounds weightier and more official, so students equate its bulk with precision.",
+      "rule_md": "1) Find the action hiding inside the noun phrase. 2) Replace the phrase with that verb. 3) Compare meanings — if identical, keep the verb. 4) Scan the shorter option for leftover padding. 5) Confirm grammar still works in context.",
+      "item_type": "underlined-span-mc",
+      "reviewed": true,
+      "generated_by": "claude-fable-5+claude-opus-4-8>=v1@4931561dee2300e4a1b57ee1413067b6",
+      "standard_id": 8,
+      "misconception": null,
+      "_hint_ladders": {
+        "A": [
+          {
+            "rung": 1,
+            "body_md": "Which single word inside this phrase carries the actual action?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Run a compression test: can the phrase collapse into one verb with the same meaning?"
+          },
+          {
+            "rung": 3,
+            "body_md": "Does 'made the decision to' tell the reader anything that a one-word verb wouldn't?"
+          }
+        ],
+        "C": [
+          {
+            "rung": 1,
+            "body_md": "Compare this version to the original — did it actually get leaner?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Check both halves of the phrase for padding; fixing one end can inflate the other."
+          },
+          {
+            "rung": 3,
+            "body_md": "If the team simply gave the coats away, why wrap that act in 'making a donation of'?"
+          }
+        ],
+        "D": [
+          {
+            "rung": 1,
+            "body_md": "How did you weigh the length of this option against what it adds?"
+          },
+          {
+            "rung": 2,
+            "body_md": "Padding alert: clauses like 'that it would be best' often assert nothing the sentence needs."
+          },
+          {
+            "rung": 3,
+            "body_md": "Does the sentence require a verdict about what 'would be best,' or just the action the team took?"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -54,6 +54,18 @@ describe("CoachChrome — structure (FR-4)", () => {
     expect(doc.querySelector("[data-testid='coach-history']")).toBeNull();
   });
 
+  it("FR-21: mode + chip rows never scroll horizontally (they wrap)", () => {
+    const doc = staticDoc({ vm: vm(), busy: false, onAsk: () => {} });
+    for (const id of ["coach-modes", "coach-chips"]) {
+      const el = doc.querySelector(`[data-testid='${id}']`);
+      expect(el, id).toBeTruthy();
+      expect(el?.className ?? "", `${id} must not overflow-x`).not.toMatch(
+        /overflow-x-(auto|scroll)/,
+      );
+      expect(el?.className ?? "", `${id} must wrap`).toContain("flex-wrap");
+    }
+  });
+
   it("shows current-item and history when present (FR-5, FR-6)", () => {
     const doc = staticDoc({
       vm: vm({

@@ -34,6 +34,7 @@ function summary(over: Partial<SessionSummaryVM> = {}): SessionSummaryVM {
     misconception: null,
     selfCorrected: false,
     showFramedTitle: false,
+    outcomeCounts: null,
     ...over,
   };
 }
@@ -218,5 +219,23 @@ describe("SummaryView — C2 payoff (FR-3/FR-7/FR-13/FR-15/FR-16/FR-17)", () => 
     expect(doc.querySelector("header p")!.textContent).toContain(
       "Here's how this session went.",
     );
+  });
+});
+
+describe("SummaryView — outcome heading honesty (Phase-3 residual R6, VOICE-5)", () => {
+  it("global counts never sit under a per-skill run-until-cleared claim", () => {
+    const doc = dom(
+      <SummaryView
+        vm={vm({
+          summary: summary({
+            outcomeCounts: { firstTry: 0, coached: 1, walkedThrough: 1 },
+          }),
+        })}
+      />,
+    );
+    const outcomes = doc.querySelector('[data-testid="summary-outcomes"]');
+    expect(outcomes).not.toBeNull();
+    expect(outcomes!.textContent).not.toMatch(/Each skill ran/i);
+    expect(outcomes!.textContent).toMatch(/How items resolved this session/i);
   });
 });

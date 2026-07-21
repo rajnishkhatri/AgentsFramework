@@ -1,0 +1,23 @@
+[
+  "captured 01-quiz-idle-proto",
+  "captured 02-ack-rung1-proto",
+  "captured 03-rung2-proto",
+  "captured 04-exhaustion-proto",
+  "captured 05-walkthrough-feedback-proto",
+  "captured 06-feedback-tab-proto",
+  "captured 07-coach-proto",
+  "captured 08-summary-proto",
+  "captured 09-dashboard-proto",
+  "captured 10-coached-solve-proto",
+  "captured 01-quiz-idle-app",
+  "captured 02-ack-rung1-app",
+  "captured 03-rung2-app",
+  "captured 04-exhaustion-app",
+  "captured 05-walkthrough-feedback-app",
+  "captured 10-coached-solve-app",
+  "captured 08-end-session-result-app",
+  "end-session landed on: http://localhost:3000/learn/summary?session=fed171bb-5a1c-41ce-a05d-1aeb9f3fe6a6",
+  "captured 08b-summary-direct-app",
+  "captured 07-coach-app",
+  "captured 09-dashboard-app"
+]

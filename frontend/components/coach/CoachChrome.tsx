@@ -34,6 +34,8 @@ export function CoachChips(props: {
       data-testid="coach-chips"
       role="group"
       aria-label="Quick replies"
+      // FR-21/22 (ADR-0037): chips wrap and live in the scroll body — they never
+      // form a horizontal-scroll strip that clips its last chip.
       className="flex flex-wrap gap-2"
     >
       {seeds.map((seed) => (
@@ -46,7 +48,7 @@ export function CoachChips(props: {
             if (!busy) void onAsk(seed);
           }}
           className={cn(
-            "rounded-[13px] border border-border bg-surface px-3 py-1.5 text-xs",
+            "shrink-0 rounded-[13px] border border-border bg-surface px-3 py-1.5 text-xs",
             "hover:bg-accent-light hover:text-accent disabled:cursor-not-allowed disabled:opacity-50",
           )}
         >
@@ -119,6 +121,9 @@ export function CoachChrome(props: {
         data-testid="coach-modes"
         role="group"
         aria-label="Coach modes"
+        // FR-21/26 (ADR-0037): the mode indicator never scrolls horizontally —
+        // it wraps. With only two live modes (FR-26) two chips fit the narrow
+        // panel; a third row wrapping is preferable to a clipped H-scroll strip.
         className="flex flex-wrap gap-2"
       >
         {vm.modes.map((m) => (
@@ -127,7 +132,7 @@ export function CoachChrome(props: {
             data-active={m.active ? "true" : "false"}
             aria-current={m.active ? "true" : undefined}
             className={cn(
-              "rounded-[13px] border px-2.5 py-1 text-xs",
+              "shrink-0 rounded-[13px] border px-2.5 py-1 text-xs",
               m.active
                 ? "border-accent bg-accent-light text-accent"
                 : "border-border bg-surface text-muted",

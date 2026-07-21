@@ -174,6 +174,12 @@ describe("Composer autosize CSS contract [FD2.U_AUTOSIZE]", () => {
     expect(ta.className).toMatch(/max-h-\[/);
     expect(ta.className).toMatch(/min-h-\[/);
   });
+
+  it("FR-15: coach composer input min-height is at least 58px (3.6rem)", () => {
+    const ta = render({ onSend: () => {} });
+    // 2 × 1.125rem × 1.6 ≈ 3.6rem = 57.6px → locked as 58px / min-h-[3.6rem]
+    expect(ta.className).toMatch(/min-h-\[3\.6rem\]/);
+  });
 });
 
 describe("Composer label contract [FD2.U_LBL]", () => {

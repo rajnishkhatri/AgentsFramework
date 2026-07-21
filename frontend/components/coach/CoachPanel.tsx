@@ -1,17 +1,14 @@
 /**
- * CoachPanel — the iPad quiz split's persistent live coach panel (FR-J3/J3a).
+ * CoachPanel — Direction 2b Zone A/B/C stack (ADR-0035 / FR-5/10–15/20).
  *
- * Rendered beside the quiz item on the iPad surface. Contracts:
+ * Column (ADR-0037, single-scroll; header unpinned FR-27/M8):
+ *   B scroll — CoachChrome header (title/status/current-item/history + mode
+ *              chips) + dismiss, then ladder + conversation (role=log) + chips.
+ *              The ONLY scroll region; header scrolls away with it.
+ *   C pinned — composer (text entry + send). The SOLE pinned region (FR-23).
+ *   (There is no fixed Zone A: the ~187px header used to starve the transcript.)
  *
- *  - ONE thread (FR-J3): shared `coach_thread_store` via `useCoach`.
- *  - Two-tier hint (FR-J3a × FR-D5): "One more nudge" reveals deeper reviewed
- *    ladder rungs; exhausted → disabled (FR-B5).
- *  - B1 chrome (D1+D6): shared `CoachChrome` above the nudge ladder, driven by
- *    host-supplied pin + derived mode + skill-scoped misses (ADR-0025).
- *
- * Per F-R1 the panel owns no run logic (useCoach) and no hint logic (ladder
- * arrives as props). Callers should key the panel by question id so nudge
- * state resets per item.
+ * ONE thread via coach_thread_store / useCoach. Hint ladder arrives as props.
  */
 
 "use client";
@@ -27,13 +24,27 @@ import {
   type CoachSurfaceVM,
 } from "@/lib/translators/coach_surface_vm";
 import { honestCoachOpener } from "@/lib/translators/honest_coach_opener";
+import { Composer } from "@/components/chat/Composer";
+import { cn } from "@/lib/utils";
 import { CoachChrome, CoachChips } from "./CoachChrome";
 import { CoachView } from "./CoachView";
+import { HintLadderList, NUDGE_EXHAUSTED_REASON } from "./HintLadderList";
+import { CoachedLoopSection } from "./CoachedLoopSection";
+import { CoachedConfirmSection } from "./CoachedConfirmSection";
 import { useCoach } from "./use_coach";
 import { useCoachSurface } from "./use_coach_surface";
 import { setCoachPin } from "./coach_thread_store";
 import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
+import { useSurface } from "@/components/shell/use_surface";
+import type {
+  CoachedConfirmState,
+  CoachedLoopState,
+} from "@/components/quiz/quiz_screen_reducer";
+
+/** Idle copy when commit-first is ON and the learner has not yet submitted (FR-2). */
+export const COMMIT_FIRST_IDLE_COPY =
+  "Commit to a choice — coaching starts from what you pick. Ask me anything below; I never reveal the answer.";
 
 export function CoachPanel(props: {
   runtime: AgentRuntimeClient;
@@ -45,6 +56,32 @@ export function CoachPanel(props: {
   pin?: CoachSurfacePin | null;
   /** Optional skill display name for the history line. */
   skillLabel?: string | null;
+  /** Optional dismiss control (A3) — host owns panelDismissed. */
+  onDismiss?: () => void;
+  /** Imperative focus for Feedback→coach bridge (FR-14). */
+  composerFocusRef?: React.RefObject<HTMLTextAreaElement | null>;
+  /** Optional className override (drawer vs inline). */
+  className?: string;
+  /** Inline host sets true so e2e can find `coach-panel-inline`. */
+  inlineHost?: boolean;
+  /**
+   * Commit-first (FR-2/13): retire quiz-pin HintLadderList + nudge; show idle
+   * copy pre-submit. Wrong-pick loop also mirrors in this panel (v3).
+   */
+  commitFirstCoach?: boolean;
+  /** Active wrong-pick loop; when set, idle opener is suppressed (MOM-8). */
+  coachedLoop?: CoachedLoopState | null;
+  /** FR-15 coached-solve confirmation. */
+  coachedConfirm?: CoachedConfirmState | null;
+  readonly onNudge?: () => void;
+  readonly onTryAgain?: () => void;
+  readonly onEscape?: () => void;
+  readonly onSeeBreakdown?: () => void;
+  /**
+   * MOM-3 / VOICE-1: the current item, used to compose the shared-ground
+   * acknowledgment above rung 1 in the panel's coached section.
+   */
+  readonly ackQuestion?: import("@/lib/wire/engine_entities").Question;
 }): React.JSX.Element {
   const {
     runtime,
@@ -52,15 +89,26 @@ export function CoachPanel(props: {
     mode = "pre_submit",
     pin = null,
     skillLabel = null,
+    onDismiss,
+    composerFocusRef,
+    className,
+    inlineHost = false,
+    commitFirstCoach = false,
+    coachedLoop = null,
+    coachedConfirm = null,
+    onNudge,
+    onTryAgain,
+    onEscape,
+    onSeeBreakdown,
+    ackQuestion,
   } = props;
+  const surface = useSurface();
   const { learnerId } = useLearnIdentity();
   const { turns, busy, ask, retry } = useCoach(runtime, { mode });
   const { countMissesOnSkill } = useCoachSurface();
 
   const [missesOnSkill, setMissesOnSkill] = React.useState<number | null>(null);
 
-  // C1: keep the shared store pin + advisory mode in sync with the live quiz
-  // item so standalone `/learn/coach` shows honest chrome after panel → coach.
   React.useEffect(() => {
     setCoachPin(pin, mode);
   }, [pin, mode]);
@@ -100,15 +148,30 @@ export function CoachPanel(props: {
     [mode, pin, missesOnSkill, skillLabel],
   );
 
-  const openerMarkdown = React.useMemo(
-    () =>
-      honestCoachOpener({
-        pin,
-        missesOnSkill,
-        transcriptEmpty: turns.length === 0,
-      }),
-    [pin, missesOnSkill, turns.length],
-  );
+  const openerMarkdown = React.useMemo(() => {
+    // V10 / T19 / FR-15: coached loop or confirm owns the exchange.
+    if (commitFirstCoach && (coachedLoop != null || coachedConfirm != null)) {
+      return null;
+    }
+    if (commitFirstCoach && turns.length === 0 && mode === "pre_submit") {
+      return COMMIT_FIRST_IDLE_COPY;
+    }
+    return honestCoachOpener({
+      pin,
+      missesOnSkill,
+      skillLabel,
+      transcriptEmpty: turns.length === 0,
+    });
+  }, [
+    commitFirstCoach,
+    coachedLoop,
+    coachedConfirm,
+    mode,
+    pin,
+    missesOnSkill,
+    skillLabel,
+    turns.length,
+  ]);
 
   const deeperRungs = React.useMemo(
     () => hintLadder.filter((h) => h.rung > 1),
@@ -116,60 +179,107 @@ export function CoachPanel(props: {
   );
   const [revealed, setRevealed] = React.useState(0);
   const exhausted = revealed >= deeperRungs.length;
+  const revealedHints = deeperRungs.slice(0, revealed);
+  const isDesktop = surface === "desktop";
+  const showQuizLadder = !commitFirstCoach;
 
   return (
     <aside
-      data-testid="coach-panel"
+      data-testid={inlineHost ? "coach-panel-inline" : "coach-panel"}
+      data-inline={inlineHost ? "true" : undefined}
       aria-label="Live coach panel"
-      className="flex w-80 shrink-0 flex-col gap-3 rounded-[16px] border border-border bg-surface p-4"
+      style={
+        isDesktop
+          ? { width: "clamp(400px, 30vw, 480px)" }
+          : { width: "360px" }
+      }
+      className={cn(
+        "flex min-h-0 shrink-0 flex-col border-border bg-surface",
+        "min-w-0",
+        className,
+      )}
     >
-      <CoachChrome
-        vm={surfaceVm}
-        busy={busy}
-        onAsk={ask}
-        layout="stacked"
-        showChips={false}
-      />
-
-      <header className="flex flex-col gap-0.5">
-        <p className="text-sm font-semibold">Socratic mode · watching this item</p>
-        <p className="text-xs text-muted">
-          Same coach, same thread — pick it up on the Coach screen anytime.
-        </p>
-      </header>
-
-      <div className="flex flex-col gap-2">
-        {deeperRungs.slice(0, revealed).map((h) => (
-          <p
-            key={h.id}
-            data-testid={`panel-nudge-${h.rung}`}
-            className="rounded-[13px] bg-accent-light px-3 py-2 text-sm"
-          >
-            {h.body_md}
-          </p>
-        ))}
-        <button
-          type="button"
-          data-testid="one-more-nudge"
-          disabled={exhausted}
-          title={
-            exhausted
-              ? "That's every nudge for this one — try the coach below."
-              : undefined
-          }
-          onClick={() => setRevealed((n) => Math.min(n + 1, deeperRungs.length))}
-          className="min-h-11 w-fit rounded-full border border-dashed border-accent px-4 py-2 text-sm text-accent disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          One more nudge
-        </button>
-      </div>
-
+      {/* Zone B — the single scroll region. FR-27/M8: the identity header
+          (CoachChrome + dismiss) is unpinned and rides at the top of this body,
+          so it scrolls away with the transcript instead of eating a fixed
+          ~187px. The composer (Zone C) is the ONLY pinned region. */}
       <div
-        data-testid="coach-panel-composer"
-        className="flex min-h-0 flex-1 flex-col gap-3"
+        data-testid="coach-zone-b"
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-3.5"
       >
-        <CoachChips seeds={surfaceVm.chips} busy={busy} onAsk={ask} />
-        <div className="min-h-0 flex-1">
+        {/* Identity header — scrolls with the body (FR-27). Bottom hairline +
+            spacing keep it visually separated from the transcript below. */}
+        <div className="mb-3.5 shrink-0 border-b border-border pb-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <CoachChrome
+                vm={surfaceVm}
+                busy={busy}
+                onAsk={ask}
+                layout="stacked"
+                showChips={false}
+              />
+            </div>
+            {onDismiss != null ? (
+              <button
+                type="button"
+                data-testid="coach-panel-dismiss"
+                aria-label="Hide coach panel"
+                onClick={onDismiss}
+                className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-selected hover:text-fg"
+              >
+                ✕
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {showQuizLadder ? (
+          <>
+            <HintLadderList
+              revealed={revealedHints}
+              totalDeeper={deeperRungs.length}
+            />
+            {revealedHints.length > 0 ? (
+              <div
+                role="separator"
+                aria-hidden="true"
+                className="my-3.5 border-t border-border"
+              />
+            ) : null}
+          </>
+        ) : null}
+        {commitFirstCoach && coachedConfirm != null ? (
+          <div className="mb-3.5 shrink-0">
+            <CoachedConfirmSection
+              confirm={coachedConfirm}
+              {...(onSeeBreakdown != null ? { onSeeBreakdown } : {})}
+            />
+          </div>
+        ) : commitFirstCoach && coachedLoop != null ? (
+          <div className="mb-3.5 shrink-0">
+            <CoachedLoopSection
+              coachedLoop={coachedLoop}
+              hintLadder={hintLadder.map((h) => ({
+                rung: h.rung,
+                body_md: h.body_md,
+              }))}
+              {...(onNudge != null ? { onNudge } : {})}
+              {...(onTryAgain != null ? { onTryAgain } : {})}
+              {...(onEscape != null ? { onEscape } : {})}
+              {...(ackQuestion != null ? { ackQuestion } : {})}
+            />
+          </div>
+        ) : null}
+        <div className="mb-2 shrink-0">
+          <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-muted">
+            Conversation
+          </h3>
+        </div>
+        {/* Flow content — Zone B is the ONLY scroll region (FR-25); the single
+            vertical scroll now also carries the nudge control + quick-action
+            chips (FR-22/23), which used to live in the pinned bar. */}
+        <div className="min-w-0 break-words">
           <CoachView
             turns={turns}
             busy={busy}
@@ -177,7 +287,60 @@ export function CoachPanel(props: {
             onRetry={retry}
             placeholder="Ask about this item…"
             openerMarkdown={openerMarkdown}
+            showComposer={false}
           />
+        </div>
+
+        {/* "One more nudge" — scrolls with the body (FR-23: not in the pinned
+            bar). Kept below the conversation, above the chips. */}
+        {showQuizLadder ? (
+          <button
+            type="button"
+            data-testid="one-more-nudge"
+            disabled={exhausted}
+            aria-disabled={exhausted ? "true" : undefined}
+            title={exhausted ? NUDGE_EXHAUSTED_REASON : undefined}
+            onClick={() => {
+              if (exhausted) return;
+              setRevealed((n) => Math.min(n + 1, deeperRungs.length));
+            }}
+            className="mt-3 min-h-11 w-fit shrink-0 rounded-md border border-dashed border-accent px-[15px] py-1.5 text-sm font-semibold text-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            + One more nudge
+          </button>
+        ) : null}
+
+        {/* Quick-action chips — in the scroll body (FR-22), wrapping (FR-21). */}
+        <div className="mt-3 shrink-0">
+          <CoachChips seeds={surfaceVm.chips} busy={busy} onAsk={ask} />
+        </div>
+      </div>
+
+      {/* Zone C — pinned bar: composer only (FR-23). */}
+      <div
+        data-testid="coach-zone-c"
+        className="flex shrink-0 flex-col gap-3 border-t border-border px-4 py-3"
+      >
+        <div data-testid="coach-panel-composer" className="flex flex-col gap-3">
+          <Composer
+            onSend={(body) => ask(body)}
+            busy={busy}
+            placeholder="Ask about this item…"
+            // M3 / FR-24: coach composer is slim — no attach or model picker.
+            showToolbar={false}
+            {...(composerFocusRef != null
+              ? { textareaRef: composerFocusRef }
+              : {})}
+          />
+          {commitFirstCoach && coachedLoop == null ? (
+            <p
+              data-testid="coach-composer-footer"
+              className="text-xs text-muted"
+            >
+              Coaching starts after you submit — it works from what your pick
+              reveals.
+            </p>
+          ) : null}
         </div>
       </div>
     </aside>

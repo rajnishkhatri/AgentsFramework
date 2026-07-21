@@ -19,12 +19,23 @@ import { QuizView, QuizFrameChrome } from "@/components/quiz/QuizView";
 import { QuizProgress } from "@/components/quiz/QuizProgress";
 import { QuizDoneBanner } from "@/components/quiz/QuizDoneBanner";
 import { FeedbackView } from "@/components/feedback/FeedbackView";
+import { CoachDrawer } from "@/components/coach/CoachDrawer";
 import { CoachPanel } from "@/components/coach/CoachPanel";
+import { CoachTriggerPill } from "@/components/coach/CoachTriggerPill";
 import {
   setCoachChoiceLetter,
   setCoachPin,
 } from "@/components/coach/coach_thread_store";
-import { useSurface } from "@/components/shell/use_surface";
+import {
+  getShellLayoutSnapshot,
+  setPanelDismissed,
+  subscribeShellLayout,
+} from "@/components/shell/shell_layout_store";
+import {
+  coachMode,
+  RAIL_COLLAPSED,
+  useSurface,
+} from "@/components/shell/use_surface";
 import { useQuiz, type QuizItemResult } from "@/components/quiz/use_quiz";
 import { resolveQuizOpenMode } from "@/components/quiz/resolve_focus_mode";
 import { toQuizCoachPin } from "@/components/quiz/quiz_coach_pin";
@@ -43,10 +54,24 @@ import {
 import { toQuizItemVM } from "@/lib/translators/quiz_item_vm";
 import { toQuizProgressVM } from "@/lib/translators/quiz_progress_vm";
 import { resolveHintChoiceLetter } from "@/lib/translators/resolve_hint_choice_letter";
+import { resolveCommitFirstLadder } from "@/lib/translators/resolve_commit_first_ladder";
+import { EnvVarFlagsAdapter } from "@/lib/adapters/feature_flags/env_var_flags_adapter";
 import { screen } from "@/components/shell/nav_model";
 import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 import type { QuizSession, Skill } from "@/lib/wire/engine_entities";
+
+/** Sync flag snapshot for the quiz page (FR-14). Composition-ring adapter. */
+function readCommitFirstCoachFlag(): boolean {
+  return new EnvVarFlagsAdapter({
+    env: {
+      NEXT_PUBLIC_FF_COMMIT_FIRST_COACH:
+        process.env.NEXT_PUBLIC_FF_COMMIT_FIRST_COACH,
+      E2E_BYPASS_AUTH: process.env.E2E_BYPASS_AUTH,
+      NODE_ENV: process.env.NODE_ENV,
+    },
+  }).isEnabled("commit_first_coach");
+}
 
 /**
  * A Socratic nudge derived from the stem — deliberately generic so it never
@@ -64,11 +89,13 @@ export default function QuizPage(): React.JSX.Element {
     openItem,
     resumeSession,
     submit,
+    escape,
     closeSession,
     listSkillIds,
     listSkills,
     loadLadder,
   } = useQuiz();
+  const commitFirstCoach = React.useMemo(() => readCommitFirstCoachFlag(), []);
   const router = useRouter();
   const searchParams = useSearchParams();
   // FR-A5 / S2 (FR-6): `?focus=<skillId>` → drill. FR-A6 / FR-C5: `?mode=review`
@@ -78,22 +105,47 @@ export default function QuizPage(): React.JSX.Element {
   // Deep-link intent: open the requested mode, do not resume a prior adaptive walk.
   const wantsFreshSession =
     modeParam === "review" || (focusParam != null && focusParam.length > 0);
-  // FR-J3: on the iPad surface the Quiz renders as a SPLIT — item on the left,
-  // the persistent live coach panel on the right, feeding the SAME coach
-  // thread as the Coach screen. The coach-pointed runtime is built only when
-  // the split is live (page-level composition access, Rule C1).
+  // ADR-0035 Direction 2b: quiz host switches on coachMode (not pin ladder).
+  // Content screens always mount with 64px rail — pass RAIL_COLLAPSED.
   const surface = useSurface();
+  const [viewportWidth, setViewportWidth] = React.useState(1200);
+  React.useEffect(() => {
+    const measure = () => setViewportWidth(window.innerWidth);
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+  const mode = coachMode(surface, viewportWidth, RAIL_COLLAPSED);
   const coachRuntime = React.useMemo(
     () =>
-      surface === "ipad"
-        ? buildBrowserRuntimeClient({ baseUrl: "/api/coach" })
-        : null,
-    [surface],
+      mode === "fullscreen"
+        ? null
+        : buildBrowserRuntimeClient({ baseUrl: "/api/coach" }),
+    [mode],
   );
+  const shellLayout = React.useSyncExternalStore(
+    subscribeShellLayout,
+    getShellLayoutSnapshot,
+    getShellLayoutSnapshot,
+  );
+  const composerFocusRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const pillRef = React.useRef<HTMLButtonElement | null>(null);
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [state, dispatch] = React.useReducer(
     quizScreenReducer,
     initialQuizScreen,
   );
+
+  // v3: open the coach as soon as a wrong commit starts the ladder (MOM-3).
+  const coachedLoopActive =
+    commitFirstCoach &&
+    state.phase === "answering" &&
+    state.coachedLoop != null;
+  React.useEffect(() => {
+    if (!coachedLoopActive) return;
+    setDrawerOpen(true);
+    if (shellLayout.panelDismissed) setPanelDismissed(false);
+  }, [coachedLoopActive, shellLayout.panelDismissed]);
 
   // The open session (+ its id, the Summary handoff key) for the page's life.
   const [session, setSession] = React.useState<QuizSession | null>(null);
@@ -174,7 +226,9 @@ export default function QuizPage(): React.JSX.Element {
 
     start().catch((err: unknown) => {
       if (!cancelled) {
-        setError(err instanceof Error ? err.message : "Failed to start the session");
+        setError(
+          err instanceof Error ? err.message : "Failed to start the session",
+        );
       }
     });
     return () => {
@@ -203,11 +257,20 @@ export default function QuizPage(): React.JSX.Element {
       .then((item) => {
         // D0 elapsed timing: stamp the monotonic clock the moment the item is
         // presented (clock start); onSubmit stops it to record a real elapsed_ms.
-        if (!cancelled) dispatch({ type: "item_loaded", item, presentedAt: performance.now() });
+        if (!cancelled)
+          dispatch({
+            type: "item_loaded",
+            item,
+            presentedAt: performance.now(),
+          });
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load the next question");
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Failed to load the next question",
+          );
         }
       });
     return () => {
@@ -250,9 +313,9 @@ export default function QuizPage(): React.JSX.Element {
     });
   }, [session, state]);
 
-  // Effect 4: desktop has no CoachPanel — keep coach_thread_store pin aligned
+  // Effect 4: iPhone has no CoachPanel — keep coach_thread_store pin aligned
   // with the live item so sidebar "Coach" matches Ask-the-coach (not cold/stale Q1).
-  // iPad CoachPanel already writes the same store; skip to avoid a duplicate path.
+  // Wide CoachPanel already writes the same store; skip to avoid a duplicate path.
   React.useEffect(() => {
     if (coachRuntime != null) return;
     if (session == null) return;
@@ -265,6 +328,7 @@ export default function QuizPage(): React.JSX.Element {
     const { pin, mode } = toQuizCoachPin({
       questionId: state.item.question.id,
       skillId: state.item.question.skill_id,
+      skillName: skillsById.get(state.item.question.skill_id)?.name ?? null,
       position: progressVm.position,
       phase: state.phase,
     });
@@ -273,9 +337,13 @@ export default function QuizPage(): React.JSX.Element {
 
   // Effect 5: ADR-0035 moment router — wrong letter → choice-conditional ladder
   // + coach_context.choice_letter; no/correct pick → item-level (null letter).
+  // Commit-first (FR-2/3): key off the *submitted* wrong letter (coachedLoop),
+  // not the pre-submit selection — so no ladder loads before a commit.
   const momentLetter =
     state.phase === "answering"
-      ? state.selectedLetter
+      ? commitFirstCoach
+        ? (state.coachedLoop?.activeLetter ?? null)
+        : state.selectedLetter
       : state.phase === "reviewing"
         ? state.answeredLetter
         : null;
@@ -287,16 +355,52 @@ export default function QuizPage(): React.JSX.Element {
     state.phase === "answering" || state.phase === "reviewing"
       ? state.item.question.answer_letter
       : null;
+  const momentStem =
+    state.phase === "answering" || state.phase === "reviewing"
+      ? state.item.question.stem
+      : null;
   React.useEffect(() => {
-    if (session == null || momentQuestionId == null || momentAnswerLetter == null) {
+    if (
+      session == null ||
+      momentQuestionId == null ||
+      momentAnswerLetter == null
+    ) {
+      return;
+    }
+    // Commit-first pre-submit: no letter committed → no ladder load (FR-2).
+    if (
+      commitFirstCoach &&
+      state.phase === "answering" &&
+      momentLetter == null
+    ) {
+      setCoachChoiceLetter(null);
       return;
     }
     const choice = resolveHintChoiceLetter(momentLetter, momentAnswerLetter);
     setCoachChoiceLetter(choice);
     let cancelled = false;
-    loadLadder(DEFAULT_SUBJECT, momentQuestionId, choice)
+    const load = (letter: string | null) =>
+      loadLadder(DEFAULT_SUBJECT, momentQuestionId, letter);
+    const ladderPromise =
+      commitFirstCoach && choice != null && momentStem != null
+        ? resolveCommitFirstLadder(
+            load,
+            choice,
+            socraticHint(momentStem),
+            momentQuestionId,
+            DEFAULT_SUBJECT,
+          )
+        : load(choice);
+    ladderPromise
       .then((hintLadder) => {
-        if (!cancelled) dispatch({ type: "ladder_loaded", hintLadder });
+        if (!cancelled)
+          dispatch({
+            type: "ladder_loaded",
+            hintLadder,
+            // G8 race guard: tag this load with the letter it was loaded for,
+            // so a slow L1 load arriving after a switch to L2 is ignored.
+            forLetter: choice,
+          });
       })
       .catch(() => {
         // Ladder reload is best-effort: keep the open-time item-level ladder.
@@ -309,17 +413,29 @@ export default function QuizPage(): React.JSX.Element {
     momentLetter,
     momentQuestionId,
     momentAnswerLetter,
+    momentStem,
     loadLadder,
+    commitFirstCoach,
+    state.phase,
   ]);
 
   const onSubmit = React.useCallback(() => {
     if (state.phase !== "answering" || session == null) return;
     const letter = state.selectedLetter;
+    // FR-7: same-letter resubmit is inert — skip record before it reaches the repo.
+    if (
+      commitFirstCoach &&
+      letter != null &&
+      state.coachedLoop?.activeLetter === letter
+    ) {
+      return;
+    }
     const { question } = state.item;
-    const usedHint = state.usedHint;
-    // D0 elapsed timing: real per-item latency (monotonic stop − start), replacing
-    // the former hardcoded `elapsedMs: 0`. Clamped non-negative / whole-ms by the helper.
+    const usedHint = state.usedHint || state.coachedLoop != null;
     const elapsedMs = elapsedMsFrom(state.presentedAt, performance.now());
+    const isFirstGradedAttempt = state.coachedLoop == null;
+    const hadPriorWrongAttempts =
+      state.coachedLoop != null && state.coachedLoop.wrongLetters.length > 0;
     submit({
       session,
       question,
@@ -327,14 +443,66 @@ export default function QuizPage(): React.JSX.Element {
       letter,
       elapsedMs,
       usedHint,
+      ...(commitFirstCoach
+        ? {
+            commitFirstCoach: true,
+            isFirstGradedAttempt,
+            hadPriorWrongAttempts,
+          }
+        : {}),
     })
       .then((result) => {
-        dispatch({ type: "submitted", verdict: result.verdict, letter });
+        dispatch({
+          type: "submitted",
+          verdict: result.verdict,
+          letter,
+          ...(commitFirstCoach ? { commitFirstCoach: true } : {}),
+        });
       })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Failed to grade your answer");
+        setError(
+          err instanceof Error ? err.message : "Failed to grade your answer",
+        );
       });
-  }, [state, session, submit]);
+  }, [state, session, submit, commitFirstCoach, learnerId]);
+
+  const onNudge = React.useCallback(() => {
+    dispatch({ type: "nudge_requested" });
+  }, []);
+
+  const onTryAgain = React.useCallback(() => {
+    dispatch({ type: "try_again" });
+  }, []);
+
+  const onSeeBreakdown = React.useCallback(() => {
+    dispatch({ type: "see_breakdown" });
+  }, []);
+
+  const onEscape = React.useCallback(() => {
+    if (state.phase !== "answering" || session == null) return;
+    const lastWrong = state.coachedLoop?.activeLetter;
+    if (lastWrong == null) return;
+    const elapsedMs = elapsedMsFrom(state.presentedAt, performance.now());
+    escape({
+      session,
+      question: state.item.question,
+      learnerId,
+      lastWrongLetter: lastWrong,
+      elapsedMs,
+      usedHint: true,
+      isFirstGradedAttempt: false,
+    })
+      .then(() => {
+        dispatch({ type: "escape_taken" });
+      })
+      .catch((err: unknown) => {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to walk through the item",
+        );
+      });
+  }, [state, session, escape, learnerId]);
 
   const onFinish = React.useCallback(() => {
     if (session == null) return;
@@ -345,7 +513,11 @@ export default function QuizPage(): React.JSX.Element {
     // session before the close lands. `close` is idempotent. The reducer carried
     // the tally across the whole walk; read it here.
     const { correct, total } = state.score;
-    closeSession({ sessionId: session.id, scoreCorrect: correct, scoreTotal: total })
+    closeSession({
+      sessionId: session.id,
+      scoreCorrect: correct,
+      scoreTotal: total,
+    })
       .then(() => {
         // FR-2: Finish clears the resume pointer; mastery snapshot stays for Summary.
         clearActiveQuiz();
@@ -353,31 +525,40 @@ export default function QuizPage(): React.JSX.Element {
         router.push(`${screen("summary").route}?session=${session.id}`);
       })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Failed to close the session");
+        setError(
+          err instanceof Error ? err.message : "Failed to close the session",
+        );
       });
   }, [session, state.score, closeSession, router]);
 
-  // D1 Q-8: End session — same close-with-tally as Finish, routes to dashboard
-  // (/learn) instead of Summary. Distinct reducer action so the two exits stay
-  // separable (FR-Q8-6).
+  // D1 Q-8: End session — same close-with-tally as Finish. G2 (SUM-1
+  // reachability): under commit-first with ≥1 resolved item, route to the
+  // summary view (score + outcome counts + misconception); 0 resolved →
+  // dashboard (today's behavior). Flag-OFF path unchanged — legacy end-session
+  // keeps routing to /learn (FR-Q8-6), so the flag-OFF e2e stays green.
   const onEndSession = React.useCallback(() => {
     if (session == null) return;
     dispatch({ type: "end_session" });
     const { correct, total } = state.score;
+    const routeToSummary = commitFirstCoach && total > 0;
     closeSession({
       sessionId: session.id,
       scoreCorrect: correct,
       scoreTotal: total,
     })
       .then(() => {
-        router.push(screen("dashboard").route);
+        router.push(
+          routeToSummary
+            ? `${screen("summary").route}?session=${session.id}`
+            : screen("dashboard").route,
+        );
       })
       .catch((err: unknown) => {
         setError(
           err instanceof Error ? err.message : "Failed to end the session",
         );
       });
-  }, [session, state.score, closeSession, router]);
+  }, [session, state.score, closeSession, router, commitFirstCoach]);
 
   if (error != null) {
     return (
@@ -412,30 +593,89 @@ export default function QuizPage(): React.JSX.Element {
     (state.phase === "answering" || state.phase === "reviewing");
   const startedAtIso = session?.started_at ?? null;
 
+  // S5 (FR-6/FR-7): the two advance actions keep their ORIGINAL labels
+  // ("Next question" / "Finish & see summary") for every pre-target review, and
+  // FLIP to "Keep practising" / "See summary" only once the target is reached
+  // (gated on `progressVm.complete`, in lock-step with the milestone banner).
+  // Label text is the ONLY thing that changes — testids + handlers are unchanged
+  // (FR-10). "Next question"/"Keep practising" both dispatch `next`; the finish
+  // control closes + routes either way (Summary never re-tallies).
+  // Review sessions (FR-A6): once complete the miss pool is finite — hide "Keep
+  // practising" (no over-run) so the learner sees only "See summary".
+  // V29 (v3-prototype parity): the SAME controls render in the coached-solve
+  // confirm state on the item column, so a coached correct is never a dead end.
+  const advanceControls = (
+    <div className="flex items-center justify-between gap-3">
+      {!(session?.mode === "review" && progressVm.complete) ? (
+        <button
+          type="button"
+          data-testid="quiz-next"
+          onClick={() => dispatch({ type: "next" })}
+          className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
+        >
+          {progressVm.complete ? "Keep practising" : "Next question →"}
+        </button>
+      ) : null}
+      <button
+        type="button"
+        data-testid="quiz-finish"
+        onClick={onFinish}
+        className={
+          session?.mode === "review" && progressVm.complete
+            ? "rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
+            : "rounded-full border border-border px-6 py-3 font-medium hover:bg-selected"
+        }
+      >
+        {progressVm.complete ? "See summary" : "Finish & see summary"}
+      </button>
+    </div>
+  );
+
   let item: QuizItemResult;
   let content: React.JSX.Element;
   if (state.phase === "answering") {
     item = state.item;
     const vm = toQuizItemVM(state.item.question, skillsById);
+    // V29 (v3-prototype parity): a coached solve confirms in place (FR-15) but is
+    // SOLVED — the prototype shows "Next question →" on the item column in this
+    // state (`showContinue = s.solved`), so the learner is never stuck on a
+    // solved item with no forward control. The breakdown stays an opt-in in the
+    // coach panel; these controls are the direct advance the panel lacked.
     content = (
-      <QuizView
-        key={state.item.question.id}
-        vm={vm}
-        selectedLetter={state.selectedLetter}
-        onSelect={(letter) => dispatch({ type: "select", letter })}
-        onSubmit={onSubmit}
-        hintOpen={state.hintOpen}
-        // ADR-0014 (FR-D5/FR-20): the reviewed ladder's probe rung when one
-        // exists; the generic stem nudge only as the no-ladder fallback.
-        hint={
-          state.item.hintLadder[0]?.body_md ??
-          socraticHint(state.item.question.stem)
-        }
-        onToggleHint={() => dispatch({ type: "toggle_hint" })}
-        endSessionEnabled={endSessionEnabled}
-        onEndSession={onEndSession}
-        startedAtIso={startedAtIso}
-      />
+      <div className="mx-auto flex max-w-[760px] flex-col gap-6">
+        <QuizView
+          key={state.item.question.id}
+          vm={vm}
+          selectedLetter={state.selectedLetter}
+          onSelect={(letter) => dispatch({ type: "select", letter })}
+          onSubmit={onSubmit}
+          hintOpen={state.hintOpen}
+          // ADR-0014 (FR-D5/FR-20): the reviewed ladder's probe rung when one
+          // exists; the generic stem nudge only as the no-ladder fallback.
+          hint={
+            state.item.hintLadder[0]?.body_md ??
+            socraticHint(state.item.question.stem)
+          }
+          onToggleHint={() => dispatch({ type: "toggle_hint" })}
+          endSessionEnabled={endSessionEnabled}
+          onEndSession={onEndSession}
+          startedAtIso={startedAtIso}
+          commitFirstCoach={commitFirstCoach}
+          coachedLoop={state.coachedLoop}
+          coachedConfirm={state.coachedConfirm}
+          hintLadder={state.item.hintLadder}
+          onNudge={onNudge}
+          onTryAgain={onTryAgain}
+          onEscape={onEscape}
+          onSeeBreakdown={onSeeBreakdown}
+          // Fullscreen has no CoachPanel — keep the ladder on the item column.
+          renderCoachedInline={mode === "fullscreen" || coachRuntime == null}
+          ackQuestion={state.item.question}
+          whyItemPosition={progressVm.position}
+          whyItemTotal={progressVm.total}
+        />
+        {state.coachedConfirm != null ? advanceControls : null}
+      </div>
     );
   } else {
     // reviewing — Feedback is a Quiz sub-state (OD-5), rendered inline with the
@@ -448,28 +688,52 @@ export default function QuizPage(): React.JSX.Element {
       state.item.question,
       state.verdict,
       { letter: state.answeredLetter },
+      state.resolution,
+      { skillName: itemVm.skillName },
     );
-    // FR-5 / F-6: desktop Ask-the-coach writes store pin + navigates; iPad
-    // already has the live CoachPanel (FR-8 — do not duplicate the bridge).
-    const onAskCoach =
-      surface !== "ipad" && feedback.present
-        ? () => {
-            const { pin, mode } = toQuizCoachPin({
-              questionId: feedback.askCoachContext.questionId,
-              skillId: feedback.askCoachContext.skillId,
-              position: progressVm.position,
-              phase: "reviewing",
-            });
-            setCoachPin(pin, mode);
-            setCoachChoiceLetter(
-              resolveHintChoiceLetter(
-                state.answeredLetter,
-                state.item.question.answer_letter,
-              ),
-            );
+    // FR-16/17/18: inline pin+focus; drawer open then focus after 220ms; iphone navigate.
+    // ADR-0035 (main): pin the wrong letter so the free-ask coach loads the
+    // choice-conditional ladder, regardless of which surface branch serves it.
+    const onAskCoach = feedback.present
+      ? () => {
+          const { pin, mode: coachPinMode } = toQuizCoachPin({
+            questionId: feedback.askCoachContext.questionId,
+            skillId: feedback.askCoachContext.skillId,
+            skillName:
+              skillsById.get(feedback.askCoachContext.skillId)?.name ?? null,
+            position: progressVm.position,
+            phase: "reviewing",
+          });
+          setCoachPin(pin, coachPinMode);
+          setCoachChoiceLetter(
+            resolveHintChoiceLetter(
+              state.answeredLetter,
+              state.item.question.answer_letter,
+            ),
+          );
+          if (mode === "fullscreen") {
             router.push(screen("coach").route);
+            return;
           }
-        : undefined;
+          if (mode === "drawer") {
+            setDrawerOpen(true);
+            const delay =
+              typeof window !== "undefined" &&
+              window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+                ? 0
+                : 220;
+            window.setTimeout(() => {
+              composerFocusRef.current?.focus();
+            }, delay);
+            return;
+          }
+          // inline
+          if (shellLayout.panelDismissed) setPanelDismissed(false);
+          requestAnimationFrame(() => {
+            composerFocusRef.current?.focus();
+          });
+        }
+      : undefined;
     content = (
       <div className="mx-auto flex max-w-[760px] flex-col gap-6">
         <QuizFrameChrome
@@ -493,44 +757,7 @@ export default function QuizPage(): React.JSX.Element {
             {...(onAskCoach !== undefined ? { onAskCoach } : {})}
           />
         ) : null}
-        <div className="flex items-center justify-between gap-3">
-          {/* S5 (FR-6/FR-7): the two actions keep their ORIGINAL labels
-              ("Next question" / "Finish & see summary") for every pre-target
-              review, and FLIP to "Keep practising" / "See summary" only once the
-              target is reached (gated on `progressVm.complete`, in lock-step with
-              the milestone banner — reverted 2026-07-09 from the unconditional
-              relabel). Label text is the ONLY thing that changes — testids +
-              handlers are unchanged, so S3/S4 selectors and the loop behaviour are
-              untouched (FR-10). "Next question"/"Keep practising" both dispatch the
-              same `next` (continuing the SAME session; past the target that is
-              over-run, tally kept); the finish control closes + routes either way
-              (Summary never re-tallies).
-              Review sessions (FR-A6): the miss pool is finite — once complete,
-              hide "Keep practising" (no over-run) so the learner only sees
-              "See summary" instead of an empty-pool error. */}
-          {!(session?.mode === "review" && progressVm.complete) ? (
-            <button
-              type="button"
-              data-testid="quiz-next"
-              onClick={() => dispatch({ type: "next" })}
-              className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
-            >
-              {progressVm.complete ? "Keep practising" : "Next question →"}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            data-testid="quiz-finish"
-            onClick={onFinish}
-            className={
-              session?.mode === "review" && progressVm.complete
-                ? "rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
-                : "rounded-full border border-border px-6 py-3 font-medium hover:bg-selected"
-            }
-          >
-            {progressVm.complete ? "See summary" : "Finish & see summary"}
-          </button>
-        </div>
+        {advanceControls}
       </div>
     );
   }
@@ -545,26 +772,95 @@ export default function QuizPage(): React.JSX.Element {
     </div>
   );
 
-  // iPad split (FR-J3): item on the left, the persistent live coach panel on
-  // the right. Keyed by question id so the panel's nudge tier resets per item
-  // (FR-J3a); the coach THREAD itself lives in coach_thread_store and survives.
-  if (coachRuntime != null) {
+  // coachMode switch (FR-1/10/18): inline | drawer | fullscreen (no panel).
+  if (coachRuntime != null && mode !== "fullscreen") {
     const coachPin = toQuizCoachPin({
       questionId: item.question.id,
       skillId: item.question.skill_id,
+      skillName: skillsById.get(item.question.skill_id)?.name ?? null,
       position: progressVm.position,
       phase: state.phase === "reviewing" ? "reviewing" : "answering",
     });
+    const itemMax = surface === "desktop" ? "max-w-[720px]" : "max-w-[560px]";
+    const coachedLoop = state.phase === "answering" ? state.coachedLoop : null;
+    const coachedConfirm =
+      state.phase === "answering" ? state.coachedConfirm : null;
+    const panel = (
+      <CoachPanel
+        key={item.question.id}
+        runtime={coachRuntime}
+        hintLadder={item.hintLadder}
+        mode={coachPin.mode}
+        pin={coachPin.pin}
+        onDismiss={() => setPanelDismissed(true)}
+        composerFocusRef={composerFocusRef}
+        inlineHost={mode === "inline"}
+        className="h-full rounded-none border-0 border-l border-border"
+        commitFirstCoach={commitFirstCoach}
+        coachedLoop={coachedLoop}
+        coachedConfirm={coachedConfirm}
+        onNudge={onNudge}
+        onTryAgain={onTryAgain}
+        onEscape={onEscape}
+        onSeeBreakdown={onSeeBreakdown}
+        ackQuestion={item.question}
+      />
+    );
+
+    if (mode === "drawer") {
+      // `relative` hosts CoachDrawer (absolute) so the scrim stays inside main
+      // and never intercepts left-rail AppNav clicks (Home / Progress / …).
+      return (
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div
+            className={`mx-auto min-h-0 w-full flex-1 overflow-y-auto overscroll-contain ${itemMax} px-6 pb-12 pt-6`}
+          >
+            {framed}
+          </div>
+          {!drawerOpen ? (
+            <CoachTriggerPill
+              ref={pillRef}
+              onClick={() => setDrawerOpen(true)}
+            />
+          ) : null}
+          <CoachDrawer
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            restoreFocusRef={pillRef}
+          >
+            <CoachPanel
+              key={`drawer-${item.question.id}`}
+              runtime={coachRuntime}
+              hintLadder={item.hintLadder}
+              mode={coachPin.mode}
+              pin={coachPin.pin}
+              composerFocusRef={composerFocusRef}
+              className="h-full w-full max-w-none rounded-none border-0"
+              commitFirstCoach={commitFirstCoach}
+              coachedLoop={coachedLoop}
+              coachedConfirm={coachedConfirm}
+              onNudge={onNudge}
+              onTryAgain={onTryAgain}
+              onEscape={onEscape}
+              onSeeBreakdown={onSeeBreakdown}
+              ackQuestion={item.question}
+            />
+          </CoachDrawer>
+        </div>
+      );
+    }
+
+    // inline
     return (
-      <div className="flex items-start gap-6">
-        <div className="min-w-0 flex-1">{framed}</div>
-        <CoachPanel
-          key={item.question.id}
-          runtime={coachRuntime}
-          hintLadder={item.hintLadder}
-          mode={coachPin.mode}
-          pin={coachPin.pin}
-        />
+      <div className="flex min-h-0 flex-1 items-stretch">
+        <div
+          className={`min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain`}
+        >
+          <div className={`mx-auto w-full ${itemMax} px-8 pb-12 pt-8`}>
+            {framed}
+          </div>
+        </div>
+        {shellLayout.panelDismissed ? null : panel}
       </div>
     );
   }

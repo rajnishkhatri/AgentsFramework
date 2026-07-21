@@ -235,6 +235,9 @@ export const attempt = pgTable("attempt", {
   created_at: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  // Commit-first FR-10: set only on the resolving attempt. Null = legacy /
+  // non-resolving row (no backfill). Values: first_try | coached | walked_through.
+  resolution: text("resolution"),
 });
 
 /**

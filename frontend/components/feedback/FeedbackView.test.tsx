@@ -33,6 +33,8 @@ function question(over: Partial<Question> = {}): Question {
     per_choice_rationale: {
       A: "A is correct: singular collective noun.",
       B: "B tempted you: sounds plural.",
+      C: "C is a participle, not a finite verb.",
+      D: "D shifts the tense wrongly.",
     },
     why_correct_md: "…",
     why_tempted_md: "…",
@@ -146,5 +148,144 @@ describe("FeedbackView — Ask the coach (BP-2d / FR-5)", () => {
       .window.document;
     expect(doc.querySelector('[data-testid="feedback-ask-coach"]')?.textContent)
       .toContain("Ask the coach");
+  });
+});
+
+describe("FeedbackView — FBK-2 self-explanation input", () => {
+  it("renders an optional self-explanation textarea with the affordance copy", () => {
+    const doc = render(
+      { correct: false, correct_letter: "A", rationale_key: "B" },
+      { letter: "B" },
+    );
+    const textarea = doc.querySelector<HTMLTextAreaElement>(
+      '[data-testid="feedback-self-explanation"]',
+    );
+    expect(textarea).not.toBeNull();
+    // V18: prompt asks why the correct answer works; label keeps "Saying it back".
+    expect(textarea?.getAttribute("placeholder")).toMatch(/correct answer/i);
+    expect(doc.body.textContent).toMatch(/Saying it back makes it stick/i);
+  });
+
+  it("never gates progression — the textarea is not required", () => {
+    const doc = render(
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
+    const textarea = doc.querySelector<HTMLTextAreaElement>(
+      '[data-testid="feedback-self-explanation"]',
+    );
+    expect(textarea?.hasAttribute("required")).toBe(false);
+  });
+
+  it("appears on the walked-through resolution too (parity across outcomes)", () => {
+    const vm = toFeedbackVM(
+      question(),
+      { correct: false, correct_letter: "A", rationale_key: "B" },
+      { letter: "B" },
+      "walked_through",
+    );
+    const html = renderToStaticMarkup(
+      React.createElement(FeedbackView, { vm }),
+    );
+    const doc = new JSDOM(`<!doctype html><html><body>${html}</body></html>`)
+      .window.document;
+    expect(
+      doc.querySelector('[data-testid="feedback-self-explanation"]'),
+    ).not.toBeNull();
+  });
+});
+
+describe("FeedbackView — T23 composition presence (V16–V18)", () => {
+  it("renders feed cards, all-choice rationales, and non-gating gauge chips", () => {
+    const vm = toFeedbackVM(
+      question(),
+      { correct: false, correct_letter: "A", rationale_key: "B" },
+      { letter: "B" },
+      "walked_through",
+      { skillName: "Punctuation" },
+    );
+    const html = renderToStaticMarkup(
+      React.createElement(FeedbackView, { vm }),
+    );
+    const doc = new JSDOM(`<!doctype html><html><body>${html}</body></html>`)
+      .window.document;
+    expect(doc.querySelector('[data-testid="feedback-feed-cards"]')).not.toBeNull();
+    expect(doc.querySelector('[data-testid="feedback-feed-up"]')).not.toBeNull();
+    expect(doc.querySelector('[data-testid="feedback-feed-back"]')).not.toBeNull();
+    expect(doc.querySelector('[data-testid="feedback-feed-forward"]')).not.toBeNull();
+    expect(doc.querySelector('[data-testid="choice-rationale-C"]')).not.toBeNull();
+    expect(doc.querySelector('[data-testid="feedback-gauge"]')).not.toBeNull();
+    expect(
+      doc.querySelector('[data-testid="feedback-gauge-clicked"]')?.textContent,
+    ).toMatch(/This clicked/);
+    expect(
+      doc.querySelector('[data-testid="feedback-self-explanation"]')?.getAttribute(
+        "required",
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("FeedbackView — T22 walked-through banner + markdown (V14/V15)", () => {
+  it("walked-through banner names the answer and the last pick (V14)", () => {
+    const vm = toFeedbackVM(
+      question(),
+      { correct: false, correct_letter: "A", rationale_key: "B" },
+      { letter: "B" },
+      "walked_through",
+    );
+    const html = renderToStaticMarkup(
+      React.createElement(FeedbackView, { vm }),
+    );
+    const doc = new JSDOM(`<!doctype html><html><body>${html}</body></html>`)
+      .window.document;
+    const banner = doc.querySelector('[data-testid="feedback-banner"]');
+    expect(banner?.getAttribute("data-banner")).toBe("walked_through");
+    expect(banner?.textContent).toMatch(/answer appears here/i);
+    expect(banner?.textContent).toMatch(/it's A/i);
+    expect(banner?.textContent).toMatch(/last pick was B/i);
+  });
+
+  it("renders why_correct_md markdown without literal ** asterisks (V15)", () => {
+    const vm = toFeedbackVM(
+      question({
+        why_correct_md: "Commas separate **every item** in a simple series.",
+      }),
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
+    const html = renderToStaticMarkup(
+      React.createElement(FeedbackView, { vm }),
+    );
+    const doc = new JSDOM(`<!doctype html><html><body>${html}</body></html>`)
+      .window.document;
+    const why = doc.querySelector('[data-testid="feedback-why-correct"]');
+    expect(why?.textContent).toContain("every item");
+    expect(why?.textContent).not.toContain("**");
+    expect(why?.querySelector("strong, b")).not.toBeNull();
+  });
+});
+
+describe("FeedbackView — G5 why-tempted wrapper (FBK-1)", () => {
+  it("wraps the why-tempted block in a feedback-why-tempted element", () => {
+    const doc = render(
+      { correct: false, correct_letter: "A", rationale_key: "B" },
+      { letter: "B" },
+    );
+    const whyTempted = doc.querySelector(
+      '[data-testid="feedback-why-tempted"]',
+    );
+    expect(whyTempted).not.toBeNull();
+    expect(whyTempted?.textContent).toContain("Why B tempted you");
+  });
+
+  it("omits the why-tempted block on a correct pick (no distractor to explain)", () => {
+    const doc = render(
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
+    expect(
+      doc.querySelector('[data-testid="feedback-why-tempted"]'),
+    ).toBeNull();
   });
 });

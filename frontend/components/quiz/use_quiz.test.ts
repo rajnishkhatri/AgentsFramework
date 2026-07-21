@@ -21,6 +21,7 @@ import {
   openQuizItem,
   openQuizSession,
   resumeQuizSession,
+  runQuizEscape,
   runQuizSubmit,
 } from "./use_quiz";
 import {
@@ -946,5 +947,181 @@ describe("openQuizSession / openQuizItem — review misses (FR-A6 / FR-C5)", () 
         sessionId: review.session.id,
       }),
     ).rejects.toThrow(/no unserved missed questions/);
+  });
+});
+
+// --- Commit-first orchestration (FR-6/10/12) --------------------------------
+
+describe("runQuizSubmit/runQuizEscape — commit-first sequences (FR-6/12)", () => {
+  it("non-resolving first wrong: records, reviews once, does NOT notify (FR-12)", async () => {
+    const reviewCalls: string[] = [];
+    const notifyCalls: string[] = [];
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    const q = question({ answer_letter: "B" });
+    const result = await runQuizSubmit(
+      {
+        ...ports,
+        scheduler: {
+          ...ports.scheduler,
+          review: async (a) => {
+            reviewCalls.push(a.id);
+            return ports.scheduler.review(a);
+          },
+        },
+        quizSubmitNotifier: { notifySubmitted: (id) => notifyCalls.push(id) },
+      },
+      {
+        session,
+        question: q,
+        learnerId: LEARNER,
+        letter: "A",
+        elapsedMs: 1000,
+        usedHint: false,
+        resolvesItem: false,
+        isFirstGradedAttempt: true,
+      },
+    );
+    expect(result.verdict?.correct).toBe(false);
+    expect(result.attempt?.resolution == null).toBe(true);
+    expect(result.skillState).not.toBeNull();
+    expect(reviewCalls).toHaveLength(1);
+    expect(notifyCalls).toEqual([]);
+  });
+
+  it("wrong→wrong→correct: review exactly once (first attempt); coached resolution", async () => {
+    const reviewCalls: string[] = [];
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    const q = question({ answer_letter: "B" });
+    const bag = {
+      ...ports,
+      scheduler: {
+        ...ports.scheduler,
+        review: async (a: { id: string }) => {
+          reviewCalls.push(a.id);
+          return ports.scheduler.review(a as never);
+        },
+      },
+    };
+
+    const first = await runQuizSubmit(bag, {
+      session,
+      question: q,
+      learnerId: LEARNER,
+      letter: "A",
+      elapsedMs: 100,
+      usedHint: false,
+      resolvesItem: false,
+      isFirstGradedAttempt: true,
+    });
+    expect(first.attempt).not.toBeNull();
+    expect(first.skillState).not.toBeNull();
+
+    const second = await runQuizSubmit(bag, {
+      session,
+      question: q,
+      learnerId: LEARNER,
+      letter: "C",
+      elapsedMs: 200,
+      usedHint: true,
+      resolvesItem: false,
+      isFirstGradedAttempt: false,
+    });
+    expect(second.skillState).toBeNull();
+
+    const solved = await runQuizSubmit(bag, {
+      session,
+      question: q,
+      learnerId: LEARNER,
+      letter: "B",
+      elapsedMs: 300,
+      usedHint: true,
+      resolvesItem: true,
+      isFirstGradedAttempt: false,
+      resolution: "coached",
+    });
+    expect(solved.attempt?.resolution).toBe("coached");
+    expect(solved.attempt?.correct).toBe(true);
+    expect(solved.skillState).toBeNull();
+    expect(reviewCalls).toHaveLength(1);
+    expect(reviewCalls[0]).toBe(first.attempt?.id);
+  });
+
+  it("wrong×N→escape: review once; escape row walked_through correct=false (FR-6)", async () => {
+    const reviewCalls: string[] = [];
+    const notifyCalls: string[] = [];
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    const q = question({ answer_letter: "B" });
+    const bag = {
+      ...ports,
+      scheduler: {
+        ...ports.scheduler,
+        review: async (a: { id: string }) => {
+          reviewCalls.push(a.id);
+          return ports.scheduler.review(a as never);
+        },
+      },
+      quizSubmitNotifier: { notifySubmitted: (id: string) => notifyCalls.push(id) },
+    };
+
+    await runQuizSubmit(bag, {
+      session,
+      question: q,
+      learnerId: LEARNER,
+      letter: "A",
+      elapsedMs: 100,
+      usedHint: false,
+      resolvesItem: false,
+      isFirstGradedAttempt: true,
+    });
+
+    const escaped = await runQuizEscape(bag, {
+      session,
+      question: q,
+      learnerId: LEARNER,
+      lastWrongLetter: "A",
+      elapsedMs: 900,
+      usedHint: true,
+      isFirstGradedAttempt: false,
+    });
+    expect(escaped.attempt.correct).toBe(false);
+    expect(escaped.attempt.resolution).toBe("walked_through");
+    expect(escaped.attempt.chosen_letter).toBe("A");
+    expect(escaped.skillState).toBeNull();
+    expect(reviewCalls).toHaveLength(1);
+    expect(notifyCalls).toEqual([q.id]);
+  });
+
+  it("correct first try: resolution first_try; review once; notifies", async () => {
+    const reviewCalls: string[] = [];
+    const notifyCalls: string[] = [];
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    const q = question({ answer_letter: "B" });
+    const result = await runQuizSubmit(
+      {
+        ...ports,
+        scheduler: {
+          ...ports.scheduler,
+          review: async (a) => {
+            reviewCalls.push(a.id);
+            return ports.scheduler.review(a);
+          },
+        },
+        quizSubmitNotifier: { notifySubmitted: (id) => notifyCalls.push(id) },
+      },
+      {
+        session,
+        question: q,
+        learnerId: LEARNER,
+        letter: "B",
+        elapsedMs: 100,
+        usedHint: false,
+        resolvesItem: true,
+        isFirstGradedAttempt: true,
+        resolution: "first_try",
+      },
+    );
+    expect(result.attempt?.resolution).toBe("first_try");
+    expect(reviewCalls).toHaveLength(1);
+    expect(notifyCalls).toEqual([q.id]);
   });
 });

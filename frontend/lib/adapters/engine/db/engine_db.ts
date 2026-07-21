@@ -133,6 +133,8 @@ export interface EngineDb extends ReadableEngineDb {
    * `session_id`; order is not significant (the caller uses it as a set).
    */
   listSessionQuestionIds(sessionId: string): Promise<string[]>;
+  /** All attempts in a session, created_at ascending (commit-first FR-11). */
+  listSessionAttempts(sessionId: string): Promise<Attempt[]>;
   /**
    * The distinct skills served in one session, **newest-first** (S3.1, FR-5) —
    * the round-robin rotation projection (ADR-0024). Joins the session's

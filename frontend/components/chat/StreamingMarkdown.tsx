@@ -92,27 +92,41 @@ export function StreamingMarkdown(props: {
   text: string;
   modelBadge?: string;
   step?: { count: number; name: string };
+  /**
+   * `card` (default) — chat-shell bubble with `bg-bg` padding.
+   * `plain` — inherit parent surface (coach ladder / collapsible answers).
+   */
+  tone?: "card" | "plain";
 }): React.JSX.Element {
+  const tone = props.tone ?? "card";
+  const showChrome = Boolean(props.modelBadge || props.step);
   return (
-    <article className="grid gap-2 p-3 bg-bg text-fg">
-      <header className="flex gap-2 items-center text-xs text-muted">
-        {props.modelBadge ? (
-          <span
-            data-testid="model-badge"
-            className={cn(
-              "px-2 py-0.5 rounded-sm font-mono uppercase tracking-wide",
-              "bg-accent-light text-accent font-semibold",
-            )}
-          >
-            {props.modelBadge}
-          </span>
-        ) : null}
-        {props.step ? (
-          <span data-testid="step-meter" className="font-mono">
-            step {props.step.count} · {props.step.name}
-          </span>
-        ) : null}
-      </header>
+    <article
+      className={cn(
+        "text-fg",
+        tone === "card" ? "grid gap-2 bg-bg p-3" : "min-w-0",
+      )}
+    >
+      {showChrome ? (
+        <header className="flex items-center gap-2 text-xs text-muted">
+          {props.modelBadge ? (
+            <span
+              data-testid="model-badge"
+              className={cn(
+                "rounded-sm px-2 py-0.5 font-mono font-semibold uppercase tracking-wide",
+                "bg-accent-light text-accent",
+              )}
+            >
+              {props.modelBadge}
+            </span>
+          ) : null}
+          {props.step ? (
+            <span data-testid="step-meter" className="font-mono">
+              step {props.step.count} · {props.step.name}
+            </span>
+          ) : null}
+        </header>
+      ) : null}
       <div aria-live="polite" aria-atomic="false" className="leading-relaxed">
         <Markdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>
           {stabilizeStreamingMarkdown(props.text)}

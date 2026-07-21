@@ -53,6 +53,11 @@ if (!process.env.CI && isLocalBaseUrl(BASE_URL)) {
       ...(BYPASS_AUTH ? { E2E_BYPASS_AUTH: "1" } : {}),
       // C1-fix FR-2: composition-root fail-once for rail Retry e2e rows.
       NEXT_PUBLIC_PREACT_E2E_HOOKS: "1",
+      // Commit-first (FR-14 / plan R2): existing learn-e2e specs assume instant
+      // feedback. Default OFF for the Playwright webServer; opt in with
+      // NEXT_PUBLIC_FF_COMMIT_FIRST_COACH=1 for quiz-commit-first.spec.ts.
+      NEXT_PUBLIC_FF_COMMIT_FIRST_COACH:
+        process.env.NEXT_PUBLIC_FF_COMMIT_FIRST_COACH ?? "0",
     },
   });
 }

@@ -90,6 +90,16 @@ infra/gcp/terraform.tfvars.bak
 infra/gcp/tfplan.json
 infra/gcp/tfplan.txt
 
+# Terraform provider cache, lock, and plan artifacts — machine-local, never
+# committed. infra/dev-tier is the retired Neon stack (ADR-0031); its .terraform
+# dir + plans got captured by a `git stash -u` and must stay untracked.
+**/.terraform/
+*.tfplan
+*.tfplan.json
+infra/dev-tier/.terraform.lock.hcl
+infra/dev-tier/tfplan
+infra/dev-tier/tfplan.json
+
 # Local agent scratch (goal-judge runs, ad-hoc outputs)
 workspace/
 

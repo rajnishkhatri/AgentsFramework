@@ -55,3 +55,39 @@ describe("EnvVarFlagsAdapter env reads at module load (frozen)", () => {
     expect(flags.isEnabled("voice_mode")).toBe(false);
   });
 });
+
+describe("EnvVarFlagsAdapter commit_first_coach (FR-14)", () => {
+  it("defaults OFF when env is unset (prod staging posture)", () => {
+    const flags = new EnvVarFlagsAdapter({ env: {} });
+    expect(flags.isEnabled("commit_first_coach")).toBe(false);
+  });
+
+  it("defaults ON when E2E_BYPASS_AUTH=1 (dev/bypass soak)", () => {
+    const flags = new EnvVarFlagsAdapter({
+      env: { E2E_BYPASS_AUTH: "1" },
+    });
+    expect(flags.isEnabled("commit_first_coach")).toBe(true);
+  });
+
+  it("defaults ON when NODE_ENV=development", () => {
+    const flags = new EnvVarFlagsAdapter({
+      env: { NODE_ENV: "development" },
+    });
+    expect(flags.isEnabled("commit_first_coach")).toBe(true);
+  });
+
+  it("honors explicit NEXT_PUBLIC_FF_COMMIT_FIRST_COACH over bypass default", () => {
+    const off = new EnvVarFlagsAdapter({
+      env: {
+        E2E_BYPASS_AUTH: "1",
+        NEXT_PUBLIC_FF_COMMIT_FIRST_COACH: "0",
+      },
+    });
+    expect(off.isEnabled("commit_first_coach")).toBe(false);
+
+    const on = new EnvVarFlagsAdapter({
+      env: { NEXT_PUBLIC_FF_COMMIT_FIRST_COACH: "true" },
+    });
+    expect(on.isEnabled("commit_first_coach")).toBe(true);
+  });
+});

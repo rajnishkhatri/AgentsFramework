@@ -16,6 +16,7 @@ import type { ContentRepo } from "../../../ports/engine/content_repo";
 import { EngineNotFoundError, EngineRepoError } from "../../../ports/engine/errors";
 import type { QuizSession, SessionMode } from "../../../wire/engine_entities";
 import type { EngineDb } from "../db/engine_db";
+import { newUuid } from "../../../new_uuid";
 
 /**
  * The flat per-mode default length (S3, spec FR-5): 30 for every mode. It is the
@@ -51,7 +52,7 @@ export class DrizzleSessionRepo implements SessionRepo {
   constructor(deps: SessionRepoDeps) {
     this.db = deps.db;
     this.contentRepo = deps.contentRepo;
-    this.newId = deps.newId ?? (() => crypto.randomUUID());
+    this.newId = deps.newId ?? newUuid;
     this.now = deps.now ?? (() => new Date());
   }
 

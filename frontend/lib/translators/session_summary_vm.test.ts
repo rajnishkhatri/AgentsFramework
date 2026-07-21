@@ -10,7 +10,10 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { toSessionSummaryVM } from "./session_summary_vm";
+import {
+  countSessionOutcomes,
+  toSessionSummaryVM,
+} from "./session_summary_vm";
 import type { QuizSession, RecommendedNext, Skill } from "../wire/engine_entities";
 
 function session(over: Partial<QuizSession> = {}): QuizSession {
@@ -230,5 +233,50 @@ describe("toSessionSummaryVM — C2 payoff (FR-7/FR-8/FR-11/FR-13)", () => {
     expect(vm.body).toBe("The pattern: confusing past with participle.");
     expect(vm.misconception).toBe("confusing past with participle");
     expect(vm.selfCorrected).toBe(true);
+  });
+});
+
+describe("countSessionOutcomes — commit-first FR-11", () => {
+  it("counts first_try / coached / walked_through from resolving rows", () => {
+    const counts = countSessionOutcomes([
+      {
+        question_id: "q1",
+        correct: true,
+        resolution: "first_try",
+        created_at: "2026-07-19T00:00:01Z",
+      },
+      {
+        question_id: "q2",
+        correct: false,
+        resolution: null,
+        created_at: "2026-07-19T00:00:02Z",
+      },
+      {
+        question_id: "q2",
+        correct: true,
+        resolution: "coached",
+        created_at: "2026-07-19T00:00:03Z",
+      },
+      {
+        question_id: "q3",
+        correct: false,
+        resolution: "walked_through",
+        created_at: "2026-07-19T00:00:04Z",
+      },
+    ]);
+    expect(counts).toEqual({ firstTry: 1, coached: 1, walkedThrough: 1 });
+  });
+
+  it("legacy null-resolution correct ⇒ first_try; empty ⇒ null (AP-6)", () => {
+    expect(countSessionOutcomes([])).toBeNull();
+    const legacy = countSessionOutcomes([
+      {
+        question_id: "q1",
+        correct: true,
+        resolution: null,
+        created_at: "2026-07-19T00:00:01Z",
+      },
+    ]);
+    expect(legacy).toEqual({ firstTry: 1, coached: 0, walkedThrough: 0 });
   });
 });

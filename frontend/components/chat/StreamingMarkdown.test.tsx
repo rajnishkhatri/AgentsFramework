@@ -44,6 +44,18 @@ describe("StreamingMarkdown a11y", () => {
   });
 });
 
+describe("StreamingMarkdown tone", () => {
+  it("plain tone omits bg-bg card chrome", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(StreamingMarkdown, {
+        text: "Pay attention.",
+        tone: "plain",
+      }),
+    );
+    expect(html).not.toContain("bg-bg");
+  });
+});
+
 describe("StreamingMarkdown rendering (eval-UI F4)", () => {
   function render(text: string): Document {
     return dom(

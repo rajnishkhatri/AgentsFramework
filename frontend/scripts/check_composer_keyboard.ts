@@ -65,31 +65,53 @@ interface CheckResult {
   error?: string;
 }
 
-const STREAMING_DEP_PATTERN = /(stream|token|message|content|delta|body|chunk)/i;
+const STREAMING_DEP_PATTERN =
+  /(stream|token|message|content|delta|body|chunk)/i;
 
 function asTagName(open: JsxOpeningElement | JsxSelfClosingElement): string {
   return open.getTagNameNode().getText();
 }
 
-function findTextareas(sf: SourceFile): Array<JsxOpeningElement | JsxSelfClosingElement> {
+/**
+ * A composer's textarea may be either the raw lowercase `<textarea>` OR the
+ * shadcn `<Textarea>` primitive that wraps it (`components/ui/textarea.tsx`).
+ * `frontend/AGENTS.md` U7 MANDATES wrapping shadcn primitives, so the shipped
+ * `Composer.tsx` uses `<Textarea>`; matching only lowercase `textarea` fired a
+ * spurious "No <textarea> element found" against the mandated pattern. The
+ * U-family attributes (aria-label / rows / onKeyDown) sit on the `<Textarea>`
+ * element identically, so treating it as the composer element is sound. Matched
+ * case-insensitively but EXACTLY — a component named `TextareaGroup` or
+ * `AutoTextarea` is not the primitive and must not be picked up.
+ */
+function isTextareaTag(tag: string): boolean {
+  return tag.toLowerCase() === "textarea";
+}
+
+function findTextareas(
+  sf: SourceFile,
+): Array<JsxOpeningElement | JsxSelfClosingElement> {
   const out: Array<JsxOpeningElement | JsxSelfClosingElement> = [];
   for (const node of sf.getDescendants()) {
     if (node.getKind() === SyntaxKind.JsxOpeningElement) {
       const open = node as JsxOpeningElement;
-      if (asTagName(open) === "textarea") out.push(open);
+      if (isTextareaTag(asTagName(open))) out.push(open);
     } else if (node.getKind() === SyntaxKind.JsxSelfClosingElement) {
       const sc = node as JsxSelfClosingElement;
-      if (asTagName(sc) === "textarea") out.push(sc);
+      if (isTextareaTag(asTagName(sc))) out.push(sc);
     }
   }
   return out;
 }
 
-function attributeNames(open: JsxOpeningElement | JsxSelfClosingElement): Set<string> {
+function attributeNames(
+  open: JsxOpeningElement | JsxSelfClosingElement,
+): Set<string> {
   const out = new Set<string>();
   for (const attr of open.getAttributes()) {
     if (attr.getKind() !== SyntaxKind.JsxAttribute) continue;
-    const name = (attr as { getNameNode?: () => { getText: () => string } }).getNameNode?.().getText();
+    const name = (attr as { getNameNode?: () => { getText: () => string } })
+      .getNameNode?.()
+      .getText();
     if (name) out.add(name);
   }
   return out;
@@ -101,9 +123,13 @@ function attributeText(
 ): string | null {
   for (const attr of open.getAttributes()) {
     if (attr.getKind() !== SyntaxKind.JsxAttribute) continue;
-    const got = (attr as { getNameNode?: () => { getText: () => string } }).getNameNode?.().getText();
+    const got = (attr as { getNameNode?: () => { getText: () => string } })
+      .getNameNode?.()
+      .getText();
     if (got === name) {
-      const init = (attr as { getInitializer?: () => unknown }).getInitializer?.();
+      const init = (
+        attr as { getInitializer?: () => unknown }
+      ).getInitializer?.();
       if (!init) return "";
       const node = init as { getText: () => string };
       return node.getText();
@@ -112,7 +138,10 @@ function attributeText(
   return null;
 }
 
-function evaluateKeyboardSubmit(sf: SourceFile): { u_kbd: boolean; u_ime: boolean } {
+function evaluateKeyboardSubmit(sf: SourceFile): {
+  u_kbd: boolean;
+  u_ime: boolean;
+} {
   const text = sf.getFullText();
   // U_KBD: the submit branch matches plain Enter and excludes the newline
   // modifiers (Meta / Ctrl / Shift). Accept either ordering of the
@@ -166,7 +195,9 @@ function evaluateAutosize(
   if (/field-sizing\s*:\s*content/.test(fileText)) return true;
 
   const hasScrollHeight = /scrollHeight/.test(fileText);
-  const hasUseRefForTextarea = /useRef\s*<\s*HTMLTextAreaElement/.test(fileText);
+  const hasUseRefForTextarea = /useRef\s*<\s*HTMLTextAreaElement/.test(
+    fileText,
+  );
   if (hasScrollHeight && hasUseRefForTextarea) return true;
 
   // If every textarea has rows>=2 OR no rows at all (default 2), give it the
@@ -197,7 +228,10 @@ function evaluateLabel(
     if (names.has("id")) {
       const id = attributeText(ta, "id") ?? "";
       const idValue = id.replace(/[{}'"`]/g, "").trim();
-      if (idValue && new RegExp(`htmlFor\\s*=\\s*["'\`]${idValue}["'\`]`).test(fileText)) {
+      if (
+        idValue &&
+        new RegExp(`htmlFor\\s*=\\s*["'\`]${idValue}["'\`]`).test(fileText)
+      ) {
         return true;
       }
     }
@@ -212,7 +246,8 @@ function evaluateFocusNoSteal(sf: SourceFile): boolean {
   // names a streaming-shaped variable.
   const fileText = sf.getFullText();
   // Simple regex over the file: useEffect(... focus() ..., [..stream/token/message..])
-  const useEffectFocus = /useEffect\s*\(\s*\([^)]*\)\s*=>\s*\{[^}]*\.focus\s*\(\s*\)[^}]*\}\s*,\s*\[([^\]]*)\]/g;
+  const useEffectFocus =
+    /useEffect\s*\(\s*\([^)]*\)\s*=>\s*\{[^}]*\.focus\s*\(\s*\)[^}]*\}\s*,\s*\[([^\]]*)\]/g;
   let match: RegExpExecArray | null;
   while ((match = useEffectFocus.exec(fileText)) !== null) {
     const deps = match[1] ?? "";
@@ -232,13 +267,22 @@ export function checkComposerKeyboard(filepath: string): CheckResult {
     return {
       pass: false,
       file: filepath,
-      checks: { u_kbd: false, u_ime: false, u_autosize: false, u_lbl: false, u_focus_no_steal: true },
+      checks: {
+        u_kbd: false,
+        u_ime: false,
+        u_autosize: false,
+        u_lbl: false,
+        u_focus_no_steal: true,
+      },
       violations: [],
       error: `file not found: ${filepath}`,
     };
   }
   try {
-    const project = new Project({ useInMemoryFileSystem: false, compilerOptions: { jsx: 4 } });
+    const project = new Project({
+      useInMemoryFileSystem: false,
+      compilerOptions: { jsx: 4 },
+    });
     const sf = project.addSourceFileAtPath(abs);
     const textareas = findTextareas(sf);
     const { u_kbd, u_ime } = evaluateKeyboardSubmit(sf);
@@ -246,13 +290,20 @@ export function checkComposerKeyboard(filepath: string): CheckResult {
     const u_lbl = evaluateLabel(sf, textareas);
     const u_focus_no_steal = evaluateFocusNoSteal(sf);
 
-    const checks: ComposerChecks = { u_kbd, u_ime, u_autosize, u_lbl, u_focus_no_steal };
+    const checks: ComposerChecks = {
+      u_kbd,
+      u_ime,
+      u_autosize,
+      u_lbl,
+      u_focus_no_steal,
+    };
     const violations: Violation[] = [];
     if (textareas.length === 0) {
       violations.push({
         rule: "COMPOSER",
         line: 1,
-        description: "No <textarea> element found; check_composer_keyboard expects a composer-style component.",
+        description:
+          "No <textarea> element found; check_composer_keyboard expects a composer-style component.",
       });
     } else {
       const headLine = textareas[0]?.getStartLineNumber() ?? 1;
@@ -292,12 +343,23 @@ export function checkComposerKeyboard(filepath: string): CheckResult {
             "A useEffect with a streaming-shaped dependency moves focus into the composer; that steals focus from the live region (U5 regression).",
         });
     }
-    return { pass: violations.length === 0, file: filepath, checks, violations };
+    return {
+      pass: violations.length === 0,
+      file: filepath,
+      checks,
+      violations,
+    };
   } catch (e) {
     return {
       pass: false,
       file: filepath,
-      checks: { u_kbd: false, u_ime: false, u_autosize: false, u_lbl: false, u_focus_no_steal: true },
+      checks: {
+        u_kbd: false,
+        u_ime: false,
+        u_autosize: false,
+        u_lbl: false,
+        u_focus_no_steal: true,
+      },
       violations: [],
       error: e instanceof Error ? e.message : String(e),
     };
@@ -307,7 +369,9 @@ export function checkComposerKeyboard(filepath: string): CheckResult {
 function main(argv: string[]): number {
   const arg = argv[2];
   if (!arg) {
-    process.stderr.write("usage: tsx frontend/scripts/check_composer_keyboard.ts <filepath>\n");
+    process.stderr.write(
+      "usage: tsx frontend/scripts/check_composer_keyboard.ts <filepath>\n",
+    );
     return 2;
   }
   const result = checkComposerKeyboard(arg);

@@ -24,6 +24,7 @@ import type { EnginePortBag } from "@/lib/composition_engine";
 import { useEngine } from "@/app/engine-provider";
 import type {
   Attempt,
+  AttemptResolution,
   Hint,
   Question,
   QuizSession,
@@ -278,6 +279,32 @@ export interface QuizSubmitArgs {
   readonly letter: string | null;
   readonly elapsedMs: number;
   readonly usedHint: boolean;
+  /**
+   * Commit-first FR-10: set only on the resolving attempt. Omit/null for
+   * non-resolving wrongs and legacy single-attempt submits. When
+   * `commitFirstCoach` is true and this is omitted, derived from the verdict
+   * + `hadPriorWrongAttempts`.
+   */
+  readonly resolution?: AttemptResolution | null;
+  /**
+   * Commit-first FR-12: when false, skip `scheduler.review` (retry/escape after
+   * the first graded attempt). Default true preserves legacy always-review.
+   */
+  readonly isFirstGradedAttempt?: boolean;
+  /**
+   * Commit-first: when false, skip coach-marker notify (still in coached loop).
+   * Default true preserves legacy notify-on-every-real-submit. When
+   * `commitFirstCoach` is true and this is omitted, derived from the verdict
+   * (wrong ⇒ false, correct ⇒ true).
+   */
+  readonly resolvesItem?: boolean;
+  /**
+   * When true, derive resolvesItem/resolution from the graded verdict
+   * (wrong stays in loop; correct resolves as first_try/coached).
+   */
+  readonly commitFirstCoach?: boolean;
+  /** True when this item already has a recorded wrong (for coached vs first_try). */
+  readonly hadPriorWrongAttempts?: boolean;
 }
 
 export interface QuizSubmitResult {
@@ -285,13 +312,35 @@ export interface QuizSubmitResult {
   readonly verdict: Verdict | null;
   /** null when nothing was selected (no attempt recorded). */
   readonly attempt: Attempt | null;
-  /** null when nothing was selected (no FSRS review ran). */
+  /** null when nothing was selected or review was skipped (FR-12 retry). */
+  readonly skillState: SkillState | null;
+}
+
+export interface QuizEscapeArgs {
+  readonly session: QuizSession;
+  readonly question: Question;
+  readonly learnerId: string;
+  /** Last wrong letter (honest: learner never produced the key — FR-6). */
+  readonly lastWrongLetter: string;
+  readonly elapsedMs: number;
+  readonly usedHint: boolean;
+  /** Almost always false — exhaustion requires a prior wrong (FR-12). */
+  readonly isFirstGradedAttempt?: boolean;
+}
+
+export interface QuizEscapeResult {
+  readonly attempt: Attempt;
   readonly skillState: SkillState | null;
 }
 
 /**
  * Grade → (record + review) for one submitted answer. No selection ⇒ all-null
  * result and zero side effects (FR-D2a/D4).
+ *
+ * Commit-first extensions (optional args; defaults preserve legacy):
+ *   - `resolution` written on the resolving attempt only (FR-10)
+ *   - `scheduler.review` only when `isFirstGradedAttempt !== false` (FR-12)
+ *   - coach notify only when `resolvesItem !== false` (stay pre_submit in loop)
  */
 export async function runQuizSubmit(
   ports: EnginePortBag,
@@ -303,6 +352,18 @@ export async function runQuizSubmit(
     return { verdict: null, attempt: null, skillState: null };
   }
 
+  const commitFirst = args.commitFirstCoach === true;
+  const resolvesItem =
+    args.resolvesItem != null
+      ? args.resolvesItem
+      : commitFirst
+        ? verdict.correct
+        : true;
+  let resolution: AttemptResolution | null | undefined = args.resolution;
+  if (resolution === undefined && commitFirst && verdict.correct) {
+    resolution = args.hadPriorWrongAttempts ? "coached" : "first_try";
+  }
+
   const attempt = await ports.attemptRepo.record({
     subject: args.question.subject,
     session_id: args.session.id,
@@ -311,6 +372,7 @@ export async function runQuizSubmit(
     correct: verdict.correct,
     elapsed_ms: args.elapsedMs,
     used_hint: args.usedHint,
+    ...(resolution != null ? { resolution } : {}),
   });
 
   // ADR-0012 Amendment (FR-19): fire-and-forget marker write — flips the
@@ -320,15 +382,51 @@ export async function runQuizSubmit(
   // feedback the learner is already looking at. Only a REAL submit notifies
   // (the no-selection path returned above); a throwing notifier never
   // breaks grading (fail-closed: the coach just stays pre_submit).
+  // Commit-first: skip while still in the coached loop (`resolvesItem: false`).
+  if (resolvesItem) {
+    try {
+      ports.quizSubmitNotifier?.notifySubmitted(args.question.id);
+    } catch {
+      // Swallow by contract (QuizSubmitNotifier rule 1).
+    }
+  }
+
+  // FR-12: mastery reviews the first graded attempt only.
+  const isFirst = args.isFirstGradedAttempt !== false;
+  const skillState = isFirst ? await ports.scheduler.review(attempt) : null;
+
+  return { verdict, attempt, skillState };
+}
+
+/**
+ * Priced escape (FR-6): record a resolving attempt with `correct=false`,
+ * `resolution="walked_through"`, `chosen_letter` = last wrong letter. Notifies
+ * the coach marker (item resolved); reviews only if somehow first attempt.
+ */
+export async function runQuizEscape(
+  ports: EnginePortBag,
+  args: QuizEscapeArgs,
+): Promise<QuizEscapeResult> {
+  const attempt = await ports.attemptRepo.record({
+    subject: args.question.subject,
+    session_id: args.session.id,
+    question_id: args.question.id,
+    chosen_letter: args.lastWrongLetter,
+    correct: false,
+    elapsed_ms: args.elapsedMs,
+    used_hint: args.usedHint,
+    resolution: "walked_through",
+  });
+
   try {
     ports.quizSubmitNotifier?.notifySubmitted(args.question.id);
   } catch {
     // Swallow by contract (QuizSubmitNotifier rule 1).
   }
 
-  const skillState = await ports.scheduler.review(attempt);
-
-  return { verdict, attempt, skillState };
+  const isFirst = args.isFirstGradedAttempt === true;
+  const skillState = isFirst ? await ports.scheduler.review(attempt) : null;
+  return { attempt, skillState };
 }
 
 export interface CloseSessionArgs {
@@ -394,6 +492,7 @@ export function useQuiz(): {
     questionId: string;
   }) => Promise<{ session: QuizSession; item: QuizItemResult } | null>;
   submit: (args: QuizSubmitArgs) => Promise<QuizSubmitResult>;
+  escape: (args: QuizEscapeArgs) => Promise<QuizEscapeResult>;
   closeSession: (args: CloseSessionArgs) => Promise<QuizSession>;
   listSkillIds: (subject: string) => Promise<string[]>;
   listSkills: (subject: string) => Promise<Skill[]>;
@@ -413,6 +512,7 @@ export function useQuiz(): {
       resumeSession: (args: { sessionId: string; questionId: string }) =>
         resumeQuizSession(ports, args),
       submit: (args: QuizSubmitArgs) => runQuizSubmit(ports, args),
+      escape: (args: QuizEscapeArgs) => runQuizEscape(ports, args),
       closeSession: (args: CloseSessionArgs) => closeQuizSession(ports, args),
       listSkillIds: (subject: string) => listQuizSkillIds(ports, subject),
       listSkills: (subject: string) => listQuizSkills(ports, subject),

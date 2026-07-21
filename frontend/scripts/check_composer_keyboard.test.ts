@@ -148,3 +148,65 @@ describe("check_composer_keyboard — composite PASS fixture", () => {
     });
   });
 });
+
+// The real Composer renders its textarea through the shadcn `<Textarea>`
+// primitive (frontend/AGENTS.md U7 — wrap shadcn primitives; never a raw
+// element). The U-family attributes (aria-label, rows, onKeyDown) sit on that
+// `<Textarea>` element exactly as they would on a lowercase `<textarea>`. The
+// checker MUST see through the capitalized primitive tag, or it fires a spurious
+// "No <textarea> element found" COMPOSER violation on the one composer the repo
+// actually ships — a false positive against the mandated pattern.
+const PASS_BODY_PRIMITIVE = `
+import * as React from "react";
+import { Textarea } from "@/components/ui/textarea";
+export function Composer(props: { onSend: (b: string) => void }): React.JSX.Element {
+  const [body, setBody] = React.useState("");
+  const taRef = React.useRef<HTMLTextAreaElement>(null);
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
+    if (e.nativeEvent.isComposing) return;
+    const isSubmit = e.key === "Enter" && !e.metaKey && !e.ctrlKey && !e.shiftKey;
+    if (isSubmit) {
+      e.preventDefault();
+      props.onSend(body);
+    }
+  }
+  return (
+    <Textarea
+      ref={taRef}
+      rows={2}
+      value={body}
+      onChange={(e) => setBody(e.target.value)}
+      onKeyDown={onKeyDown}
+      aria-label="Compose message"
+    />
+  );
+}
+`;
+
+describe("check_composer_keyboard — shadcn <Textarea> primitive (U7 wrapper)", () => {
+  it("recognizes the <Textarea> primitive — no spurious COMPOSER violation", () => {
+    const fp = tmpTsx(PASS_BODY_PRIMITIVE);
+    const r = checkComposerKeyboard(fp);
+    expect(
+      r.violations.find((v) => v.rule === "COMPOSER"),
+      "the <Textarea> primitive must be treated as a composer element",
+    ).toBeFalsy();
+  });
+
+  it("evaluates the U-family contracts ON the <Textarea> primitive element", () => {
+    const fp = tmpTsx(PASS_BODY_PRIMITIVE);
+    const r = checkComposerKeyboard(fp);
+    if (!r.pass) {
+      throw new Error(
+        `Expected primitive composer PASS: ${JSON.stringify(r, null, 2)}`,
+      );
+    }
+    expect(r.checks).toEqual({
+      u_kbd: true,
+      u_ime: true,
+      u_autosize: true,
+      u_lbl: true,
+      u_focus_no_steal: true,
+    });
+  });
+});

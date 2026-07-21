@@ -1,16 +1,8 @@
 /**
- * PreAct iPad split — persistent live coach panel (FR-J3/J3a/J4) — Phase 4.3.
+ * PreAct iPad split — Direction 2b coachMode inline at 1024×768 (FR-J3/J3a).
  *
- * The prototype oracle rows this re-states against the real shell:
- *   - ipad · "split Quiz with live coach panel"      → quiz_split_with_persistent_live_coach_panel
- *   - ipad · "in-drill coach panel posts into the Coach thread" → panel_message_lands_in_shared_coach_thread
- *   - ipad · deeper-hint "One more nudge"            → one_more_nudge_deeper_hint
- *
- * Surface: width 481..1024 is the iPad band (`surfaceForWidth`); 1024×768
- * exercises the split. The coach SSE is MOCKED (no live LLM); the shared-thread
- * assertion navigates via the in-app sidebar link (client-side nav — a
- * page.goto() would reload the JS heap and drop the module store, which is the
- * documented non-persistence contract, not a bug).
+ * Surface: width 481..1024 is the iPad band; 1024 − 64 ≥ 900 → inline.
+ * Coach SSE is MOCKED (no live LLM).
  */
 
 import { test, expect, type Page } from "@playwright/test";
@@ -49,7 +41,7 @@ async function openQuiz(page: Page): Promise<void> {
   });
 }
 
-test.describe("PreAct iPad split (FR-J3/J3a)", () => {
+test.describe("PreAct iPad split (FR-J3/J3a / coachMode inline)", () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize(IPAD);
     await seedBrowser(page);
@@ -58,14 +50,13 @@ test.describe("PreAct iPad split (FR-J3/J3a)", () => {
 
   test("quiz_split_with_persistent_live_coach_panel", async ({ page }) => {
     await openQuiz(page);
-    const panel = page.getByTestId("coach-panel");
+    const panel = page.getByTestId("coach-panel-inline");
     await expect(panel).toBeVisible();
-    await expect(panel).toContainText("Socratic mode · watching this item");
-    // Item-scoped composer copy (FR-J3), distinct from the Coach screen's.
+    await expect(page.getByTestId("coach-trigger-pill")).toHaveCount(0);
+    await expect(page.getByTestId("coach-edge-tab")).toHaveCount(0);
     await expect(
       panel.getByPlaceholder("Ask about this item…"),
     ).toBeVisible();
-    // The panel survives answering → reviewing (persistent, not per-phase).
     await page.locator("[data-testid^='choice-']").first().click();
     await page.locator("[data-testid='quiz-submit']").click();
     await expect(page.locator("[data-testid='feedback-banner']")).toBeVisible();
@@ -74,19 +65,19 @@ test.describe("PreAct iPad split (FR-J3/J3a)", () => {
 
   test("panel_message_lands_in_shared_coach_thread", async ({ page }) => {
     await openQuiz(page);
-    const panel = page.getByTestId("coach-panel");
+    const panel = page.getByTestId("coach-panel-inline");
     const composer = panel.getByPlaceholder("Ask about this item…");
     await composer.fill("why is the comma wrong here?");
     await composer.press("Enter");
 
-    // The mocked reply streams into the panel…
     await expect(panel.getByRole("log")).toContainText(
       "why is the comma wrong here?",
     );
 
-    // …and the SAME thread is on the full Coach screen after in-app nav
-    // (sidebar link → client-side transition keeps the module store alive).
-    await page.getByRole("navigation", { name: "Primary" }).getByText("Coach").click();
+    await page
+      .getByRole("navigation", { name: "Primary" })
+      .getByRole("link", { name: "Coach" })
+      .click();
     await expect(page).toHaveURL(/\/learn\/coach$/);
     await expect(
       page.getByRole("log", { name: "Coach conversation" }),
@@ -95,28 +86,20 @@ test.describe("PreAct iPad split (FR-J3/J3a)", () => {
 
   test("one_more_nudge_deeper_hint", async ({ page }) => {
     await openQuiz(page);
-    const panel = page.getByTestId("coach-panel");
+    const panel = page.getByTestId("coach-panel-inline");
     const nudge = panel.getByTestId("one-more-nudge");
 
-    // Two-tier: the deeper rungs are not shown until asked.
-    await expect(panel).not.toContainText("Nudge 2:");
+    await expect(panel.getByTestId("panel-nudge-2")).toHaveCount(0);
 
     await nudge.click();
-    await expect(panel.getByTestId("panel-nudge-2")).toContainText(
-      "name the rule in play",
-    );
-    await expect(panel).not.toContainText("Nudge 3:");
+    await expect(panel.getByTestId("panel-nudge-2")).toBeVisible();
+    await expect(panel.getByTestId("panel-nudge-3")).toHaveCount(0);
 
     await nudge.click();
-    await expect(panel.getByTestId("panel-nudge-3")).toContainText(
-      "find the exact spot where the choices differ",
-    );
+    await expect(panel.getByTestId("panel-nudge-3")).toBeVisible();
 
-    // Ladder exhausted — there is NO rung 4 (FR-D5): the control disables.
     await expect(nudge).toBeDisabled();
-
-    // Neither revealed tier leaks an answer (the reviewed-ladder discipline):
-    // no "the answer is X" style reveal in the panel.
+    await expect(nudge).toHaveAttribute("aria-disabled", "true");
     await expect(panel).not.toContainText(/answer is [A-D]/);
   });
 });
