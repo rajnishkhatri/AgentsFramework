@@ -594,14 +594,92 @@ like the existing `db-persistence-probe.spec`).
 
 ## 9. Definition of Done
 
-- [ ] All FRs implemented; each has a passing test that was *seen to fail first* (red/green).
-- [ ] `make check` green (lint + format-check + pyright/tsc + test).
-- [ ] `tests/architecture/` green — F-R9, F-R4, A4/F-R8, C1/C2 unbroken (frontend layering gate).
-- [ ] ADR appended for the new BFF engine-route family + server-engine seam (⚠️ Ask-first); the
+- [x] All FRs implemented; each has a passing test that was *seen to fail first* (red/green).
+- [x] `make check` green (lint + format-check + pyright/tsc + test).
+- [x] `tests/architecture/` green — F-R9, F-R4, A4/F-R8, C1/C2 unbroken (frontend layering gate).
+- [x] ADR appended for the new BFF engine-route family + server-engine seam (⚠️ Ask-first); the
       `HttpEngineDb` new-abstraction (G1) states what it buys + the rejected simpler options.
-- [ ] Engine persistence proven end-to-end at least once (persistence probe against seeded pg) —
-      durability is currently unproven (design doc §4).
-- [ ] Actual command output pasted (not summarized) for the verification claims.
+      Linked from `http_engine_db.ts` + `server_composition.ts` `engineDb()` (ADR-0038).
+- [x] Engine persistence proven end-to-end at least once (persistence probe against seeded pg) —
+      `frontend/scripts/probe_engine_persistence.mjs` (T Z.1 a–e) + optional Playwright
+      `e2e/full-stack/engine-persistence-probe.spec.ts` (BFF/auth path).
+- [x] Actual command output pasted (not summarized) for the verification claims.
+
+### 9.1 Phase Z verification evidence (2026-07-22)
+
+**T Z.1** — `cd frontend && node scripts/probe_engine_persistence.mjs` (managed fresh pg):
+
+```json
+{
+  "ok": true,
+  "managed_pg": true,
+  "steps": [
+    { "step": "a0_managed_pg", "ok": true, "url_host": "127.0.0.1:55432" },
+    {
+      "step": "a_migrate",
+      "ok": true,
+      "migrate": {
+        "ok": true,
+        "applied": [
+          "0000_frontend_baseline.sql",
+          "0001_add_misconception_to_test_item.sql",
+          "0002_add_tutorial_teaching_fields.sql",
+          "0003_add_attempt_resolution.sql",
+          "0004_durable_progress.sql",
+          "seed_engine_content.sql"
+        ],
+        "skipped": [],
+        "numbered_total": 5,
+        "seed_total": 1
+      }
+    },
+    {
+      "step": "a_ledger",
+      "ok": true,
+      "applied": [
+        "0000_frontend_baseline.sql",
+        "0001_add_misconception_to_test_item.sql",
+        "0002_add_tutorial_teaching_fields.sql",
+        "0003_add_attempt_resolution.sql",
+        "0004_durable_progress.sql"
+      ]
+    },
+    {
+      "step": "b_seed_counts",
+      "ok": true,
+      "counts": {
+        "skill": 6,
+        "test_item": 987,
+        "hint": 7857,
+        "tutorial": 1,
+        "content_string": 3,
+        "test_blueprint": 1
+      }
+    },
+    { "step": "c_changed_row_updated", "ok": true },
+    { "step": "c_dropped_row_retired", "ok": true },
+    { "step": "d_attempt_persisted", "ok": true },
+    { "step": "e_resume_by_learner", "ok": true }
+  ]
+}
+```
+
+**T Z.2** — gates (verbatim tails):
+
+```
+pytest tests/architecture/ -q
+222 passed, 2 skipped in 50.41s
+
+cd frontend && pnpm vitest run
+Test Files  207 passed (207)
+     Tests  2127 passed (2127)
+
+make check
+5338 passed, 50 skipped, 72 deselected, 2 warnings in 248.71s (0:04:08)
+```
+
+**T Z.3** — ADR-0038 present in `docs/adr/{0038-durable-engine-seam.md,index.md,log.md}`;
+ADR ratchet green inside `tests/architecture/`.
 
 ---
 

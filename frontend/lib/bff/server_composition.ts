@@ -85,10 +85,11 @@ export function coachMarkerRepo(): CoachSessionMarkerRepo {
 }
 
 /**
- * Durable engine DB (coach-v3 FR-A3 / T A.6). Mirrors `coachMarkerRepo()`:
- * memoized, env-reading, called directly by `/api/engine/*` handlers — NOT a
- * param on `serverPortBag()`/`buildAdapters`. Unset `DATABASE_URL` → typed
- * `EngineRepoError` via `selectEngineDb` (no silent in-memory fallback).
+ * Durable engine DB (coach-v3 FR-A3 / T A.6 / ADR-0038). Mirrors
+ * `coachMarkerRepo()`: memoized, env-reading, called directly by
+ * `/api/engine/*` handlers — NOT a param on `serverPortBag()`/`buildAdapters`.
+ * Unset `DATABASE_URL` → typed `EngineRepoError` via `selectEngineDb` (no
+ * silent in-memory fallback).
  */
 export function engineDb(): EngineDb {
   if (_engineDb) return _engineDb;
