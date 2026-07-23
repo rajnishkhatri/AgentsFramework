@@ -279,6 +279,13 @@ async function composeSummaryVM(args: {
     session.score_correct,
     session.score_total,
   );
+  const sessionQuestions = (
+    await Promise.all(
+      [...new Set(sessionAttempts.map((attempt) => attempt.question_id))].map(
+        (id) => resolveQuestion(id),
+      ),
+    )
+  ).filter((question): question is Question => question != null);
 
   const summary = toSessionSummaryVM(
     session,
@@ -289,6 +296,8 @@ async function composeSummaryVM(args: {
     selfCorrected,
     scoreRatioMet,
     sessionAttempts,
+    sessionQuestions,
+    skills,
   );
   return { summary, masteryDeltaKnown };
 }

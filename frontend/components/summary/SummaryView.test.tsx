@@ -35,6 +35,8 @@ function summary(over: Partial<SessionSummaryVM> = {}): SessionSummaryVM {
     selfCorrected: false,
     showFramedTitle: false,
     outcomeCounts: null,
+    misses: [],
+    skillPerformance: [],
     ...over,
   };
 }
@@ -237,5 +239,54 @@ describe("SummaryView — outcome heading honesty (Phase-3 residual R6, VOICE-5)
     expect(outcomes).not.toBeNull();
     expect(outcomes!.textContent).not.toMatch(/Each skill ran/i);
     expect(outcomes!.textContent).toMatch(/How items resolved this session/i);
+  });
+});
+
+describe("SummaryView — Phase D enriched summary", () => {
+  it("renders identifiable misses and per-skill strong/weak results (FR-D1/D2)", () => {
+    const doc = dom(
+      <SummaryView
+        vm={vm({
+          summary: summary({
+            misses: [
+              {
+                questionId: "q1",
+                stem: "Which choice best fixes the sentence?",
+                skillId: "s-punc",
+                skillName: "Punctuation",
+                resolution: "walked_through",
+              },
+            ],
+            skillPerformance: [
+              {
+                skillId: "s-punc",
+                skillName: "Punctuation",
+                correct: 0,
+                total: 1,
+                accuracyPct: 0,
+                strength: "weak",
+              },
+            ],
+          }),
+        })}
+      />,
+    );
+
+    expect(doc.querySelector('[data-testid="summary-misses"]')!.textContent).toContain(
+      "Which choice best fixes the sentence?",
+    );
+    expect(doc.querySelector('[data-testid="summary-misses"]')!.textContent).toContain(
+      "Punctuation",
+    );
+    expect(
+      doc.querySelector('[data-testid="summary-skill-performance"]')!.textContent,
+    ).toMatch(/Punctuation.*0%.*Needs practice/s);
+  });
+
+  it("renders an explicit clean-sweep state when there are no misses (FR-D4)", () => {
+    const doc = dom(<SummaryView vm={vm()} />);
+    const misses = doc.querySelector('[data-testid="summary-misses"]');
+    expect(misses).not.toBeNull();
+    expect(misses!.textContent).toMatch(/Clean sweep/i);
   });
 });

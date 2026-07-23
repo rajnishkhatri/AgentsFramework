@@ -113,6 +113,75 @@ describe("loadSummary — stored score, never recomputed (FR-G1)", () => {
   });
 });
 
+describe("loadSummary — Phase D session-scoped projections", () => {
+  it("keeps a walked-through miss in its session after a later session clears it", async () => {
+    db.seedSkillStates([skillState()]);
+    db.seedQuestions([
+      question({ id: "q-session-miss", stem: "Session-specific stem" }),
+    ]);
+
+    const first = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    await ports.attemptRepo.record({
+      subject: SUBJECT,
+      session_id: first.id,
+      question_id: "q-session-miss",
+      chosen_letter: "B",
+      correct: false,
+      elapsed_ms: 1000,
+      used_hint: true,
+      resolution: "walked_through",
+      idempotency_key: "phase-d-first",
+    });
+    await ports.sessionRepo.close(first.id, {
+      score_correct: 0,
+      score_total: 1,
+    });
+
+    const later = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    await ports.attemptRepo.record({
+      subject: SUBJECT,
+      session_id: later.id,
+      question_id: "q-session-miss",
+      chosen_letter: "A",
+      correct: true,
+      elapsed_ms: 500,
+      used_hint: false,
+      resolution: "first_try",
+      idempotency_key: "phase-d-later",
+    });
+    await ports.sessionRepo.close(later.id, {
+      score_correct: 1,
+      score_total: 1,
+    });
+
+    const vm = await loadSummary(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      sessionId: first.id,
+      skillStateAtStart: new Map([["s-punc", skillState()]]),
+      nowISO: NOW,
+    });
+
+    expect(vm.summary.misses).toEqual([
+      expect.objectContaining({
+        questionId: "q-session-miss",
+        stem: "Session-specific stem",
+        skillName: "Punctuation",
+        resolution: "walked_through",
+      }),
+    ]);
+    expect(vm.summary.skillPerformance).toEqual([
+      expect.objectContaining({
+        skillName: "Punctuation",
+        correct: 0,
+        total: 1,
+        accuracyPct: 0,
+      }),
+    ]);
+    expect(vm.summary.scoreTile).toBe("0/1");
+  });
+});
+
 describe("loadSummary — signed mastery delta from the snapshot (FR-G1, ADR §4)", () => {
   it("current − start for the focus skill, ×100, signed", async () => {
     // Start mastery 0.50; fresh read 0.62 → +12%.
