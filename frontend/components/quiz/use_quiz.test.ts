@@ -17,6 +17,7 @@ import type { EnginePortBag } from "@/lib/composition_engine";
 import {
   closeQuizSession,
   isNoContentError,
+  isPoolExhaustedError,
   listQuizSkills,
   loadHintLadder,
   openQuizItem,
@@ -414,6 +415,51 @@ describe("closeQuizSession — stores the tally the Summary reads (FR-D3/G1)", (
     });
     expect(again.score_correct).toBe(2);
     expect(again.score_total).toBe(2);
+  });
+
+  it("a new practice after close opens a fresh Q1 session (FR-C4)", async () => {
+    const completed = await ports.sessionRepo.open(
+      SUBJECT,
+      LEARNER,
+      "adaptive",
+    );
+    await closeQuizSession(ports, {
+      sessionId: completed.id,
+      scoreCorrect: 1,
+      scoreTotal: 1,
+    });
+
+    const fresh = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "adaptive",
+    });
+
+    expect(fresh.session.id).not.toBe(completed.id);
+    expect(fresh.session.score_total).toBe(0);
+    expect(fresh.session.ended_at).toBeNull();
+  });
+});
+
+describe("isPoolExhaustedError — FR-C5", () => {
+  it("matches a finite pool with no next item", () => {
+    expect(isPoolExhaustedError(new EngineNotFoundError("no next item"))).toBe(
+      true,
+    );
+    expect(
+      isPoolExhaustedError(
+        new EngineNotFoundError("no unserved missed questions"),
+      ),
+    ).toBe(true);
+  });
+
+  it("does not misclassify an empty bank or generic failure", () => {
+    expect(
+      isPoolExhaustedError(
+        new EngineNotFoundError("no content available"),
+      ),
+    ).toBe(false);
+    expect(isPoolExhaustedError(new Error("network failed"))).toBe(false);
   });
 });
 

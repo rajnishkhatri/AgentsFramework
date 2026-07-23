@@ -325,6 +325,14 @@ export function isNoContentError(err: unknown): boolean {
   );
 }
 
+/**
+ * FR-C5: the bank exists but this session has no servable item left.
+ * This is deliberately distinct from FR-G3's empty-bank state.
+ */
+export function isPoolExhaustedError(err: unknown): boolean {
+  return err instanceof EngineNotFoundError && !isNoContentError(err);
+}
+
 export interface QuizSubmitArgs {
   readonly session: QuizSession;
   readonly question: Question;
@@ -509,6 +517,12 @@ export async function closeQuizSession(
   ports: EnginePortBag,
   args: CloseSessionArgs,
 ): Promise<QuizSession> {
+  // FR-C1: durable close goes through the coarse endpoint so the server derives
+  // the authoritative first_try-only tally from stored attempts. The in-memory
+  // fallback retains the local tally while the cutover flag is reversible.
+  if (durableEngineEnabled()) {
+    return browserEngineClient().closeSession(args.sessionId);
+  }
   return ports.sessionRepo.close(args.sessionId, {
     score_correct: args.scoreCorrect,
     score_total: args.scoreTotal,

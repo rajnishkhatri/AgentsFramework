@@ -101,6 +101,27 @@ export class EngineClient {
     return (await res.json()) as T;
   }
 
+  private async postJson<T>(path: string, body: unknown): Promise<T> {
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.baseUrl}${path}`, {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      throw new EngineRepoError(
+        `engine client failed: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+    if (!res.ok) {
+      throw new EngineRepoError(`engine client failed (${res.status})`);
+    }
+    return (await res.json()) as T;
+  }
+
   loadDashboard(args: {
     subject: string;
     sinceISO?: string;
@@ -130,6 +151,13 @@ export class EngineClient {
   nextItem(sessionId: string): Promise<NextItemPayload> {
     const q = new URLSearchParams({ session: sessionId });
     return this.getJson(`/api/engine/next?${q}`);
+  }
+
+  /** FR-C1: server computes the authoritative commit-first tally. */
+  closeSession(sessionId: string): Promise<QuizSession> {
+    return this.postJson("/api/engine/session/close", {
+      session_id: sessionId,
+    });
   }
 }
 

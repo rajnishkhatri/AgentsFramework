@@ -69,9 +69,13 @@ export async function GET(req: NextRequest): Promise<Response> {
   }
 
   if (!question) {
+    // FR-G3 vs FR-C5: an actually empty reviewed bank is a setup failure;
+    // otherwise this session exhausted its finite servable pool and should
+    // close gracefully to Summary.
+    const reviewedItems = await db.listReviewedTestItems(session.subject);
     return jsonOk({
       empty: true,
-      reason: "no_content",
+      reason: reviewedItems.length === 0 ? "no_content" : "exhausted",
       question: null,
       hints: [],
       skill_id: null,
