@@ -475,6 +475,29 @@ phase_backend() {
 
 phase_frontend() {
   require_cmds tofu conftest terraform-compliance curl
+
+  # FR-F3 / ADR-0034: migrate_engine.mjs BEFORE tofu apply. Cloud Run traffic is
+  # TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST 100% on apply — running migrate after
+  # apply is not pre-traffic. Schema+seed must be ready before the new revision
+  # takes traffic. Uses the same DATABASE_URL secret the frontend service binds
+  # (secret exists from secret-manager; bind is apply-time only).
+  # Bind↔runner pairing: cloud-run-frontend.tf env DATABASE_URL + this step.
+  # Never at Cloud Run boot (cold starts must not race a migration).
+  load_env_from_tfvars
+  if [[ -n "${DRY_RUN}" ]]; then
+    info "[dry-run] would run: gcloud secrets versions access database-url | DATABASE_URL=… node frontend/scripts/migrate_engine.mjs (before tofu apply / traffic)"
+  else
+    require_cmds gcloud node
+    info "Pre-apply: applying frontend engine migrations (migrate_engine.mjs)"
+    local db_url
+    db_url="$(gcloud secrets versions access latest --secret=database-url --project="${PROJECT}")" \
+      || fail "Could not read database-url secret for pre-apply migrate."
+    (
+      cd "${REPO_ROOT}/frontend"
+      DATABASE_URL="${db_url}" node scripts/migrate_engine.mjs
+    ) || fail "frontend migrate_engine.mjs failed — aborting before frontend apply/traffic."
+  fi
+
   tofu_gate
 
   if [[ -n "${DRY_RUN}" ]]; then

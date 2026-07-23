@@ -12,7 +12,11 @@
 #   * MIDDLEWARE_URL → Recipe 4 backend Cloud Run URI
 #   * NEXT_PUBLIC_WORKOS_REDIRECT_URI → this service URI + /api/auth/callback
 #   * WorkOS BFF secrets via Secret Manager (WORKOS_API_KEY, WORKOS_COOKIE_PASSWORD)
-#   * No backend credentials (DATABASE_URL, LLM keys, agent-facts secret)
+#   * DATABASE_URL (server-side only — F-R9 / FR-F1) via Secret Manager; never
+#     NEXT_PUBLIC_*. Paired with frontend/scripts/migrate_engine.mjs as a
+#     pre-traffic deploy step (FR-F3 / ADR-0034 closer) — bind WITHOUT the
+#     runner re-opens the marker data-stripping hole.
+#   * No LLM keys / agent-facts secret on the frontend
 #
 # Depends on: foundations.tf, secret-manager.tf, cloud-run-backend.tf (Recipe 4)
 ###############################################################################
@@ -123,6 +127,19 @@ resource "google_cloud_run_v2_service" "frontend" {
           }
         }
       }
+
+      # Engine + threads + coach-marker durability (coach-v3 FR-F1).
+      # Server-side only — never NEXT_PUBLIC_*. Requires migrate_engine.mjs
+      # pre-traffic (see scripts/deploy_gcp.sh phase_frontend / db:migrate:engine).
+      env {
+        name = "DATABASE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.database_url.secret_id
+            version = "latest"
+          }
+        }
+      }
     }
   }
 
@@ -135,6 +152,7 @@ resource "google_cloud_run_v2_service" "frontend" {
     google_cloud_run_v2_service.backend_combined,
     google_secret_manager_secret_iam_member.workos_api_key_frontend_accessor,
     google_secret_manager_secret_iam_member.workos_cookie_password_accessor,
+    google_secret_manager_secret_iam_member.database_url_frontend_accessor,
   ]
 }
 

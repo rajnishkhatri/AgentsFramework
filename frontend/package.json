@@ -60,7 +60,8 @@
     "check:jwt-storage": "tsx scripts/check_jwt_storage.ts",
     "check:sprint-story": "tsx scripts/check_sprint_story.ts",
     "check:axe-a11y": "tsx scripts/check_axe_a11y.ts",
-    "check:bundle-budget": "tsx scripts/check_bundle_budget.ts"
+    "check:bundle-budget": "tsx scripts/check_bundle_budget.ts",
+    "db:migrate:engine": "node scripts/migrate_engine.mjs"
   },
   "dependencies": {
     "@capacitor-community/safe-area": "^7.0.0",
