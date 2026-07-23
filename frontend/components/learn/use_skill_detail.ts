@@ -10,8 +10,21 @@
 
 import * as React from "react";
 import type { EnginePortBag } from "@/lib/composition_engine";
+import {
+  browserEngineClient,
+  durableEngineEnabled,
+} from "@/lib/adapters/engine/engine_client";
 import { useEngine } from "@/app/engine-provider";
-import type { Skill, SkillState, Tutorial } from "@/lib/wire/engine_entities";
+import type {
+  AccuracyBySkill,
+  Attempt,
+  Question,
+  Skill,
+  SkillAccuracyRow,
+  SkillState,
+  Tutorial,
+} from "@/lib/wire/engine_entities";
+import { toAccuracyVM } from "@/lib/wire/engine_entities";
 import {
   selectLessonContext,
   type LessonContext,
@@ -44,6 +57,25 @@ export async function loadSkillDetail(
   ports: EnginePortBag,
   args: LoadSkillDetailArgs,
 ): Promise<SkillDetailLoadResult> {
+  // T A.11 / FR-A6: durable path = ONE coarse BFF call (folds N+1 miss bodies).
+  if (durableEngineEnabled()) {
+    const payload = await browserEngineClient().loadSkillDetail({
+      subject: args.subject,
+      skillId: args.skillId,
+    });
+    if (payload.skill == null) return { status: "not_found" };
+    return composeSkillDetailResult({
+      skill: payload.skill,
+      skills: payload.skills,
+      tutorial: payload.tutorial,
+      skillStates: payload.skill_states,
+      misses: payload.misses,
+      accuracy: toAccuracyVM(payload.accuracy_rows as SkillAccuracyRow[]),
+      questions: payload.miss_questions,
+      args,
+    });
+  }
+
   const skills = await ports.skillTaxonomy.list(args.subject);
   const skill = skills.find((s) => s.id === args.skillId);
   if (skill == null) return { status: "not_found" };
@@ -55,16 +87,49 @@ export async function loadSkillDetail(
     ports.attemptRepo.accuracyBySkill(args.subject, args.learnerId, args.skillId),
   ]);
 
-  const stateForSkill = skillStates.find((s) => s.skill_id === args.skillId);
-  const firstExposure = stateForSkill == null;
-  const masteryPct =
-    stateForSkill == null ? null : Math.round(stateForSkill.mastery * 100);
-
   // Resolve question rows for the due-miss join (already-fetched arrays).
   const questionIds = [...new Set(misses.map((m) => m.question_id))];
   const questions = (
     await Promise.all(questionIds.map((id) => ports.questionRepo.get(id)))
   ).filter((q): q is NonNullable<typeof q> => q != null);
+
+  return composeSkillDetailResult({
+    skill,
+    skills,
+    tutorial,
+    skillStates,
+    misses,
+    accuracy,
+    questions,
+    args,
+  });
+}
+
+function composeSkillDetailResult(input: {
+  skill: Skill;
+  skills: readonly Skill[];
+  tutorial: Tutorial | null;
+  skillStates: readonly SkillState[];
+  misses: readonly Attempt[];
+  accuracy: AccuracyBySkill;
+  questions: readonly Question[];
+  args: LoadSkillDetailArgs;
+}): SkillDetailLoadResult {
+  const {
+    skill,
+    skills,
+    tutorial,
+    skillStates,
+    misses,
+    accuracy,
+    questions,
+    args,
+  } = input;
+
+  const stateForSkill = skillStates.find((s) => s.skill_id === args.skillId);
+  const firstExposure = stateForSkill == null;
+  const masteryPct =
+    stateForSkill == null ? null : Math.round(stateForSkill.mastery * 100);
 
   const dueMiss = newestDueMiss({
     misses,

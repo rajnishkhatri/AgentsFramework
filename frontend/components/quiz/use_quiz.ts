@@ -35,6 +35,10 @@ import type {
 } from "@/lib/wire/engine_entities";
 import { EngineNotFoundError } from "@/lib/ports/engine/errors";
 import { uniqueMissQuestionIds } from "@/lib/miss_pool";
+import {
+  browserEngineClient,
+  durableEngineEnabled,
+} from "@/lib/adapters/engine/engine_client";
 
 export { uniqueMissQuestionIds } from "@/lib/miss_pool";
 export interface QuizItemResult {
@@ -179,6 +183,23 @@ export async function openQuizItem(
   ports: EnginePortBag,
   args: { subject: string; learnerId: string; sessionId?: string },
 ): Promise<QuizItemResult> {
+  // T A.11: durable + session → ONE GET /next (scheduler + served-set server-side).
+  if (durableEngineEnabled() && args.sessionId != null) {
+    const payload = await browserEngineClient().nextItem(args.sessionId);
+    if (payload.empty || payload.question == null) {
+      throw new EngineNotFoundError(
+        payload.reason === "no_content"
+          ? "no content available"
+          : "no next item",
+      );
+    }
+    return {
+      skillId: payload.skill_id ?? payload.question.skill_id,
+      question: payload.question,
+      hintLadder: payload.hints,
+    };
+  }
+
   const servedIds =
     args.sessionId != null
       ? await ports.attemptRepo.servedQuestionIds(args.sessionId)
@@ -272,6 +293,38 @@ async function openReviewQuizItem(
   return { skillId: question.skill_id, question, hintLadder };
 }
 
+/**
+ * FR-A7 / FR-A9.1: sync grade + one idempotency key per answer action.
+ * The quiz page shows `verdict` immediately, then persists via `runQuizSubmit`
+ * with the same key (resent verbatim on FR-A8 retry — never mint a second key).
+ */
+export function planAnswerAction(
+  ports: Pick<EnginePortBag, "grader">,
+  args: {
+    readonly question: Question;
+    readonly letter: string | null;
+    /** Reuse on write-fail retry; omit to mint a fresh UUID. */
+    readonly idempotencyKey?: string;
+  },
+): { verdict: Verdict; letter: string; idempotencyKey: string } | null {
+  if (args.letter == null) return null;
+  const verdict = ports.grader.grade(args.question, { letter: args.letter });
+  if (verdict == null) return null;
+  return {
+    verdict,
+    letter: args.letter,
+    idempotencyKey: args.idempotencyKey ?? crypto.randomUUID(),
+  };
+}
+
+/** FR-G3: durable empty bank → honest "no content" UI (not a generic crash). */
+export function isNoContentError(err: unknown): boolean {
+  return (
+    err instanceof EngineNotFoundError &&
+    /no content available/i.test(err.message)
+  );
+}
+
 export interface QuizSubmitArgs {
   readonly session: QuizSession;
   readonly question: Question;
@@ -305,6 +358,11 @@ export interface QuizSubmitArgs {
   readonly commitFirstCoach?: boolean;
   /** True when this item already has a recorded wrong (for coached vs first_try). */
   readonly hadPriorWrongAttempts?: boolean;
+  /**
+   * FR-A9.1: one key per answer action. Caller stamps at grade time and resends
+   * verbatim on HTTP retry; omit to mint a new UUID (fresh action).
+   */
+  readonly idempotencyKey?: string;
 }
 
 export interface QuizSubmitResult {
@@ -326,6 +384,8 @@ export interface QuizEscapeArgs {
   readonly usedHint: boolean;
   /** Almost always false — exhaustion requires a prior wrong (FR-12). */
   readonly isFirstGradedAttempt?: boolean;
+  /** FR-A9.1: stable key for escape-action retries. */
+  readonly idempotencyKey?: string;
 }
 
 export interface QuizEscapeResult {
@@ -364,6 +424,8 @@ export async function runQuizSubmit(
     resolution = args.hadPriorWrongAttempts ? "coached" : "first_try";
   }
 
+  // FR-A9.1: one idempotency_key per answer action (stamped at grade time).
+  const idempotency_key = args.idempotencyKey ?? crypto.randomUUID();
   const attempt = await ports.attemptRepo.record({
     subject: args.question.subject,
     session_id: args.session.id,
@@ -372,6 +434,7 @@ export async function runQuizSubmit(
     correct: verdict.correct,
     elapsed_ms: args.elapsedMs,
     used_hint: args.usedHint,
+    idempotency_key,
     ...(resolution != null ? { resolution } : {}),
   });
 
@@ -416,6 +479,7 @@ export async function runQuizEscape(
     elapsed_ms: args.elapsedMs,
     used_hint: args.usedHint,
     resolution: "walked_through",
+    idempotency_key: args.idempotencyKey ?? crypto.randomUUID(),
   });
 
   try {
@@ -491,6 +555,12 @@ export function useQuiz(): {
     sessionId: string;
     questionId: string;
   }) => Promise<{ session: QuizSession; item: QuizItemResult } | null>;
+  /** FR-A7: sync grade + mint/reuse idempotency key (before persist). */
+  planAnswer: (args: {
+    question: Question;
+    letter: string | null;
+    idempotencyKey?: string;
+  }) => { verdict: Verdict; letter: string; idempotencyKey: string } | null;
   submit: (args: QuizSubmitArgs) => Promise<QuizSubmitResult>;
   escape: (args: QuizEscapeArgs) => Promise<QuizEscapeResult>;
   closeSession: (args: CloseSessionArgs) => Promise<QuizSession>;
@@ -511,6 +581,11 @@ export function useQuiz(): {
         openQuizItem(ports, args),
       resumeSession: (args: { sessionId: string; questionId: string }) =>
         resumeQuizSession(ports, args),
+      planAnswer: (args: {
+        question: Question;
+        letter: string | null;
+        idempotencyKey?: string;
+      }) => planAnswerAction(ports, args),
       submit: (args: QuizSubmitArgs) => runQuizSubmit(ports, args),
       escape: (args: QuizEscapeArgs) => runQuizEscape(ports, args),
       closeSession: (args: CloseSessionArgs) => closeQuizSession(ports, args),

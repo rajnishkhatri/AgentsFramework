@@ -1,10 +1,10 @@
 /**
  * Tests for the engine composition root (ADR-0006).
  *
- * Asserts the seam selection (DATABASE_URL → live pg seam; absent → in-memory)
- * and that the wired bag exposes all eight ports (7 ADR-0006 + LearnerReadRepo,
- * ADR-0011), end-to-end over a seeded in-memory db (open → grade → record →
- * review → close, the FR-D1..D6 loop).
+ * Asserts the seam selection (DATABASE_URL → live pg seam; absent → typed
+ * EngineRepoError per FR-A3) and that the wired bag exposes all eight ports
+ * (7 ADR-0006 + LearnerReadRepo, ADR-0011), end-to-end over a seeded
+ * in-memory db (open → grade → record → review → close, the FR-D1..D6 loop).
  */
 
 import { describe, expect, it } from "vitest";
@@ -13,13 +13,14 @@ import {
   selectEngineDb,
 } from "./composition_engine";
 import { InMemoryEngineDb } from "./adapters/engine/db/in_memory_engine_db";
+import { EngineRepoError } from "./ports/engine/errors";
 import type { Question, Skill } from "./wire/engine_entities";
 
-describe("selectEngineDb — seam selection", () => {
-  it("falls back to InMemoryEngineDb without DATABASE_URL", () => {
-    expect(selectEngineDb({})).toBeInstanceOf(InMemoryEngineDb);
-    expect(selectEngineDb({ DATABASE_URL: "" })).toBeInstanceOf(InMemoryEngineDb);
-    expect(selectEngineDb({ DATABASE_URL: "   " })).toBeInstanceOf(InMemoryEngineDb);
+describe("selectEngineDb — seam selection (FR-A3)", () => {
+  it("throws typed EngineRepoError without DATABASE_URL (no in-memory fallback)", () => {
+    expect(() => selectEngineDb({})).toThrow(EngineRepoError);
+    expect(() => selectEngineDb({ DATABASE_URL: "" })).toThrow(EngineRepoError);
+    expect(() => selectEngineDb({ DATABASE_URL: "   " })).toThrow(EngineRepoError);
   });
 
   it("builds the live pg seam when DATABASE_URL is set (lazy — no connection)", () => {
@@ -33,7 +34,10 @@ describe("selectEngineDb — seam selection", () => {
 
 describe("buildEngineAdapters — full bag + end-to-end loop", () => {
   it("exposes all eight ports (7 ADR-0006 + LearnerReadRepo, ADR-0011)", () => {
-    const bag = buildEngineAdapters({ env: {} });
+    const bag = buildEngineAdapters({
+      env: {},
+      engineDb: new InMemoryEngineDb(),
+    });
     expect(bag.skillTaxonomy).toBeDefined();
     expect(bag.questionRepo).toBeDefined();
     expect(bag.attemptRepo).toBeDefined();
@@ -48,7 +52,10 @@ describe("buildEngineAdapters — full bag + end-to-end loop", () => {
   });
 
   it("exposes tutorialRepo and progressRepo (ADR-0028 / E1a FR-17)", () => {
-    const bag = buildEngineAdapters({ env: {} });
+    const bag = buildEngineAdapters({
+      env: {},
+      engineDb: new InMemoryEngineDb(),
+    });
     expect(bag.tutorialRepo).toBeDefined();
     expect(bag.progressRepo).toBeDefined();
   });
@@ -144,6 +151,7 @@ describe("buildEngineAdapters — full bag + end-to-end loop", () => {
       correct: verdict!.correct,
       elapsed_ms: 1500,
       used_hint: false,
+      idempotency_key: "test-idem-1",
     });
 
     // Scheduler review writes skill_state (FR-A2).

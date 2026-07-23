@@ -32,6 +32,10 @@ import {
 } from "@/lib/translators/weekly_sessions_vm";
 import { pickFocusSkillId } from "@/lib/translators/focus_pick";
 import { uniqueMissQuestionIds } from "@/lib/miss_pool";
+import {
+  browserEngineClient,
+  durableEngineEnabled,
+} from "@/lib/adapters/engine/engine_client";
 
 export interface RailVM {
   readonly status: "ok" | "unavailable";
@@ -137,6 +141,47 @@ export async function loadDashboard(
 ): Promise<DashboardVM> {
   const { subject, learnerId, displayName, nowISO, skipRail } = args;
   const sinceISO = computeSinceISO(nowISO, RAIL_LOOKBACK_DAYS);
+
+  // T A.11 / FR-A6: durable path = ONE coarse BFF call (no per-repo fan-out).
+  if (durableEngineEnabled()) {
+    const payload = await browserEngineClient().loadDashboard({
+      subject,
+      sinceISO,
+      nowISO,
+    });
+    const stateBySkill = new Map<string, SkillState>(
+      payload.skill_states.map((s) => [s.skill_id, s]),
+    );
+    const buckets = payload.skills.map((skill) =>
+      toBucketCardVM(skill, stateBySkill.get(skill.id) ?? null, nowISO),
+    );
+    const focusSkill =
+      payload.focus_skill_id == null
+        ? null
+        : (payload.skills.find((s) => s.id === payload.focus_skill_id) ?? null);
+    const todayFocus: TodayFocusVM =
+      payload.focus_skill_id != null &&
+      focusSkill != null &&
+      payload.focus_question != null
+        ? toTodayFocusVM(
+            {
+              skill_id: payload.focus_skill_id,
+              question_id: payload.focus_question.id,
+            },
+            focusSkill,
+          )
+        : { present: false };
+    const railResult: RailResult = skipRail
+      ? { ok: false }
+      : { ok: true, sessions: payload.sessions };
+    return {
+      buckets,
+      todayFocus,
+      reviewMissesCount: payload.review_misses_count,
+      greeting: toGreetingVM(nowISO, displayName),
+      rail: toRailVM(railResult, nowISO),
+    };
+  }
 
   const [skills, states, misses, railResult, speculativeQuestion] =
     await Promise.all([

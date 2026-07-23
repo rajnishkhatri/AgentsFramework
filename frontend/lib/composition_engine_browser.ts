@@ -20,17 +20,19 @@
  * driver, verified by the layering gate). The bag is assembled here rather than
  * delegated so the `pgEngineDb` import never reaches the client.
  *
- * Substrate (ADR-0005 local-first / ADR-0010): the browser runs the on-device
- * path. Today that is `InMemoryEngineDb` (dev / the before-DB state); the live
- * on-device SQLite `EngineDb` is wired here — same contract — once the
- * Capacitor SQLite driver lands. The pg store stays on the SERVER root, reached
- * via RSC + Server Actions (plan §"Where the engine runs"), never from here.
+ * Substrate: default `InMemoryEngineDb` (dev / flag-off). With
+ * `NEXT_PUBLIC_FF_DURABLE_ENGINE=1` the atomic swap (coach-v3 FR-A4 / T A.7)
+ * binds `HttpEngineDb` → BFF `/api/engine/*` → server `pgEngineDb`. Client
+ * content seeding (`seedTestItemBank`) is skipped under the durable flag —
+ * content is server-seeded (Track G).
  */
 
 import type { EnginePortBag } from "./composition_engine";
 
 import type { EngineDb } from "./adapters/engine/db/engine_db";
 import { InMemoryEngineDb } from "./adapters/engine/db/in_memory_engine_db";
+import { HttpEngineDb } from "./adapters/engine/db/http_engine_db";
+import { EnvVarFlagsAdapter } from "./adapters/feature_flags/env_var_flags_adapter";
 import type {
   Hint,
   Question,
@@ -90,10 +92,24 @@ export interface BuildBrowserEngineAdaptersOptions {
  * root, minus the `DATABASE_URL`/`pgEngineDb` branch that must not ship to the
  * client.
  */
+function durableEngineEnabled(
+  env: Readonly<Record<string, string | undefined>> = process.env as Record<
+    string,
+    string | undefined
+  >,
+): boolean {
+  return new EnvVarFlagsAdapter({ env }).isEnabled("durable_engine");
+}
+
 export function buildBrowserEngineAdapters(
   options: BuildBrowserEngineAdaptersOptions = {},
 ): EnginePortBag {
-  const db = options.engineDb ?? new InMemoryEngineDb();
+  // T A.7 atomic swap: one shared `db` builds every useEngine() screen's bag.
+  const db =
+    options.engineDb ??
+    (durableEngineEnabled()
+      ? new HttpEngineDb({ baseUrl: "" })
+      : new InMemoryEngineDb());
 
   const testItemRepo = new DrizzleTestItemRepo(db);
   // ADR-0021: the bank path serves practice items from the governed test_item
@@ -215,6 +231,19 @@ export function resetBrowserEngineSingleton(): void {
 export function browserEngineAdapters(): EnginePortBag {
   if (singleton === null) {
     const isProd = process.env.NODE_ENV === "production";
+
+    // Coach-v3 durable path (T A.7): HttpEngineDb → BFF; content is server-seeded
+    // (Track G). E2E seed overrides still force InMemory for deterministic specs.
+    if (durableEngineEnabled()) {
+      const injected = isProd ? null : readE2ESeedOverride();
+      if (!injected) {
+        singleton = buildBrowserEngineAdapters({
+          engineDb: new HttpEngineDb({ baseUrl: "" }),
+          questionSource: "bank",
+        });
+        return singleton;
+      }
+    }
 
     // E2E override (non-prod only — FR-5): a Playwright spec may inject a larger
     // deterministic corpus on `window` via `page.addInitScript` before the

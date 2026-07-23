@@ -29,6 +29,7 @@ import type { EnginePortBag } from "@/lib/composition_engine";
 import { useEngine } from "@/app/engine-provider";
 import type {
   Attempt,
+  Question,
   RecommendedNext,
   SkillState,
 } from "@/lib/wire/engine_entities";
@@ -38,6 +39,10 @@ import {
   type SessionSummaryVM,
 } from "@/lib/translators/session_summary_vm";
 import { pickFocusSkillId } from "@/lib/translators/focus_pick";
+import {
+  browserEngineClient,
+  durableEngineEnabled,
+} from "@/lib/adapters/engine/engine_client";
 
 export interface SummaryVM {
   /** The pure translator VM (stored score, signed delta, time, recommended). */
@@ -84,14 +89,14 @@ function deriveScoreRatioMet(scoreCorrect: number, scoreTotal: number): boolean 
  * in practice). No misses → null (no card), unchanged.
  * Misses are already newest-first from AttemptRepo; filter to served ids.
  */
-async function deriveMisconception(
-  ports: EnginePortBag,
+async function deriveMisconceptionFrom(
+  resolveQuestion: (id: string) => Promise<Question | null> | Question | null,
   sessionScopedMisses: readonly Attempt[],
   recommendedSkillId: string,
 ): Promise<string | null> {
   let newestAnySkill: string | null = null;
   for (const miss of sessionScopedMisses) {
-    const q = await ports.questionRepo.get(miss.question_id);
+    const q = await resolveQuestion(miss.question_id);
     if (q == null) continue;
     if (q.skill_id === recommendedSkillId) {
       return normalizeMisconception(q.misconception);
@@ -108,15 +113,15 @@ async function deriveMisconception(
  * served order ≈ session attempt order (in-memory insertion order; live seam
  * treats served as a set — half-split is best-effort without a new port).
  */
-async function deriveSelfCorrection(
-  ports: EnginePortBag,
+async function deriveSelfCorrectionFrom(
+  resolveQuestion: (id: string) => Promise<Question | null> | Question | null,
   servedIds: readonly string[],
   sessionMissIds: ReadonlySet<string>,
   recommendedSkillId: string,
 ): Promise<boolean> {
   const onSkill: { correct: boolean }[] = [];
   for (const qid of servedIds) {
-    const q = await ports.questionRepo.get(qid);
+    const q = await resolveQuestion(qid);
     if (q == null || q.skill_id !== recommendedSkillId) continue;
     onSkill.push({ correct: !sessionMissIds.has(qid) });
   }
@@ -142,6 +147,26 @@ export async function loadSummary(
 ): Promise<SummaryVM> {
   const { subject, learnerId, sessionId, skillStateAtStart, nowISO } = args;
 
+  // T A.11 / FR-A6: durable path = ONE coarse BFF call.
+  if (durableEngineEnabled()) {
+    const payload = await browserEngineClient().loadSummary(sessionId);
+    const qById = new Map(
+      (payload.questions ?? payload.miss_questions).map((q) => [q.id, q]),
+    );
+    return composeSummaryVM({
+      subject,
+      session: payload.session,
+      currentStates: payload.skill_states,
+      skills: payload.skills,
+      allMisses: payload.misses,
+      servedIds: payload.served_question_ids,
+      sessionAttempts: payload.attempts,
+      skillStateAtStart,
+      nowISO,
+      resolveQuestion: async (id) => qById.get(id) ?? null,
+    });
+  }
+
   const [session, currentStates, skills, allMisses, servedIds, sessionAttempts] =
     await Promise.all([
       ports.sessionRepo.get(sessionId),
@@ -157,6 +182,45 @@ export async function loadSummary(
     // surfaced rather than rendering an empty summary.
     throw new Error(`summary: session ${sessionId} not found`);
   }
+
+  return composeSummaryVM({
+    subject,
+    session,
+    currentStates,
+    skills,
+    allMisses,
+    servedIds,
+    sessionAttempts,
+    skillStateAtStart,
+    nowISO,
+    resolveQuestion: (id) => ports.questionRepo.get(id),
+  });
+}
+
+async function composeSummaryVM(args: {
+  subject: string;
+  session: NonNullable<Awaited<ReturnType<EnginePortBag["sessionRepo"]["get"]>>>;
+  currentStates: readonly SkillState[];
+  skills: readonly { id: string; name: string; accent_var: string }[];
+  allMisses: readonly Attempt[];
+  servedIds: readonly string[];
+  sessionAttempts: readonly Attempt[];
+  skillStateAtStart: LoadSummaryArgs["skillStateAtStart"];
+  nowISO: string;
+  resolveQuestion: (id: string) => Promise<Question | null> | Question | null;
+}): Promise<SummaryVM> {
+  const {
+    subject,
+    session,
+    currentStates,
+    skills,
+    allMisses,
+    servedIds,
+    sessionAttempts,
+    skillStateAtStart,
+    nowISO,
+    resolveQuestion,
+  } = args;
 
   // The recommended-next skill is the weakest+due skill the Scheduler would
   // serve next (read-only parity with the Dashboard focus, FR-G1/G2). Fall back
@@ -200,13 +264,13 @@ export async function loadSummary(
   );
   const sessionMissIds = new Set(sessionScopedMisses.map((m) => m.question_id));
 
-  const misconception = await deriveMisconception(
-    ports,
+  const misconception = await deriveMisconceptionFrom(
+    resolveQuestion,
     sessionScopedMisses,
     recommendedSkillId,
   );
-  const selfCorrected = await deriveSelfCorrection(
-    ports,
+  const selfCorrected = await deriveSelfCorrectionFrom(
+    resolveQuestion,
     servedIds,
     sessionMissIds,
     recommendedSkillId,
@@ -219,7 +283,7 @@ export async function loadSummary(
   const summary = toSessionSummaryVM(
     session,
     recommended,
-    nextSkill,
+    nextSkill as Parameters<typeof toSessionSummaryVM>[2],
     masteryDeltaPct,
     misconception,
     selfCorrected,

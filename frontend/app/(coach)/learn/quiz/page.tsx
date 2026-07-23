@@ -36,9 +36,17 @@ import {
   RAIL_COLLAPSED,
   useSurface,
 } from "@/components/shell/use_surface";
-import { useQuiz, type QuizItemResult } from "@/components/quiz/use_quiz";
+import {
+  isNoContentError,
+  useQuiz,
+  type QuizItemResult,
+} from "@/components/quiz/use_quiz";
 import { resolveQuizOpenMode } from "@/components/quiz/resolve_focus_mode";
 import { toQuizCoachPin } from "@/components/quiz/quiz_coach_pin";
+import {
+  QuizNoContentState,
+  QuizPersistErrorBanner,
+} from "@/components/quiz/QuizDurableStates";
 import { buildFeedback } from "@/components/feedback/use_feedback";
 import {
   initialQuizScreen,
@@ -88,6 +96,7 @@ export default function QuizPage(): React.JSX.Element {
     openSession,
     openItem,
     resumeSession,
+    planAnswer,
     submit,
     escape,
     closeSession,
@@ -150,6 +159,28 @@ export default function QuizPage(): React.JSX.Element {
   // The open session (+ its id, the Summary handoff key) for the page's life.
   const [session, setSession] = React.useState<QuizSession | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  /** FR-G3: empty content tables → dedicated empty state (not a crash alert). */
+  const [noContent, setNoContent] = React.useState(false);
+  /**
+   * FR-A8: write failed after optimistic verdict — hold UI, block advance.
+   * Cleared on successful retry or next item.
+   */
+  const [persistError, setPersistError] = React.useState<string | null>(null);
+  const [persistPending, setPersistPending] = React.useState(false);
+  /**
+   * FR-A9.1 / FR-A8: one answer-action payload above the retry boundary.
+   * Retry resends the same idempotency key + the original first/coached flags
+   * (re-deriving from post-optimistic state would flip isFirstGradedAttempt).
+   */
+  const pendingAnswerRef = React.useRef<{
+    idempotencyKey: string;
+    letter: string;
+    question: QuizItemResult["question"];
+    usedHint: boolean;
+    elapsedMs: number;
+    isFirstGradedAttempt: boolean;
+    hadPriorWrongAttempts: boolean;
+  } | null>(null);
   // D1 Q-7: full Skill rows for the chip join (name + accent_var).
   const [skillsById, setSkillsById] = React.useState<
     ReadonlyMap<string, Skill>
@@ -257,15 +288,25 @@ export default function QuizPage(): React.JSX.Element {
       .then((item) => {
         // D0 elapsed timing: stamp the monotonic clock the moment the item is
         // presented (clock start); onSubmit stops it to record a real elapsed_ms.
-        if (!cancelled)
+        if (!cancelled) {
+          pendingAnswerRef.current = null;
+          setPersistError(null);
+          setPersistPending(false);
+          setNoContent(false);
           dispatch({
             type: "item_loaded",
             item,
             presentedAt: performance.now(),
           });
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) {
+          // FR-G3: empty bank → dedicated empty state, not a broken quiz.
+          if (isNoContentError(err)) {
+            setNoContent(true);
+            return;
+          }
           setError(
             err instanceof Error
               ? err.message
@@ -276,7 +317,7 @@ export default function QuizPage(): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [session, state.phase, openItem]);
+  }, [session, state.phase, openItem, learnerId]);
 
   // Effect 3: keep the in-tab active pointer current while Quiz is live (FR-1).
   // Retained across unmount so Coach ← Back can resume; cleared only on Finish.
@@ -419,8 +460,57 @@ export default function QuizPage(): React.JSX.Element {
     state.phase,
   ]);
 
+  const persistAnswer = React.useCallback(
+    (args: {
+      letter: string;
+      idempotencyKey: string;
+      question: QuizItemResult["question"];
+      usedHint: boolean;
+      elapsedMs: number;
+      isFirstGradedAttempt: boolean;
+      hadPriorWrongAttempts: boolean;
+    }) => {
+      if (session == null) return;
+      setPersistPending(true);
+      setPersistError(null);
+      submit({
+        session,
+        question: args.question,
+        learnerId,
+        letter: args.letter,
+        elapsedMs: args.elapsedMs,
+        usedHint: args.usedHint,
+        idempotencyKey: args.idempotencyKey,
+        ...(commitFirstCoach
+          ? {
+              commitFirstCoach: true,
+              isFirstGradedAttempt: args.isFirstGradedAttempt,
+              hadPriorWrongAttempts: args.hadPriorWrongAttempts,
+            }
+          : {}),
+      })
+        .then(() => {
+          // FR-A5 complete: durable write landed. Clear retry payload.
+          pendingAnswerRef.current = null;
+          setPersistPending(false);
+          setPersistError(null);
+        })
+        .catch((err: unknown) => {
+          // FR-A8: keep optimistic verdict; block advance; offer retry.
+          setPersistPending(false);
+          setPersistError(
+            err instanceof Error
+              ? err.message
+              : "Failed to save your answer",
+          );
+        });
+    },
+    [session, submit, commitFirstCoach, learnerId],
+  );
+
   const onSubmit = React.useCallback(() => {
     if (state.phase !== "answering" || session == null) return;
+    if (persistPending) return;
     const letter = state.selectedLetter;
     // FR-7: same-letter resubmit is inert — skip record before it reaches the repo.
     if (
@@ -431,40 +521,56 @@ export default function QuizPage(): React.JSX.Element {
       return;
     }
     const { question } = state.item;
+    // FR-A7: grade sync first so the verdict can paint before the write.
+    // FR-A9.1: mint the key once above the retry boundary (reuse on FR-A8 retry).
+    const plan = planAnswer({
+      question,
+      letter,
+      ...(pendingAnswerRef.current != null
+        ? { idempotencyKey: pendingAnswerRef.current.idempotencyKey }
+        : {}),
+    });
+    if (plan == null) return;
+
     const usedHint = state.usedHint || state.coachedLoop != null;
     const elapsedMs = elapsedMsFrom(state.presentedAt, performance.now());
     const isFirstGradedAttempt = state.coachedLoop == null;
     const hadPriorWrongAttempts =
       state.coachedLoop != null && state.coachedLoop.wrongLetters.length > 0;
-    submit({
-      session,
+
+    pendingAnswerRef.current = {
+      idempotencyKey: plan.idempotencyKey,
+      letter: plan.letter,
       question,
-      learnerId,
-      letter,
-      elapsedMs,
       usedHint,
-      ...(commitFirstCoach
-        ? {
-            commitFirstCoach: true,
-            isFirstGradedAttempt,
-            hadPriorWrongAttempts,
-          }
-        : {}),
-    })
-      .then((result) => {
-        dispatch({
-          type: "submitted",
-          verdict: result.verdict,
-          letter,
-          ...(commitFirstCoach ? { commitFirstCoach: true } : {}),
-        });
-      })
-      .catch((err: unknown) => {
-        setError(
-          err instanceof Error ? err.message : "Failed to grade your answer",
-        );
-      });
-  }, [state, session, submit, commitFirstCoach, learnerId]);
+      elapsedMs,
+      isFirstGradedAttempt,
+      hadPriorWrongAttempts,
+    };
+
+    // Optimistic: show verdict immediately (FR-A7), then persist (FR-A5).
+    dispatch({
+      type: "submitted",
+      verdict: plan.verdict,
+      letter: plan.letter,
+      ...(commitFirstCoach ? { commitFirstCoach: true } : {}),
+    });
+    persistAnswer(pendingAnswerRef.current);
+  }, [
+    state,
+    session,
+    planAnswer,
+    persistAnswer,
+    persistPending,
+    commitFirstCoach,
+  ]);
+
+  const onRetryPersist = React.useCallback(() => {
+    if (session == null || persistPending) return;
+    const pending = pendingAnswerRef.current;
+    if (pending == null) return;
+    persistAnswer(pending);
+  }, [session, persistPending, persistAnswer]);
 
   const onNudge = React.useCallback(() => {
     dispatch({ type: "nudge_requested" });
@@ -568,6 +674,10 @@ export default function QuizPage(): React.JSX.Element {
     );
   }
 
+  if (noContent) {
+    return <QuizNoContentState />;
+  }
+
   if (state.phase === "loading" || state.phase === "done") {
     return (
       <p role="status" className="text-muted">
@@ -575,6 +685,10 @@ export default function QuizPage(): React.JSX.Element {
       </p>
     );
   }
+
+  // FR-A5/A8: Next/Finish stay disabled until the optimistic write lands (or
+  // the learner retries successfully). Verdict remains visible (no rollback).
+  const advanceBlocked = persistPending || persistError != null;
 
   // S4/S5: the progress VM (position + "reached the target?") derived from the
   // reducer tally + the open session's target_count. Computed BEFORE the phase
@@ -605,29 +719,48 @@ export default function QuizPage(): React.JSX.Element {
   // V29 (v3-prototype parity): the SAME controls render in the coached-solve
   // confirm state on the item column, so a coached correct is never a dead end.
   const advanceControls = (
-    <div className="flex items-center justify-between gap-3">
-      {!(session?.mode === "review" && progressVm.complete) ? (
+    <div className="flex flex-col gap-3">
+      {persistError != null ? (
+        <QuizPersistErrorBanner
+          message={persistError}
+          onRetry={onRetryPersist}
+          retrying={persistPending}
+        />
+      ) : null}
+      <div className="flex items-center justify-between gap-3">
+        {!(session?.mode === "review" && progressVm.complete) ? (
+          <button
+            type="button"
+            data-testid="quiz-next"
+            disabled={advanceBlocked}
+            onClick={() => {
+              if (advanceBlocked) return;
+              pendingAnswerRef.current = null;
+              setPersistError(null);
+              dispatch({ type: "next" });
+            }}
+            className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent disabled:opacity-50"
+          >
+            {progressVm.complete ? "Keep practising" : "Next question →"}
+          </button>
+        ) : null}
         <button
           type="button"
-          data-testid="quiz-next"
-          onClick={() => dispatch({ type: "next" })}
-          className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
+          data-testid="quiz-finish"
+          disabled={advanceBlocked}
+          onClick={() => {
+            if (advanceBlocked) return;
+            onFinish();
+          }}
+          className={
+            session?.mode === "review" && progressVm.complete
+              ? "rounded-full bg-accent px-6 py-3 font-semibold text-on-accent disabled:opacity-50"
+              : "rounded-full border border-border px-6 py-3 font-medium hover:bg-selected disabled:opacity-50"
+          }
         >
-          {progressVm.complete ? "Keep practising" : "Next question →"}
+          {progressVm.complete ? "See summary" : "Finish & see summary"}
         </button>
-      ) : null}
-      <button
-        type="button"
-        data-testid="quiz-finish"
-        onClick={onFinish}
-        className={
-          session?.mode === "review" && progressVm.complete
-            ? "rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
-            : "rounded-full border border-border px-6 py-3 font-medium hover:bg-selected"
-        }
-      >
-        {progressVm.complete ? "See summary" : "Finish & see summary"}
-      </button>
+      </div>
     </div>
   );
 
@@ -657,7 +790,7 @@ export default function QuizPage(): React.JSX.Element {
             socraticHint(state.item.question.stem)
           }
           onToggleHint={() => dispatch({ type: "toggle_hint" })}
-          endSessionEnabled={endSessionEnabled}
+          endSessionEnabled={endSessionEnabled && !advanceBlocked}
           onEndSession={onEndSession}
           startedAtIso={startedAtIso}
           commitFirstCoach={commitFirstCoach}
@@ -674,6 +807,14 @@ export default function QuizPage(): React.JSX.Element {
           whyItemPosition={progressVm.position}
           whyItemTotal={progressVm.total}
         />
+        {/* FR-A8: wrong-path coached loop has no Next yet — still surface retry. */}
+        {persistError != null && state.coachedConfirm == null ? (
+          <QuizPersistErrorBanner
+            message={persistError}
+            onRetry={onRetryPersist}
+            retrying={persistPending}
+          />
+        ) : null}
         {state.coachedConfirm != null ? advanceControls : null}
       </div>
     );
@@ -740,7 +881,7 @@ export default function QuizPage(): React.JSX.Element {
           key={state.item.question.id}
           skillName={itemVm.skillName}
           accentVar={itemVm.accentVar}
-          endSessionEnabled={endSessionEnabled}
+          endSessionEnabled={endSessionEnabled && !advanceBlocked}
           onEndSession={onEndSession}
           startedAtIso={startedAtIso}
         />
