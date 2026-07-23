@@ -38,9 +38,11 @@ import {
 import {
   isNoContentError,
   isPoolExhaustedError,
+  isResumeExhaustedError,
   useQuiz,
   type QuizItemResult,
 } from "@/components/quiz/use_quiz";
+import { durableEngineEnabled } from "@/lib/adapters/engine/engine_client";
 import { resolveQuizOpenMode } from "@/components/quiz/resolve_focus_mode";
 import { toQuizCoachPin } from "@/components/quiz/quiz_coach_pin";
 import {
@@ -103,6 +105,7 @@ export default function QuizPage(): React.JSX.Element {
     listSkillIds,
     listSkills,
     loadLadder,
+    recordPointer,
   } = useQuiz();
   const commitFirstCoach = React.useMemo(() => readCommitFirstCoachFlag(), []);
   const router = useRouter();
@@ -227,10 +230,10 @@ export default function QuizPage(): React.JSX.Element {
     closeAndRouteToSummary,
   ]);
 
-  // Effect 1: resume an in-tab active pointer (FLAG-4) OR open a fresh session.
-  // Resume skips openSession so Coach ← Back restores the left item (FR-3).
-  // Stale pointer → clear + fresh open (FR-4). Snapshot stash only on fresh open
-  // (resume reuses the snapshot already keyed by sessionId).
+  // Effect 1: resume OR open a fresh session.
+  // Durable (FR-B1/B3/B6): GET /session/active — ignore RAM for position; deep
+  // links (?mode=review / ?focus=) always open fresh. Flag-off keeps FLAG-4 RAM
+  // resume. Stale/missing → clear + fresh (FR-B5 / FR-4).
   // D1: listSkills warms the Q-7 chip join (resume + fresh paths).
   React.useEffect(() => {
     let cancelled = false;
@@ -242,39 +245,89 @@ export default function QuizPage(): React.JSX.Element {
         }
       });
 
-      const pointer = readActiveQuiz();
-      if (pointer != null && !wantsFreshSession) {
-        const resumed = await resumeSession({
-          sessionId: pointer.sessionId,
-          questionId: pointer.questionId,
-        });
-        if (cancelled) return;
-        if (resumed != null) {
-          setSession(resumed.session);
-          const feedback =
-            pointer.phase === "feedback" &&
-            pointer.verdict != null &&
-            pointer.answeredLetter != null
-              ? {
-                  verdict: pointer.verdict,
-                  answeredLetter: pointer.answeredLetter,
-                  usedHint: pointer.usedHint ?? false,
-                }
-              : undefined;
-          // exactOptionalPropertyTypes: omit `feedback` entirely when absent
-          // rather than passing it as `undefined` (an optional prop may be
-          // missing, not explicitly undefined).
-          dispatch({
-            type: "resume_item",
-            item: resumed.item,
-            score: { correct: pointer.correct, total: pointer.total },
-            presentedAt: performance.now(),
-            ...(feedback != null ? { feedback } : {}),
-          });
-          return;
+      if (!wantsFreshSession) {
+        if (durableEngineEnabled()) {
+          try {
+            const resumed = await resumeSession({ subject: DEFAULT_SUBJECT });
+            if (cancelled) return;
+            if (resumed != null) {
+              setSession(resumed.session);
+              dispatch({
+                type: "resume_item",
+                item: resumed.item,
+                // FR-B10: server commit-first tally — never re-count client-side.
+                score: resumed.score ?? { correct: 0, total: 0 },
+                presentedAt: performance.now(),
+              });
+              return;
+            }
+          } catch (err: unknown) {
+            if (cancelled) return;
+            if (isNoContentError(err)) {
+              setNoContent(true);
+              return;
+            }
+            if (isResumeExhaustedError(err)) {
+              // FR-C5 at mount: open session, pool gone → close to summary.
+              setSession(err.session);
+              closingSessionRef.current = err.session.id;
+              dispatch({ type: "finish" });
+              closeSession({
+                sessionId: err.session.id,
+                scoreCorrect: err.score.correct,
+                scoreTotal: err.score.total,
+              })
+                .then(() => {
+                  clearActiveQuiz();
+                  router.push(
+                    `${screen("summary").route}?session=${err.session.id}`,
+                  );
+                })
+                .catch((closeErr: unknown) => {
+                  closingSessionRef.current = null;
+                  setError(
+                    closeErr instanceof Error
+                      ? closeErr.message
+                      : "Failed to close the session",
+                  );
+                });
+              return;
+            }
+            throw err;
+          }
+        } else {
+          const pointer = readActiveQuiz();
+          if (pointer != null) {
+            const resumed = await resumeSession({
+              sessionId: pointer.sessionId,
+              questionId: pointer.questionId,
+            });
+            if (cancelled) return;
+            if (resumed != null) {
+              setSession(resumed.session);
+              const feedback =
+                pointer.phase === "feedback" &&
+                pointer.verdict != null &&
+                pointer.answeredLetter != null
+                  ? {
+                      verdict: pointer.verdict,
+                      answeredLetter: pointer.answeredLetter,
+                      usedHint: pointer.usedHint ?? false,
+                    }
+                  : undefined;
+              dispatch({
+                type: "resume_item",
+                item: resumed.item,
+                score: { correct: pointer.correct, total: pointer.total },
+                presentedAt: performance.now(),
+                ...(feedback != null ? { feedback } : {}),
+              });
+              return;
+            }
+            // FR-4: session/question gone — honest recovery, never fabricate.
+            clearActiveQuiz();
+          }
         }
-        // FR-4: session/question gone — honest recovery, never fabricate progress.
-        clearActiveQuiz();
       }
       if (wantsFreshSession) {
         clearActiveQuiz();
@@ -309,12 +362,14 @@ export default function QuizPage(): React.JSX.Element {
   }, [
     openSession,
     resumeSession,
+    closeSession,
     listSkillIds,
     listSkills,
     focusParam,
     modeParam,
     wantsFreshSession,
     learnerId,
+    router,
   ]);
 
   // Effect 2: whenever we enter `loading` (initial + after Next) and a session
@@ -375,6 +430,8 @@ export default function QuizPage(): React.JSX.Element {
   // Effect 3: keep the in-tab active pointer current while Quiz is live (FR-1).
   // Retained across unmount so Coach ← Back can resume; cleared only on Finish.
   // Feedback stash includes verdict + letter so remount restores reviewing (same N).
+  // FR-B3a: on entering answering, also fire-and-forget POST /session/current
+  // (failure must not block the serve — FR-B3a-nonblock).
   React.useEffect(() => {
     if (session == null) return;
     if (state.phase !== "answering" && state.phase !== "reviewing") return;
@@ -405,7 +462,8 @@ export default function QuizPage(): React.JSX.Element {
       total: state.score.total,
       phase: "answering",
     });
-  }, [session, state]);
+    recordPointer(session.id, state.item.question.id);
+  }, [session, state, recordPointer]);
 
   // Effect 4: iPhone has no CoachPanel — keep coach_thread_store pin aligned
   // with the live item so sidebar "Coach" matches Ask-the-coach (not cold/stale Q1).

@@ -13,25 +13,33 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true;
 
-const mocks = vi.hoisted(() => ({
-  push: vi.fn(),
-  openSession: vi.fn(),
-  openItem: vi.fn(),
-  resumeSession: vi.fn(),
-  planAnswer: vi.fn(),
-  submit: vi.fn(),
-  escape: vi.fn(),
-  closeSession: vi.fn(),
-  listSkillIds: vi.fn(),
-  listSkills: vi.fn(),
-  loadLadder: vi.fn(),
-  clearActiveQuiz: vi.fn(),
-  shellSnapshot: { panelDismissed: false },
-}));
+const mocks = vi.hoisted(() => {
+  const push = vi.fn();
+  return {
+    push,
+    // Stable identity — Effect 1 lists `router` in its deps.
+    router: { push },
+    openSession: vi.fn(),
+    openItem: vi.fn(),
+    resumeSession: vi.fn(),
+    planAnswer: vi.fn(),
+    submit: vi.fn(),
+    escape: vi.fn(),
+    closeSession: vi.fn(),
+    listSkillIds: vi.fn(),
+    listSkills: vi.fn(),
+    loadLadder: vi.fn(),
+    recordPointer: vi.fn(),
+    clearActiveQuiz: vi.fn(),
+    shellSnapshot: { panelDismissed: false },
+    durableEnabled: false,
+    search: "",
+  };
+});
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mocks.push }),
-  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => mocks.router,
+  useSearchParams: () => new URLSearchParams(mocks.search),
 }));
 
 vi.mock("@/components/learn/LearnIdentityProvider", () => ({
@@ -50,11 +58,18 @@ vi.mock("@/components/quiz/use_quiz", () => ({
     listSkillIds: mocks.listSkillIds,
     listSkills: mocks.listSkills,
     loadLadder: mocks.loadLadder,
+    recordPointer: mocks.recordPointer,
   }),
   isNoContentError: (err: unknown) =>
     err instanceof Error && err.message === "no content available",
   isPoolExhaustedError: (err: unknown) =>
     err instanceof Error && err.message === "pool exhausted",
+  isResumeExhaustedError: (err: unknown) =>
+    err instanceof Error && err.name === "QuizResumeExhaustedError",
+}));
+
+vi.mock("@/lib/adapters/engine/engine_client", () => ({
+  durableEngineEnabled: () => mocks.durableEnabled,
 }));
 
 vi.mock("@/components/quiz/quiz_session_store", () => ({
@@ -190,6 +205,8 @@ describe("QuizPage — Phase C bounded completion", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    mocks.durableEnabled = false;
+    mocks.search = "";
     mocks.openSession.mockResolvedValue({
       session,
       skillStateAtStart: new Map(),
@@ -349,5 +366,117 @@ describe("QuizPage — Phase C bounded completion", () => {
     expect(mocks.push).toHaveBeenCalledWith(
       "/learn/summary?session=session-1",
     );
+  });
+});
+
+describe("QuizPage — Phase B durable resume + served pointer", () => {
+  let container: HTMLDivElement;
+  let root: Root | null;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mocks.durableEnabled = true;
+    mocks.search = "";
+    mocks.openSession.mockResolvedValue({
+      session,
+      skillStateAtStart: new Map(),
+    });
+    mocks.openItem.mockResolvedValue({
+      skillId: "skill-1",
+      question,
+      hintLadder: [],
+    });
+    mocks.resumeSession.mockResolvedValue(null);
+    mocks.listSkillIds.mockResolvedValue(["skill-1"]);
+    mocks.listSkills.mockResolvedValue([
+      {
+        id: "skill-1",
+        subject: "act-english",
+        key: "skill",
+        name: "Skill",
+        share_of_test_pct: 100,
+        accent_var: "--color-bucket-rhetoric",
+        description: "",
+        order: 1,
+      },
+    ]);
+    mocks.loadLadder.mockResolvedValue([]);
+    mocks.closeSession.mockResolvedValue({
+      ...session,
+      ended_at: "2026-07-22T00:01:00.000Z",
+    });
+    root = null;
+  });
+
+  async function mountPage(): Promise<void> {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await act(async () => {
+      root!.render(React.createElement(QuizPage));
+    });
+    await flush();
+    await flush();
+  }
+
+  afterEach(async () => {
+    if (root != null) {
+      await act(async () => {
+        root!.unmount();
+      });
+      container.remove();
+    }
+  });
+
+  it("records the served pointer on entering answering without blocking the serve (FR-B3a)", async () => {
+    await mountPage();
+    expect(mocks.recordPointer).toHaveBeenCalledWith("session-1", "q1");
+    expect(
+      container.querySelector('[data-testid="select-a"]'),
+    ).not.toBeNull();
+  });
+
+  it("resumes from the server active session with the server score (FR-B1/B10)", async () => {
+    mocks.resumeSession.mockResolvedValue({
+      session: { ...session, current_question_id: "q1", target_count: 30 },
+      item: { skillId: "skill-1", question, hintLadder: [] },
+      score: { correct: 4, total: 7 },
+    });
+
+    await mountPage();
+
+    expect(mocks.resumeSession).toHaveBeenCalledWith({
+      subject: "act-english",
+    });
+    expect(mocks.openSession).not.toHaveBeenCalled();
+    // Resume lands in answering — openItem is skipped.
+    expect(mocks.openItem).not.toHaveBeenCalled();
+    expect(
+      container.querySelector('[data-testid="select-a"]'),
+    ).not.toBeNull();
+  });
+
+  it("still serves the question when the pointer write rejects (FR-B3a-nonblock)", async () => {
+    // Fire-and-forget helper swallows async failures; Effect still records.
+    mocks.recordPointer.mockImplementation(() => undefined);
+
+    await mountPage();
+    expect(
+      container.querySelector('[data-testid="select-a"]'),
+    ).not.toBeNull();
+  });
+
+  it("honors ?mode=review as a fresh session, not resume (FR-B6)", async () => {
+    mocks.search = "mode=review";
+    mocks.resumeSession.mockResolvedValue({
+      session: { ...session, current_question_id: "q1", target_count: 30 },
+      item: { skillId: "skill-1", question, hintLadder: [] },
+      score: { correct: 4, total: 7 },
+    });
+
+    await mountPage();
+
+    expect(mocks.resumeSession).not.toHaveBeenCalled();
+    expect(mocks.openSession).toHaveBeenCalled();
   });
 });

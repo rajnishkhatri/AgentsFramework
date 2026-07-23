@@ -25,9 +25,19 @@ export async function GET(req: NextRequest): Promise<Response> {
   const db = engineDb();
   const session = await db.getNewestOpenSession(subject, learnerId);
   if (!session) {
-    return jsonOk({ session: null, running_score: null });
+    return jsonOk({
+      session: null,
+      running_score: null,
+      pointer_attempted: false,
+    });
   }
   const attempts = await db.listSessionAttempts(session.id);
   const running_score = commitFirstTally(attempts);
-  return jsonOk({ session, running_score });
+  // FR-B3-feedback: any attempt row on the pointer (incl. non-resolving wrong
+  // first grade) means resume must advance, not re-show.
+  const pointerId = session.current_question_id ?? null;
+  const pointer_attempted =
+    pointerId != null &&
+    attempts.some((attempt) => attempt.question_id === pointerId);
+  return jsonOk({ session, running_score, pointer_attempted });
 }

@@ -529,17 +529,42 @@ export async function closeQuizSession(
   });
 }
 
+export interface ResumeQuizArgs {
+  /**
+   * RAM-era resume (flag off): explicit session + question from
+   * `readActiveQuiz()`. Ignored under durable_engine — the server picks the
+   * newest open session (FR-B1/B2).
+   */
+  readonly sessionId?: string;
+  readonly questionId?: string;
+  readonly subject?: string;
+}
+
+export interface ResumeQuizResult {
+  readonly session: QuizSession;
+  readonly item: QuizItemResult;
+  /** Server commit-first tally when durable; omitted on the RAM path. */
+  readonly score?: { readonly correct: number; readonly total: number };
+}
+
 /**
- * Resume a live Quiz session at a stashed question (FLAG-4 / FR-3 / FR-4).
+ * Resume a live Quiz session.
  *
- * Loads the existing session + the specific question (not a fresh scheduler
- * pick). Returns `null` when the session or question is gone — caller MUST
- * clear the active pointer and open a fresh session (honest recovery, FR-4).
+ * Durable (FR-B1/B3/B3b/B5/B8/B10): `GET /session/active` supplies the newest
+ * open session, served pointer, and server running score. Zero-attempt pointer
+ * → re-show; any attempt on the pointer OR a NULL pointer → scoped `/next`
+ * pick (never re-serve answered). Stale/missing question → `null` (FR-B5).
+ *
+ * Flag-off (FLAG-4): loads the caller-supplied sessionId + questionId from RAM.
  */
 export async function resumeQuizSession(
   ports: EnginePortBag,
-  args: { sessionId: string; questionId: string },
-): Promise<{ session: QuizSession; item: QuizItemResult } | null> {
+  args: ResumeQuizArgs = {},
+): Promise<ResumeQuizResult | null> {
+  if (durableEngineEnabled()) {
+    return resumeDurableQuizSession(ports, args.subject ?? "act-english");
+  }
+  if (args.sessionId == null || args.questionId == null) return null;
   const session = await ports.sessionRepo.get(args.sessionId);
   if (session == null) return null;
   const question = await ports.questionRepo.get(args.questionId);
@@ -549,6 +574,94 @@ export async function resumeQuizSession(
     session,
     item: { skillId: question.skill_id, question, hintLadder },
   };
+}
+
+/**
+ * Thrown when durable resume finds an open session whose pool is already
+ * exhausted (FR-C5 at mount). Carries the session so the page can close it.
+ */
+export class QuizResumeExhaustedError extends Error {
+  readonly session: QuizSession;
+  readonly score: { readonly correct: number; readonly total: number };
+
+  constructor(
+    session: QuizSession,
+    score: { correct: number; total: number },
+  ) {
+    super("no next item");
+    this.name = "QuizResumeExhaustedError";
+    this.session = session;
+    this.score = score;
+  }
+}
+
+export function isResumeExhaustedError(
+  err: unknown,
+): err is QuizResumeExhaustedError {
+  return err instanceof QuizResumeExhaustedError;
+}
+
+async function resumeDurableQuizSession(
+  ports: EnginePortBag,
+  subject: string,
+): Promise<ResumeQuizResult | null> {
+  const client = browserEngineClient();
+  const active = await client.getActiveSession(subject);
+  if (active.session == null) return null;
+
+  const session = active.session;
+  const score = {
+    correct: active.running_score?.score_correct ?? 0,
+    total: active.running_score?.score_total ?? 0,
+  };
+  const pointerId = session.current_question_id ?? null;
+
+  // FR-B8 (NULL) + FR-B3-feedback (any attempt, incl. non-resolving): advance.
+  if (pointerId == null || active.pointer_attempted) {
+    const next = await client.nextItem(session.id);
+    if (next.empty || next.question == null) {
+      if (next.reason === "no_content") {
+        throw new EngineNotFoundError("no content available");
+      }
+      throw new QuizResumeExhaustedError(session, score);
+    }
+    return {
+      session,
+      item: {
+        skillId: next.skill_id ?? next.question.skill_id,
+        question: next.question,
+        hintLadder: next.hints,
+      },
+      score,
+    };
+  }
+
+  // Zero-attempt pointer → re-show the stored question (FR-B3b).
+  const question = await ports.questionRepo.get(pointerId);
+  if (question == null) return null; // FR-B5: stale id → fresh session
+  const hintLadder = await loadHintLadder(ports, session.subject, question.id);
+  return {
+    session,
+    item: { skillId: question.skill_id, question, hintLadder },
+    score,
+  };
+}
+
+/**
+ * FR-B3a / B3a-nonblock: durably record the served question. Fire-and-forget —
+ * failure must never block the serve (degrades to FR-B8 NULL-pointer resume).
+ */
+export function recordServedPointer(
+  sessionId: string,
+  questionId: string,
+): void {
+  if (!durableEngineEnabled()) return;
+  void browserEngineClient()
+    .setSessionCurrent(sessionId, questionId)
+    .catch(() => {
+      // G9: pointer-write failure is intentionally swallowed. Worst case is a
+      // stale/NULL resume position, never a broken serve (FR-B3a-nonblock).
+    });
 }
 
 /**
@@ -565,10 +678,9 @@ export function useQuiz(): {
     learnerId: string;
     sessionId?: string;
   }) => Promise<QuizItemResult>;
-  resumeSession: (args: {
-    sessionId: string;
-    questionId: string;
-  }) => Promise<{ session: QuizSession; item: QuizItemResult } | null>;
+  resumeSession: (
+    args?: ResumeQuizArgs,
+  ) => Promise<ResumeQuizResult | null>;
   /** FR-A7: sync grade + mint/reuse idempotency key (before persist). */
   planAnswer: (args: {
     question: Question;
@@ -586,6 +698,8 @@ export function useQuiz(): {
     questionId: string,
     choiceLetter?: string | null,
   ) => Promise<readonly Hint[]>;
+  /** FR-B3a: fire-and-forget served-pointer write. */
+  recordPointer: (sessionId: string, questionId: string) => void;
 } {
   const ports = useEngine();
   return React.useMemo(
@@ -593,8 +707,7 @@ export function useQuiz(): {
       openSession: (args: OpenSessionArgs) => openQuizSession(ports, args),
       openItem: (args: { subject: string; learnerId: string; sessionId?: string }) =>
         openQuizItem(ports, args),
-      resumeSession: (args: { sessionId: string; questionId: string }) =>
-        resumeQuizSession(ports, args),
+      resumeSession: (args?: ResumeQuizArgs) => resumeQuizSession(ports, args),
       planAnswer: (args: {
         question: Question;
         letter: string | null;
@@ -610,6 +723,8 @@ export function useQuiz(): {
         questionId: string,
         choiceLetter?: string | null,
       ) => loadHintLadder(ports, subject, questionId, choiceLetter),
+      recordPointer: (sessionId: string, questionId: string) =>
+        recordServedPointer(sessionId, questionId),
     }),
     [ports],
   );

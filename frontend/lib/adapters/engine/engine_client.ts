@@ -73,6 +73,17 @@ export type NextItemPayload = {
   skill_id: string | null;
 };
 
+/** GET /session/active — newest open session + server commit-first tally (FR-B1/B10). */
+export type ActiveSessionPayload = {
+  session: QuizSession | null;
+  running_score: { score_correct: number; score_total: number } | null;
+  /**
+   * True when `current_question_id` already has any attempt row (resolving or
+   * non-resolving). Resume advances in that case (FR-B3-feedback).
+   */
+  pointer_attempted: boolean;
+};
+
 export class EngineClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
@@ -157,6 +168,23 @@ export class EngineClient {
   closeSession(sessionId: string): Promise<QuizSession> {
     return this.postJson("/api/engine/session/close", {
       session_id: sessionId,
+    });
+  }
+
+  /** FR-B1/B2/B10: newest open session + pointer + server running score. */
+  getActiveSession(subject: string): Promise<ActiveSessionPayload> {
+    const q = new URLSearchParams({ subject });
+    return this.getJson(`/api/engine/session/active?${q}`);
+  }
+
+  /** FR-B3a: durable served-pointer write (callers fire-and-forget). */
+  setSessionCurrent(
+    sessionId: string,
+    questionId: string | null,
+  ): Promise<{ ok: true }> {
+    return this.postJson("/api/engine/session/current", {
+      session_id: sessionId,
+      question_id: questionId,
     });
   }
 }

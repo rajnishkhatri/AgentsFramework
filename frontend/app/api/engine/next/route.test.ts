@@ -13,6 +13,9 @@ const mocks = vi.hoisted(() => ({
   listSessionSkillIds: vi.fn(),
   listReviewedTestItems: vi.fn(),
   nextReviewed: vi.fn(),
+  schedulerNext: vi.fn(),
+  questionGet: vi.fn(),
+  hintList: vi.fn(),
 }));
 
 vi.mock("@/lib/bff/server_composition", () => ({
@@ -26,13 +29,13 @@ vi.mock("@/lib/bff/server_composition", () => ({
     listReviewedTestItems: mocks.listReviewedTestItems,
   }),
   enginePorts: () => ({
-    scheduler: { next: vi.fn() },
+    scheduler: { next: mocks.schedulerNext },
     questionRepo: {
-      get: vi.fn(),
+      get: mocks.questionGet,
       nextReviewed: mocks.nextReviewed,
     },
     attemptRepo: { misses: vi.fn() },
-    hintRepo: { list: vi.fn() },
+    hintRepo: { list: mocks.hintList },
   }),
 }));
 
@@ -88,5 +91,53 @@ describe("GET /api/engine/next — empty reason", () => {
       reason: "no_content",
       question: null,
     });
+  });
+});
+
+describe("GET /api/engine/next — served-set ownership (FR-B9)", () => {
+  it("reconstructs exclude ids server-side and never returns a served-set on the wire", async () => {
+    mocks.getSession.mockResolvedValue({
+      id: "s1",
+      subject: "act-english",
+      learner_id: "learner-1",
+      mode: "adaptive",
+      skill_focus: null,
+      started_at: "2026-07-22T00:00:00.000Z",
+      ended_at: null,
+      score_correct: 0,
+      score_total: 0,
+      target_count: 30,
+      current_question_id: null,
+    });
+    const answered = Array.from({ length: 29 }, (_, i) => `q${i + 1}`);
+    mocks.listSessionQuestionIds.mockResolvedValue(answered);
+    mocks.listSessionSkillIds.mockResolvedValue(["skill-1"]);
+    mocks.schedulerNext.mockResolvedValue({
+      skill_id: "skill-1",
+      question_id: "q30",
+    });
+    mocks.questionGet.mockResolvedValue({
+      id: "q30",
+      subject: "act-english",
+      skill_id: "skill-1",
+      stem: "Q30",
+    });
+    mocks.hintList.mockResolvedValue([]);
+
+    const res = await GET(request());
+    const body = await res.json();
+
+    expect(mocks.schedulerNext).toHaveBeenCalledWith(
+      "act-english",
+      "learner-1",
+      answered,
+      ["skill-1"],
+    );
+    expect(body).toMatchObject({
+      empty: false,
+      question: { id: "q30" },
+    });
+    expect(body).not.toHaveProperty("served_question_ids");
+    expect(body).not.toHaveProperty("servedIds");
   });
 });

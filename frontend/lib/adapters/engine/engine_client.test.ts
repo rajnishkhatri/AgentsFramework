@@ -109,4 +109,68 @@ describe("EngineClient — one call per coarse loader (FR-A6 / §7)", () => {
       }),
     );
   });
+
+  it("getActiveSession fetches newest open session + server tally (FR-B1/B10)", async () => {
+    const fetchImpl = vi.fn(async (_url: RequestInfo | URL) =>
+      new Response(
+        JSON.stringify({
+          session: {
+            id: "sess-open",
+            subject: "act-english",
+            learner_id: "u1",
+            mode: "adaptive",
+            skill_focus: null,
+            started_at: "t",
+            ended_at: null,
+            score_correct: 0,
+            score_total: 0,
+            target_count: 30,
+            current_question_id: "q4",
+          },
+          running_score: { score_correct: 1, score_total: 3 },
+          pointer_attempted: false,
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+    const client = new EngineClient({ baseUrl: "http://x", fetchImpl });
+
+    const got = await client.getActiveSession("act-english");
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(String(fetchImpl.mock.calls[0]![0])).toContain(
+      "/api/engine/session/active?subject=act-english",
+    );
+    expect(got.session?.id).toBe("sess-open");
+    expect(got.session?.current_question_id).toBe("q4");
+    expect(got.running_score).toEqual({ score_correct: 1, score_total: 3 });
+    expect(got.pointer_attempted).toBe(false);
+  });
+
+  it("setSessionCurrent posts the served pointer (FR-B3a)", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const client = new EngineClient({ baseUrl: "http://x", fetchImpl });
+
+    await client.setSessionCurrent("sess-1", "q4");
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://x/api/engine/session/current",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          session_id: "sess-1",
+          question_id: "q4",
+        }),
+      }),
+    );
+  });
 });
