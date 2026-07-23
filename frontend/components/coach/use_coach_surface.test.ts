@@ -109,6 +109,7 @@ describe("countMissesOnSkill — skill-scoped count (FR-6)", () => {
         correct: false,
         elapsed_ms: 1000,
         used_hint: false,
+        idempotency_key: "test-idem-1",
       });
     }
 
@@ -133,6 +134,7 @@ describe("countMissesOnSkill — skill-scoped count (FR-6)", () => {
       correct: false,
       elapsed_ms: 1000,
       used_hint: false,
+      idempotency_key: "test-idem-2",
     });
     const n = await countMissesOnSkill(ports, {
       subject: SUBJECT,

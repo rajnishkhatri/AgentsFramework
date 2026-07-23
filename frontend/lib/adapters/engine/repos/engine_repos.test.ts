@@ -190,6 +190,7 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
       correct: true,
       elapsed_ms: 1200,
       used_hint: true, // hinted...
+      idempotency_key: "test-idem-1",
     });
     expect(saved.id).toBe("a1");
     expect(saved.created_at).toBe("2026-06-30T00:00:00.000Z");
@@ -225,6 +226,7 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
       elapsed_ms: 100,
       used_hint: false,
       resolution: "walked_through",
+      idempotency_key: "test-idem-2",
     });
     expect(withRes.resolution).toBe("walked_through");
     const misses = await repo.misses("act-english", "alice");
@@ -242,6 +244,7 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
       correct: true,
       elapsed_ms: 50,
       used_hint: false,
+      idempotency_key: "test-idem-legacy",
     });
     expect(legacy.resolution == null).toBe(true);
   });
@@ -380,6 +383,7 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
       correct: false,
       elapsed_ms: 1,
       used_hint: false,
+      idempotency_key: "test-idem-3",
     });
     const second = await repo.record({
       subject: "act-english",
@@ -389,6 +393,7 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
       correct: false,
       elapsed_ms: 1,
       used_hint: false,
+      idempotency_key: "test-idem-4",
     });
     // First stamp equals the frozen clock; second is bumped +1ms (strictly newer).
     expect(first.created_at).toBe("2026-06-30T00:00:00.000Z");

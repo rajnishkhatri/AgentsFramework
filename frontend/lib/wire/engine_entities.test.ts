@@ -221,10 +221,26 @@ describe("Attempt.resolution — commit-first FR-10 (additive nullable)", () => 
       elapsed_ms: 500,
       used_hint: false,
       resolution: "first_try",
+      idempotency_key: "11111111-1111-4111-8111-111111111111",
     });
     expect(input.resolution).toBe("first_try");
+    expect(input.idempotency_key).toBe("11111111-1111-4111-8111-111111111111");
     expect("id" in input).toBe(false);
     expect("created_at" in input).toBe(false);
+  });
+
+  it("AttemptInput requires idempotency_key (FR-A9.1 forcing function)", () => {
+    expect(
+      AttemptInput.safeParse({
+        subject: "act-english",
+        session_id: "sess-1",
+        question_id: "q-1",
+        chosen_letter: "A",
+        correct: true,
+        elapsed_ms: 500,
+        used_hint: false,
+      }).success,
+    ).toBe(false);
   });
 });
 

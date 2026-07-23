@@ -12,6 +12,15 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-22 — **FR-G2 retire grounding: no attempt→question FK; history orphans,
+  not cascades.** `0000_frontend_baseline.sql` correctly omits
+  `attempt.question_id` / `hint.question_id` → `question.id` FKs (practice stores
+  `test_item` ids). `schema.pg.ts` / sqlite twin now match (TEXT, no FK). Retire
+  (`reviewed=false`) still stands — a hard DELETE would orphan attempt history and
+  break misses/eligibility, not cascade-delete it. Rejected keeping the drizzle FK
+  "for documentation": it already produced the wrong FR-G2 rationale and would
+  reject every real practice insert on pg.
+
 - 2026-07-21 — **commit-first coach (v3) flipped ON by default in prod
   (FR-14 "OFF in prod until staged" superseded).** `commitFirstCoachDefault()`
   now returns `true` for the unset/prod case; only an explicit

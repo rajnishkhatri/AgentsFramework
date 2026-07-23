@@ -205,6 +205,7 @@ describe("loadDashboard — FR-C5 review-my-misses count (empty-state first)", (
       correct: false,
       elapsed_ms: 1000,
       used_hint: false,
+      idempotency_key: "test-idem-1",
     });
     const vm = await loadDashboard(ports, {
       subject: SUBJECT,
@@ -230,6 +231,7 @@ describe("loadDashboard — FR-C5 review-my-misses count (empty-state first)", (
         correct: false,
         elapsed_ms: 1000,
         used_hint: false,
+        idempotency_key: "test-idem-2",
       });
     }
     const vm = await loadDashboard(ports, {

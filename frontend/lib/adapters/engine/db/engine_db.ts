@@ -39,6 +39,16 @@ export type SessionClosePatch = {
 };
 
 /**
+ * Typed result of `insertAttempt` (coach-v3 FR-A9.1). On conflict with the
+ * partial unique index `(session_id, question_id, idempotency_key)`, the
+ * adapter re-selects the stored row and returns `already-existed` — handlers
+ * never see SQLSTATE 23505 (pgEngineDb wraps errors as opaque EngineRepoError).
+ */
+export type InsertAttemptResult =
+  | { status: "inserted"; attempt: Attempt }
+  | { status: "already-existed"; attempt: Attempt };
+
+/**
  * ReadableEngineDb — the read-only projection of the `skill_state` seam the
  * ADR-0011 `LearnerReadRepo` adapter depends on.
  *
@@ -118,9 +128,26 @@ export interface EngineDb extends ReadableEngineDb {
     learnerId: string,
     options?: { sinceISO?: string },
   ): Promise<QuizSession[]>;
+  /**
+   * #30 — durable served-pointer write (FR-B3a). `questionId = null` clears
+   * the pointer (on close). Surfaces as `current_question_id` on session reads.
+   */
+  setSessionCurrentQuestion(
+    sessionId: string,
+    questionId: string | null,
+  ): Promise<void>;
+  /**
+   * #31 — newest open session for resume (review #6-B2). `ended_at IS NULL`
+   * only; `listClosedSessionsByLearner` excludes open rows so no prior method
+   * finds a resumable session.
+   */
+  getNewestOpenSession(
+    subject: string,
+    learnerId: string,
+  ): Promise<QuizSession | null>;
 
   // --- attempt ---
-  insertAttempt(a: Attempt): Promise<void>;
+  insertAttempt(a: Attempt): Promise<InsertAttemptResult>;
   /**
    * Outstanding misses for a learner, newest-first (FR-D4 / FR-C5): the latest
    * attempt per `question_id` when that attempt is incorrect. A later correct

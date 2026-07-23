@@ -25,7 +25,11 @@ import type {
   TestItem,
   Tutorial,
 } from "../../../wire/engine_entities";
-import type { EngineDb, SessionClosePatch } from "./engine_db";
+import type {
+  EngineDb,
+  InsertAttemptResult,
+  SessionClosePatch,
+} from "./engine_db";
 
 function skillStateKey(subject: string, skillId: string, learnerId: string): string {
   return `${subject}\0${skillId}\0${learnerId}`;
@@ -203,11 +207,14 @@ export class InMemoryEngineDb implements EngineDb {
 
   // --- quiz_session ---
   async insertSession(s: QuizSession): Promise<void> {
-    this.sessions.set(s.id, { ...s });
+    this.sessions.set(s.id, {
+      ...s,
+      current_question_id: s.current_question_id ?? null,
+    });
   }
   async getSession(id: string): Promise<QuizSession | null> {
     const s = this.sessions.get(id);
-    return s ? { ...s } : null;
+    return s ? { ...s, current_question_id: s.current_question_id ?? null } : null;
   }
   async patchSessionClose(
     id: string,
@@ -248,11 +255,54 @@ export class InMemoryEngineDb implements EngineDb {
     return rows.map((s) => ({ ...s }));
   }
 
+  async setSessionCurrentQuestion(
+    sessionId: string,
+    questionId: string | null,
+  ): Promise<void> {
+    const s = this.sessions.get(sessionId);
+    if (!s) return;
+    this.sessions.set(sessionId, { ...s, current_question_id: questionId });
+  }
+
+  async getNewestOpenSession(
+    subject: string,
+    learnerId: string,
+  ): Promise<QuizSession | null> {
+    const rows = [...this.sessions.values()].filter(
+      (s) =>
+        s.subject === subject &&
+        s.learner_id === learnerId &&
+        s.ended_at == null,
+    );
+    rows.sort((a, b) => {
+      const startCmp = (b.started_at ?? "").localeCompare(a.started_at ?? "");
+      if (startCmp !== 0) return startCmp;
+      return b.id.localeCompare(a.id);
+    });
+    const first = rows[0];
+    return first
+      ? { ...first, current_question_id: first.current_question_id ?? null }
+      : null;
+  }
+
   // --- attempt ---
-  async insertAttempt(a: Attempt): Promise<void> {
-    const stored = { ...a };
+  async insertAttempt(a: Attempt): Promise<InsertAttemptResult> {
+    const key = a.idempotency_key ?? null;
+    if (key != null) {
+      const existing = this.attempts.find(
+        (row) =>
+          row.session_id === a.session_id &&
+          row.question_id === a.question_id &&
+          row.idempotency_key === key,
+      );
+      if (existing) {
+        return { status: "already-existed", attempt: { ...existing } };
+      }
+    }
+    const stored = { ...a, idempotency_key: key };
     this.attemptSeq.set(stored, this.nextAttemptSeq++);
     this.attempts.push(stored);
+    return { status: "inserted", attempt: { ...stored } };
   }
   async listMisses(subject: string, learnerId: string): Promise<Attempt[]> {
     // Outstanding misses only (FR-D4 / FR-C5): latest attempt per question_id

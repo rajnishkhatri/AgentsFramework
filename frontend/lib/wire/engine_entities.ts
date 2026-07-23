@@ -222,6 +222,11 @@ export const QuizSession = z.object({
   // row with no column maps to null). A positive int is the target; the value
   // is stored at open, never recomputed on close (FR-1/2/3/4/7).
   target_count: z.number().int().positive().nullable(),
+  // Durable served-pointer (coach-v3 FR-B3a). `.nullable().optional()` (not
+  // plan's bare `.nullable()`): legacy/pre-0004 rows omit the field; post-0004
+  // reads normalize to null. Pin deliberately — do not "tighten" without a
+  // backfill that guarantees the key is always present on the wire.
+  current_question_id: z.string().nullable().optional(),
 });
 export type QuizSession = z.infer<typeof QuizSession>;
 
@@ -251,11 +256,21 @@ export const Attempt = z.object({
   created_at: z.string(),
   /** Set only on the resolving attempt (commit-first FR-10); legacy rows omit/null. */
   resolution: AttemptResolution.nullable().optional(),
+  // Client-stamped idempotency key (coach-v3 FR-A9.1). `.nullable().optional()`
+  // (not plan's bare `.nullable()`): legacy rows omit/null; AttemptInput still
+  // requires the key on write. Pin deliberately for read-path legacy coexist.
+  idempotency_key: z.string().nullable().optional(),
 });
 export type Attempt = z.infer<typeof Attempt>;
 
-/** The fields a caller supplies to record an attempt (id + created_at are engine-assigned). */
-export const AttemptInput = Attempt.omit({ id: true, created_at: true });
+/**
+ * The fields a caller supplies to record an attempt (id + created_at are
+ * engine-assigned). `idempotency_key` is required on input (compile-time
+ * forcing function for the durable write path) — omit-precedent + required.
+ */
+export const AttemptInput = Attempt.omit({ id: true, created_at: true })
+  .required({ idempotency_key: true })
+  .extend({ idempotency_key: z.string().min(1) });
 export type AttemptInput = z.infer<typeof AttemptInput>;
 
 /**

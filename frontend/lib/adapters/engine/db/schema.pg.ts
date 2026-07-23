@@ -32,6 +32,14 @@
  * column that keeps the schema open for Math/Science without making it abstract
  * (engine spec FR-H1). A new subject is new rows + a new Grader adapter + a new
  * renderer-registry entry; this schema does not change.
+ *
+ * DEPLOY TRUTH vs this file: `frontend/drizzle/0000_frontend_baseline.sql` is
+ * what migrate_engine applies. Baseline uses TEXT ids (opaque bank keys like
+ * `s-punc` / `ti-gen-*` are not UUID-shaped) and deliberately omits FKs from
+ * `hint.question_id` / `attempt.question_id` → `question.id` because practice
+ * stores `test_item` ids there. Those two columns are TEXT + no FK here to
+ * match; other uuid() PK columns remain the historical drizzle shape — PG
+ * still accepts string params at runtime.
  */
 
 import { sql } from "drizzle-orm";
@@ -117,9 +125,8 @@ export const hint = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     subject: text("subject").notNull().default(DEFAULT_SUBJECT),
-    question_id: uuid("question_id")
-      .notNull()
-      .references(() => question.id, { onDelete: "cascade" }),
+    // TEXT, no FK → question.id: may store question OR test_item ids (baseline).
+    question_id: text("question_id").notNull(),
     choice_letter: text("choice_letter"), // null | A–D (ADR-0035)
     rung: integer("rung").notNull(), // 1..3; assertion rung unrepresentable at the wire
     body_md: text("body_md").notNull(),
@@ -212,6 +219,9 @@ export const quizSession = pgTable("quiz_session", {
   // pre-S3 row (added before this column) reads NULL → `target_count: null`
   // (FR-2/FR-3). Set once at open, never recomputed on close (FR-7).
   target_count: integer("target_count"),
+  // Durable served-pointer (coach-v3 FR-B3a). Opaque question/test_item id —
+  // TEXT to match the live bank ids (`ti-gen-*`), not uuid().
+  current_question_id: text("current_question_id"),
 });
 
 /**
@@ -219,26 +229,38 @@ export const quizSession = pgTable("quiz_session", {
  * `correct` comes from the Grader Verdict; `used_hint` is auditable but never
  * changes recorded correctness (engine spec FR-D5).
  */
-export const attempt = pgTable("attempt", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  subject: text("subject").notNull().default(DEFAULT_SUBJECT),
-  session_id: uuid("session_id")
-    .notNull()
-    .references(() => quizSession.id, { onDelete: "cascade" }),
-  question_id: uuid("question_id")
-    .notNull()
-    .references(() => question.id, { onDelete: "cascade" }),
-  chosen_letter: text("chosen_letter").notNull(),
-  correct: boolean("correct").notNull(),
-  elapsed_ms: integer("elapsed_ms").notNull().default(0),
-  used_hint: boolean("used_hint").notNull().default(false),
-  created_at: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  // Commit-first FR-10: set only on the resolving attempt. Null = legacy /
-  // non-resolving row (no backfill). Values: first_try | coached | walked_through.
-  resolution: text("resolution"),
-});
+export const attempt = pgTable(
+  "attempt",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    subject: text("subject").notNull().default(DEFAULT_SUBJECT),
+    session_id: uuid("session_id")
+      .notNull()
+      .references(() => quizSession.id, { onDelete: "cascade" }),
+    // TEXT, no FK → question.id: practice stores test_item ids here (baseline).
+    // Soft-retire (not hard-DELETE) of content remains policy so history is not
+    // orphaned for misses/eligibility — there is no cascade FK to lean on.
+    question_id: text("question_id").notNull(),
+    chosen_letter: text("chosen_letter").notNull(),
+    correct: boolean("correct").notNull(),
+    elapsed_ms: integer("elapsed_ms").notNull().default(0),
+    used_hint: boolean("used_hint").notNull().default(false),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    // Commit-first FR-10: set only on the resolving attempt. Null = legacy /
+    // non-resolving row (no backfill). Values: first_try | coached | walked_through.
+    resolution: text("resolution"),
+    // Client-stamped idempotency key (coach-v3 FR-A9.1). UUID from the browser;
+    // NULL = legacy row. Partial unique index below lets legacy coexist.
+    idempotency_key: uuid("idempotency_key"),
+  },
+  (t) => [
+    uniqueIndex("attempt_idempotency_uq")
+      .on(t.session_id, t.question_id, t.idempotency_key)
+      .where(sql`${t.idempotency_key} is not null`),
+  ],
+);
 
 /**
  * skill_state — the adaptivity source of truth (engine spec FR-A2).

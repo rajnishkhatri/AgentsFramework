@@ -828,6 +828,7 @@ describe("openQuizSession / openQuizItem — review misses (FR-A6 / FR-C5)", () 
         correct: false,
         elapsed_ms: 1000,
         used_hint: false,
+        idempotency_key: "test-idem-1",
       });
     }
     const opened = await openQuizSession(ports, {
@@ -921,6 +922,7 @@ describe("openQuizSession / openQuizItem — review misses (FR-A6 / FR-C5)", () 
       correct: false,
       elapsed_ms: 1000,
       used_hint: false,
+      idempotency_key: "test-idem-2",
     });
     const review = await openQuizSession(ports, {
       subject: SUBJECT,

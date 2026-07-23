@@ -214,6 +214,7 @@ async function recordAttempt(
     correct,
     elapsed_ms: 1000,
     used_hint: false,
+    idempotency_key: "test-idem-1",
   });
 }
 

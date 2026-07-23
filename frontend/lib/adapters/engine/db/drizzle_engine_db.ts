@@ -56,7 +56,11 @@ import type {
   TestItem,
   Tutorial,
 } from "../../../wire/engine_entities";
-import type { EngineDb, SessionClosePatch } from "./engine_db";
+import type {
+  EngineDb,
+  InsertAttemptResult,
+  SessionClosePatch,
+} from "./engine_db";
 
 // --- row mappers (Drizzle row → wire shape). Timestamps → ISO strings. ---
 
@@ -178,6 +182,8 @@ function toSession(r: Record<string, unknown>): QuizSession {
     // S3 bounded length: a legacy row (added before the column) has no
     // `target_count` → maps to null = endless (FR-3). Otherwise carry the int.
     target_count: r.target_count == null ? null : Number(r.target_count),
+    current_question_id:
+      r.current_question_id == null ? null : String(r.current_question_id),
   };
 }
 
@@ -198,6 +204,8 @@ function toAttempt(r: Record<string, unknown>): Attempt {
     used_hint: Boolean(r.used_hint),
     created_at: isoOf(r.created_at),
     resolution,
+    idempotency_key:
+      r.idempotency_key == null ? null : String(r.idempotency_key),
   };
 }
 
@@ -475,11 +483,93 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       );
       return rows.map((r) => toSession(r as Record<string, unknown>));
     },
-    async insertAttempt(a) {
+    async setSessionCurrentQuestion(sessionId, questionId) {
       await wrap(
-        "insertAttempt",
-        db.insert(pg.attempt).values({ ...a, created_at: new Date(a.created_at) }),
+        "setSessionCurrentQuestion",
+        db
+          .update(pg.quizSession)
+          .set({ current_question_id: questionId })
+          .where(eq(pg.quizSession.id, sessionId)),
       );
+    },
+    async getNewestOpenSession(subject, learnerId) {
+      const rows = await wrap(
+        "getNewestOpenSession",
+        db
+          .select()
+          .from(pg.quizSession)
+          .where(
+            and(
+              eq(pg.quizSession.subject, subject),
+              eq(pg.quizSession.learner_id, learnerId),
+              isNull(pg.quizSession.ended_at),
+            ),
+          )
+          .orderBy(desc(pg.quizSession.started_at), desc(pg.quizSession.id))
+          .limit(1),
+      );
+      const first = rows[0];
+      return first ? toSession(first as Record<string, unknown>) : null;
+    },
+    async insertAttempt(a): Promise<InsertAttemptResult> {
+      const values = {
+        ...a,
+        created_at: new Date(a.created_at),
+        idempotency_key: a.idempotency_key ?? null,
+      };
+      const inserted = await wrap(
+        "insertAttempt",
+        db
+          .insert(pg.attempt)
+          .values(values)
+          .onConflictDoNothing({
+            // Must match attempt_idempotency_uq's partial predicate — without
+            // `where`, PG rejects "no unique … matching the ON CONFLICT".
+            target: [
+              pg.attempt.session_id,
+              pg.attempt.question_id,
+              pg.attempt.idempotency_key,
+            ],
+            where: sql`${pg.attempt.idempotency_key} is not null`,
+          })
+          .returning(),
+      );
+      if (inserted.length > 0) {
+        return {
+          status: "inserted",
+          attempt: toAttempt(inserted[0] as Record<string, unknown>),
+        };
+      }
+      // Conflict: re-select the stored row (typed already-existed).
+      if (a.idempotency_key == null) {
+        throw new EngineRepoError(
+          "insertAttempt conflict without idempotency_key",
+        );
+      }
+      const existing = await wrap(
+        "insertAttempt.reselect",
+        db
+          .select()
+          .from(pg.attempt)
+          .where(
+            and(
+              eq(pg.attempt.session_id, a.session_id),
+              eq(pg.attempt.question_id, a.question_id),
+              eq(pg.attempt.idempotency_key, a.idempotency_key),
+            ),
+          )
+          .limit(1),
+      );
+      const row = existing[0];
+      if (!row) {
+        throw new EngineRepoError(
+          "insertAttempt conflict but stored row not found",
+        );
+      }
+      return {
+        status: "already-existed",
+        attempt: toAttempt(row as Record<string, unknown>),
+      };
     },
     async listMisses(subject, learnerId) {
       // Outstanding misses (FR-D4): incorrect attempts that are still the
