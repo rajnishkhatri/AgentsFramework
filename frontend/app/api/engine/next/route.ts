@@ -1,6 +1,7 @@
 /**
  * GET /api/engine/next?session=<id> — server-side scheduler pick (FR-B9 / T A.8).
  * Reconstructs served-set from attempts; does not return it on the wire.
+ * Adaptive mode layers content-fresh eligibility (FR-E1..E5) over FSRS.
  */
 
 import { NextRequest } from "next/server";
@@ -13,6 +14,7 @@ import {
   requireOwnedSession,
 } from "@/lib/bff/engine_guard";
 import { EngineNotFoundError } from "@/lib/ports/engine/errors";
+import type { Question } from "@/lib/wire/engine_entities";
 
 export const dynamic = "force-dynamic";
 
@@ -34,19 +36,23 @@ export async function GET(req: NextRequest): Promise<Response> {
   const servedSkillIds = await db.listSessionSkillIds(sessionId);
   const ports = enginePorts();
 
-  let question = null;
+  let question: Question | null = null;
   let skillId: string | null = null;
 
   try {
     if (session.mode === "adaptive") {
-      const pick = await ports.scheduler.next(
+      const pick = await pickAdaptive(
+        ports,
+        db,
         session.subject,
         learnerId,
         servedIds,
         servedSkillIds,
       );
-      skillId = pick.skill_id;
-      question = await ports.questionRepo.get(pick.question_id);
+      if (pick) {
+        skillId = pick.skill_id;
+        question = await ports.questionRepo.get(pick.question_id);
+      }
     } else if (session.mode === "drill" && session.skill_focus) {
       skillId = session.skill_focus;
       question = await ports.questionRepo.nextReviewed(
@@ -55,6 +61,7 @@ export async function GET(req: NextRequest): Promise<Response> {
         servedIds,
       );
     } else if (session.mode === "review") {
+      // FR-E5: review serves exact past misses — eligibility does not apply.
       const misses = await db.listMisses(session.subject, learnerId);
       const served = new Set(servedIds);
       const nextMiss = misses.find((m) => !served.has(m.question_id));
@@ -89,4 +96,64 @@ export async function GET(req: NextRequest): Promise<Response> {
     hints,
     skill_id: skillId ?? question.skill_id,
   });
+}
+
+type SchedulerPorts = {
+  scheduler: {
+    next: (
+      subject: string,
+      learnerId: string,
+      servedIds?: readonly string[],
+      servedSkillIds?: readonly string[],
+    ) => Promise<{ skill_id: string; question_id: string }>;
+  };
+};
+
+type EligibilityDb = {
+  listAlreadyCorrectQuestionIds: (
+    subject: string,
+    learnerId: string,
+  ) => Promise<string[]>;
+};
+
+/**
+ * FR-E1/E1a/E3: prefer not-yet-correct items by extending excludeIds with the
+ * FR-E4 already-correct projection; if that preferred pool is empty, fall back
+ * to full-bank FSRS (servedIds only — today's scheduler behavior).
+ */
+async function pickAdaptive(
+  ports: SchedulerPorts,
+  db: EligibilityDb,
+  subject: string,
+  learnerId: string,
+  servedIds: readonly string[],
+  servedSkillIds: readonly string[],
+): Promise<{ skill_id: string; question_id: string } | null> {
+  const alreadyCorrect = await db.listAlreadyCorrectQuestionIds(
+    subject,
+    learnerId,
+  );
+  const preferredExclude = [...servedIds, ...alreadyCorrect];
+  try {
+    return await ports.scheduler.next(
+      subject,
+      learnerId,
+      preferredExclude,
+      servedSkillIds,
+    );
+  } catch (err) {
+    if (!(err instanceof EngineNotFoundError)) throw err;
+  }
+  // FR-E3: not-yet-correct pool exhausted → normal FSRS over the full bank.
+  try {
+    return await ports.scheduler.next(
+      subject,
+      learnerId,
+      servedIds,
+      servedSkillIds,
+    );
+  } catch (err) {
+    if (!(err instanceof EngineNotFoundError)) throw err;
+    return null;
+  }
 }

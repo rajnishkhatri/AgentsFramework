@@ -155,6 +155,16 @@ export interface EngineDb extends ReadableEngineDb {
    */
   listMisses(subject: string, learnerId: string): Promise<Attempt[]>;
   /**
+   * Content-fresh already-correct ids (FR-E4): question ids whose **latest**
+   * attempt (by `created_at`) is `correct === true`, per learner+subject —
+   * the inverse of `listMisses`. Read-only; no `skill_state` write. Used by
+   * `GET /api/engine/next` as a prefer-exclude layer (server-only disposition).
+   */
+  listAlreadyCorrectQuestionIds(
+    subject: string,
+    learnerId: string,
+  ): Promise<string[]>;
+  /**
    * The `question_id`s answered in one session (any correctness) — the S3
    * served-set projection (FR-13). A `question_id`-only read scoped by
    * `session_id`; order is not significant (the caller uses it as a set).

@@ -309,37 +309,54 @@ export class InMemoryEngineDb implements EngineDb {
     // for this learner+subject — include iff that latest row is incorrect. A
     // later correct answer clears the item from the review pool (append-only
     // history is preserved; this read is a projection).
+    const latestByQuestion = this.latestAttemptsByQuestion(subject, learnerId);
+    return [...latestByQuestion.values()]
+      .filter((a) => a.correct === false)
+      .sort((a, b) => this.compareAttemptsNewestFirst(a, b))
+      .map((a) => ({ ...a }));
+  }
+  async listAlreadyCorrectQuestionIds(
+    subject: string,
+    learnerId: string,
+  ): Promise<string[]> {
+    // FR-E4 — inverse of listMisses: latest attempt correct===true.
+    const latestByQuestion = this.latestAttemptsByQuestion(subject, learnerId);
+    const ids: string[] = [];
+    for (const a of latestByQuestion.values()) {
+      if (a.correct === true) ids.push(a.question_id);
+    }
+    return ids;
+  }
+  private compareAttemptsNewestFirst(a: Attempt, b: Attempt): number {
+    if (a.created_at !== b.created_at) {
+      return a.created_at < b.created_at ? 1 : -1;
+    }
+    // Same-ms tie: fall back to insertion order (newest-inserted first).
+    const seqA = this.attemptSeq.get(a) ?? -1;
+    const seqB = this.attemptSeq.get(b) ?? -1;
+    return seqB - seqA;
+  }
+  private latestAttemptsByQuestion(
+    subject: string,
+    learnerId: string,
+  ): Map<string, Attempt> {
     const learnerSessionIds = new Set(
       [...this.sessions.values()]
         .filter((s) => s.subject === subject && s.learner_id === learnerId)
         .map((s) => s.id),
     );
-    const byNewest = (a: Attempt, b: Attempt): number => {
-      if (a.created_at !== b.created_at) {
-        return a.created_at < b.created_at ? 1 : -1;
-      }
-      // Same-ms tie: fall back to insertion order (newest-inserted first).
-      // The `id` is a random UUID here, so sorting on it would surface an
-      // arbitrary row — the summary recap must show the LAST miss recorded.
-      const seqA = this.attemptSeq.get(a) ?? -1;
-      const seqB = this.attemptSeq.get(b) ?? -1;
-      return seqB - seqA;
-    };
     const learnerAttempts = this.attempts
       .filter(
         (a) => a.subject === subject && learnerSessionIds.has(a.session_id),
       )
-      .sort(byNewest);
+      .sort((a, b) => this.compareAttemptsNewestFirst(a, b));
     const latestByQuestion = new Map<string, Attempt>();
     for (const a of learnerAttempts) {
       if (!latestByQuestion.has(a.question_id)) {
         latestByQuestion.set(a.question_id, a);
       }
     }
-    return [...latestByQuestion.values()]
-      .filter((a) => a.correct === false)
-      .sort(byNewest)
-      .map((a) => ({ ...a }));
+    return latestByQuestion;
   }
   async listSessionQuestionIds(sessionId: string): Promise<string[]> {
     // Every question answered in this session (any correctness) — the served

@@ -136,3 +136,79 @@ describe("insertAttempt idempotency (FR-A9.1 DB half)", () => {
     expect(await db.listSessionAttempts("sess-1")).toHaveLength(2);
   });
 });
+
+describe("listAlreadyCorrectQuestionIds (FR-E4)", () => {
+  it("returns latest-correct question ids and omits misses / walked-through", async () => {
+    const db = new InMemoryEngineDb();
+    await db.insertSession(session({ id: "prior" }));
+    await db.insertAttempt(
+      attempt({
+        id: "a-correct",
+        session_id: "prior",
+        question_id: "q-correct",
+        correct: true,
+        resolution: "coached",
+        created_at: "2026-07-21T12:00:00.000Z",
+        idempotency_key: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      }),
+    );
+    await db.insertAttempt(
+      attempt({
+        id: "a-walked",
+        session_id: "prior",
+        question_id: "q-walked",
+        correct: false,
+        resolution: "walked_through",
+        created_at: "2026-07-21T12:01:00.000Z",
+        idempotency_key: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      }),
+    );
+    await db.insertAttempt(
+      attempt({
+        id: "a-miss",
+        session_id: "prior",
+        question_id: "q-miss",
+        correct: false,
+        resolution: "first_try",
+        created_at: "2026-07-21T12:02:00.000Z",
+        idempotency_key: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      }),
+    );
+
+    const ids = await db.listAlreadyCorrectQuestionIds(SUBJECT, "learner-a");
+    expect(ids).toEqual(["q-correct"]);
+    expect(ids).not.toContain("q-walked");
+    expect(ids).not.toContain("q-miss");
+  });
+
+  it("latest attempt wins — a later correct clears a prior miss", async () => {
+    const db = new InMemoryEngineDb();
+    await db.insertSession(session({ id: "s-old" }));
+    await db.insertSession(session({ id: "s-new" }));
+    await db.insertAttempt(
+      attempt({
+        id: "a1",
+        session_id: "s-old",
+        question_id: "q1",
+        correct: false,
+        created_at: "2026-07-21T12:00:00.000Z",
+        idempotency_key: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      }),
+    );
+    await db.insertAttempt(
+      attempt({
+        id: "a2",
+        session_id: "s-new",
+        question_id: "q1",
+        correct: true,
+        created_at: "2026-07-22T12:00:00.000Z",
+        idempotency_key: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      }),
+    );
+
+    expect(await db.listAlreadyCorrectQuestionIds(SUBJECT, "learner-a")).toEqual([
+      "q1",
+    ]);
+    expect(await db.listMisses(SUBJECT, "learner-a")).toEqual([]);
+  });
+});

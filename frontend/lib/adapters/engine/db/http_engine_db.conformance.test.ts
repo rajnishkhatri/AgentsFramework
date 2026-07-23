@@ -30,18 +30,19 @@ function jsonRes(body: unknown, status = 200): Response {
 }
 
 describe("HttpEngineDb — FR-A4 disposition totality", () => {
-  it("disposition table has exactly 31 methods (4 server-only)", () => {
-    expect(Object.keys(ENGINE_DB_DISPOSITION)).toHaveLength(31);
+  it("disposition table has exactly 32 methods (5 server-only)", () => {
+    expect(Object.keys(ENGINE_DB_DISPOSITION)).toHaveLength(32);
     expect(SERVER_ONLY_ENGINE_DB_METHODS).toEqual([
       "insertQuestion",
       "insertHint",
       "insertTestItem",
       "insertTestBlueprint",
+      "listAlreadyCorrectQuestionIds",
     ]);
     expect(FINE_ENGINE_DB_METHODS).toHaveLength(27);
   });
 
-  it("the 4 server-only methods throw typed EngineRepoError without fetching", async () => {
+  it("the 5 server-only methods throw typed EngineRepoError without fetching", async () => {
     const fetchImpl = vi.fn();
     const db = new HttpEngineDb({ baseUrl: "", fetchImpl });
     for (const method of SERVER_ONLY_ENGINE_DB_METHODS) {

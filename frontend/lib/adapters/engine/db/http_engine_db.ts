@@ -203,6 +203,13 @@ export class HttpEngineDb implements EngineDb {
   listMisses(subject: string, learnerId: string): Promise<Attempt[]> {
     return this.call("listMisses", [subject, learnerId]);
   }
+  async listAlreadyCorrectQuestionIds(
+    _subject: string,
+    _learnerId: string,
+  ): Promise<string[]> {
+    // FR-E4: server-only — eligibility is applied in GET /api/engine/next.
+    this.serverOnly();
+  }
   listSessionQuestionIds(sessionId: string): Promise<string[]> {
     return this.call("listSessionQuestionIds", [sessionId]);
   }

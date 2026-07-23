@@ -12,6 +12,27 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-22 — **FR-E4 `listAlreadyCorrectQuestionIds` is server-only on EngineDb.**
+  Content-fresh eligibility runs only in `GET /api/engine/next` (prefer-exclude +
+  FR-E3 fallback); the browser never needs the cross-session correct set. Marked
+  `server-only` in the disposition table (HttpEngineDb throws) rather than exposing
+  a fine `/api/engine/db/...` route. Rejected "fine-grained + client filter": that
+  would reintroduce a chatty client-side already-correct set the durable swap
+  removed.
+- 2026-07-22 — **schema.pg.ts fully aligned to the deployed baseline: all id / FK
+  columns are `text()`, only `attempt.idempotency_key` stays `uuid`.** Completes
+  the entry below (which had only aligned the two no-FK content columns). Every PK
+  + `skill_id` FK + `session_id` + `skill_focus` in `schema.pg.ts` converted
+  `uuid().primaryKey().defaultRandom()` → `text().primaryKey()` (the app always
+  supplies the id — `insertSession`/`insertAttempt` spread caller objects; the
+  SQLite twin has run id-supplied since inception), so drizzle now matches
+  `0000_frontend_baseline.sql` (all-TEXT ids) exactly. Sole `uuid` column:
+  `attempt.idempotency_key` — the client stamps a real UUID and `0004` ALTERs it
+  in as `uuid`; SQLite uses `text` there (no uuid type — the standing dual-dialect
+  id-column rule). `schema.parity.test.ts` compares column NAMES only, so the
+  type change is parity-invisible and stayed green. Rejected the alternative
+  (leave `uuid()` PKs + only fix the doc): runtime-safe but keeps a permanent
+  schema-vs-deploy divergence that already misled one review.
 - 2026-07-22 — **FR-G2 retire grounding: no attempt→question FK; history orphans,
   not cascades.** `0000_frontend_baseline.sql` correctly omits
   `attempt.question_id` / `hint.question_id` → `question.id` FKs (practice stores

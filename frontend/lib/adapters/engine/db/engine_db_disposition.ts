@@ -12,7 +12,7 @@
 
 export type EngineDbMethodDisposition = "fine" | "server-only";
 
-/** The 31 EngineDb methods + disposition. Order matches plan §2. */
+/** The 32 EngineDb methods + disposition. Order matches plan §2 (+ FR-E4). */
 export const ENGINE_DB_DISPOSITION = {
   listSkillState: "fine",
   listSkills: "fine",
@@ -35,6 +35,8 @@ export const ENGINE_DB_DISPOSITION = {
   getNewestOpenSession: "fine",
   insertAttempt: "fine",
   listMisses: "fine",
+  // FR-E4: only `GET /api/engine/next` needs this cross-session projection.
+  listAlreadyCorrectQuestionIds: "server-only",
   listSessionQuestionIds: "fine",
   listSessionAttempts: "fine",
   listSessionSkillIds: "fine",

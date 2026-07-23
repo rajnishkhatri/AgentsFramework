@@ -618,6 +618,39 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
         toAttempt((r as { attempt: Record<string, unknown> }).attempt),
       );
     },
+    async listAlreadyCorrectQuestionIds(subject, learnerId) {
+      // FR-E4 — inverse of listMisses: latest attempt per question is correct.
+      // question_id-only projection; order is not significant (used as a set).
+      const rows = await wrap(
+        "listAlreadyCorrectQuestionIds",
+        db
+          .select({ question_id: pg.attempt.question_id })
+          .from(pg.attempt)
+          .innerJoin(pg.quizSession, eq(pg.attempt.session_id, pg.quizSession.id))
+          .where(
+            and(
+              eq(pg.attempt.subject, subject),
+              eq(pg.attempt.correct, true),
+              eq(pg.quizSession.learner_id, learnerId),
+              eq(pg.quizSession.subject, subject),
+              sql`NOT EXISTS (
+                SELECT 1
+                FROM ${pg.attempt} AS later
+                INNER JOIN ${pg.quizSession} AS later_sess
+                  ON later.session_id = later_sess.id
+                WHERE later.question_id = ${pg.attempt.question_id}
+                  AND later.subject = ${subject}
+                  AND later_sess.learner_id = ${learnerId}
+                  AND later_sess.subject = ${subject}
+                  AND later.created_at > ${pg.attempt.created_at}
+              )`,
+            ),
+          ),
+      );
+      return rows.map((r) =>
+        String((r as { question_id: unknown }).question_id),
+      );
+    },
     async listSessionQuestionIds(sessionId) {
       // The served set (FR-13): every question_id answered in this session, any
       // correctness. A question_id-only projection scoped by session_id — no
