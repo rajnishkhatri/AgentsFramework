@@ -51,16 +51,6 @@ export class InMemoryEngineDb implements EngineDb {
   private testBlueprints = new Map<string, TestBlueprint>();
   private sessions = new Map<string, QuizSession>();
   private attempts: Attempt[] = [];
-  /**
-   * Monotonic insertion sequence per stored attempt copy. Used only to
-   * tie-break `listMisses` when two rows share a `created_at` (directly-injected
-   * fixtures can still tie; `DrizzleAttemptRepo.record` keeps live writes
-   * strictly increasing). Newest-inserted wins — the deterministic stand-in for
-   * a Postgres heap's physical order, so this fake never disagrees with the pg
-   * adapter's `orderBy(desc(created_at))`. WeakMap keeps it off the wire shape.
-   */
-  private attemptSeq = new WeakMap<Attempt, number>();
-  private nextAttemptSeq = 0;
   private skillState = new Map<string, SkillState>();
   private content = new Map<string, string>();
   private tutorials = new Map<string, Tutorial>(); // key: subject\0skillId
@@ -229,6 +219,9 @@ export class InMemoryEngineDb implements EngineDb {
       ended_at: s.ended_at ?? patch.ended_at,
       score_correct: patch.score_correct,
       score_total: patch.score_total,
+      // T R.12 / FR-B3c: clear the served pointer on close (mirrors the live
+      // seam's atomic single-UPDATE clear).
+      current_question_id: null,
     };
     this.sessions.set(id, updated);
     return { ...updated };
@@ -300,7 +293,6 @@ export class InMemoryEngineDb implements EngineDb {
       }
     }
     const stored = { ...a, idempotency_key: key };
-    this.attemptSeq.set(stored, this.nextAttemptSeq++);
     this.attempts.push(stored);
     return { status: "inserted", attempt: { ...stored } };
   }
@@ -331,10 +323,12 @@ export class InMemoryEngineDb implements EngineDb {
     if (a.created_at !== b.created_at) {
       return a.created_at < b.created_at ? 1 : -1;
     }
-    // Same-ms tie: fall back to insertion order (newest-inserted first).
-    const seqA = this.attemptSeq.get(a) ?? -1;
-    const seqB = this.attemptSeq.get(b) ?? -1;
-    return seqB - seqA;
+    // §6 same-ms tie: greatest `id` wins. `id` is the server-assigned primary
+    // key, stable across devices — the same order the drizzle adapter's
+    // `NOT EXISTS (later.created_at > … OR (later.created_at = … AND
+    // later.id > …))` predicate enforces, so this fake agrees with pg on the
+    // concurrent-device same-ms case §6 was added for.
+    return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
   }
   private latestAttemptsByQuestion(
     subject: string,

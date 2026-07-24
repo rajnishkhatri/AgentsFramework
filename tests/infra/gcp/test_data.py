@@ -79,8 +79,7 @@ def test_cloud_sql_availability_is_zonal(resources):
         assert settings is not None, "Cloud SQL instance missing settings block"
         avail = settings.get("availability_type", "")
         assert avail == "ZONAL", (
-            f"Recipe 2: availability_type must be ZONAL for Tier A; "
-            f"got {avail!r}."
+            f"Recipe 2: availability_type must be ZONAL for Tier A; got {avail!r}."
         )
 
 
@@ -178,17 +177,13 @@ def _find_bucket(resources, name_fragment: str):
 def test_agent_facts_bucket_exists(resources):
     """ACCEPT: a bucket with 'agent_facts' in its resource name."""
     matches = _find_bucket(resources, "agent_facts")
-    assert matches, (
-        "Recipe 2: no GCS bucket with 'agent_facts' in its resource name."
-    )
+    assert matches, "Recipe 2: no GCS bucket with 'agent_facts' in its resource name."
 
 
 def test_trust_traces_bucket_exists(resources):
     """ACCEPT: a bucket with 'trust_traces' in its resource name."""
     matches = _find_bucket(resources, "trust_traces")
-    assert matches, (
-        "Recipe 2: no GCS bucket with 'trust_traces' in its resource name."
-    )
+    assert matches, "Recipe 2: no GCS bucket with 'trust_traces' in its resource name."
 
 
 def test_agent_facts_bucket_has_versioning(resources):
@@ -211,9 +206,7 @@ def test_trust_traces_bucket_has_lifecycle_rule(resources):
     assert matches, "no trust_traces bucket"
     bucket = matches[0]
     rules = unwrap_blocks(bucket["attrs"].get("lifecycle_rule"))
-    assert rules, (
-        "Recipe 2: trust-traces bucket must have at least one lifecycle_rule."
-    )
+    assert rules, "Recipe 2: trust-traces bucket must have at least one lifecycle_rule."
     nearline_found = False
     for rule in rules:
         action = unwrap_block(rule.get("action"))
@@ -230,7 +223,8 @@ def test_all_buckets_have_uniform_access(resources):
     ACL-based access is a legacy mode that makes IAM auditing harder."""
     buckets = find_resources(resources, resource_type="google_storage_bucket")
     offenders = [
-        b["name"] for b in buckets
+        b["name"]
+        for b in buckets
         if b["attrs"].get("uniform_bucket_level_access") is not True
     ]
     assert not offenders, (
@@ -244,7 +238,8 @@ def test_all_buckets_have_public_access_prevention(resources):
     Prevents accidental allUsers grants on production data."""
     buckets = find_resources(resources, resource_type="google_storage_bucket")
     offenders = [
-        b["name"] for b in buckets
+        b["name"]
+        for b in buckets
         if b["attrs"].get("public_access_prevention") != "enforced"
     ]
     assert not offenders, (
@@ -264,7 +259,8 @@ def test_runtime_sa_has_cloudsql_client_role(resources):
     connection from Cloud Run to Cloud SQL fails."""
     project_iam = find_resources(resources, resource_type="google_project_iam_member")
     cloudsql_clients = [
-        r for r in project_iam
+        r
+        for r in project_iam
         if r["attrs"].get("role") == "roles/cloudsql.client"
         and "backend_runtime" in str(r["attrs"].get("member", ""))
     ]
@@ -274,13 +270,33 @@ def test_runtime_sa_has_cloudsql_client_role(resources):
     )
 
 
+def test_frontend_runtime_sa_has_cloudsql_client_role(resources):
+    """ACCEPT (T R.2 / FR-F1): frontend_runtime also needs cloudsql.client.
+
+    Binding DATABASE_URL without this grant leaves the socket mount unusable —
+    the connector cannot open /cloudsql/… for the BFF.
+    """
+    project_iam = find_resources(resources, resource_type="google_project_iam_member")
+    cloudsql_clients = [
+        r
+        for r in project_iam
+        if r["attrs"].get("role") == "roles/cloudsql.client"
+        and "frontend_runtime" in str(r["attrs"].get("member", ""))
+    ]
+    assert cloudsql_clients, (
+        "T R.2: no google_project_iam_member grants roles/cloudsql.client "
+        "to the frontend_runtime SA. Frontend Cloud SQL connector will fail."
+    )
+
+
 def test_agent_facts_bucket_iam_is_object_viewer(resources):
     """ACCEPT: runtime SA gets roles/storage.objectViewer on agent-facts."""
     bucket_iam = find_resources(
         resources, resource_type="google_storage_bucket_iam_member"
     )
     viewers = [
-        r for r in bucket_iam
+        r
+        for r in bucket_iam
         if r["attrs"].get("role") == "roles/storage.objectViewer"
         and "backend_runtime" in str(r["attrs"].get("member", ""))
         and "agent_facts" in str(r["attrs"].get("bucket", ""))
@@ -298,7 +314,8 @@ def test_agent_facts_bucket_iam_is_object_creator(resources):
         resources, resource_type="google_storage_bucket_iam_member"
     )
     creators = [
-        r for r in bucket_iam
+        r
+        for r in bucket_iam
         if r["attrs"].get("role") == "roles/storage.objectCreator"
         and "backend_runtime" in str(r["attrs"].get("member", ""))
         and "agent_facts" in str(r["attrs"].get("bucket", ""))
@@ -316,7 +333,8 @@ def test_trust_traces_bucket_iam_is_object_creator(resources):
         resources, resource_type="google_storage_bucket_iam_member"
     )
     creators = [
-        r for r in bucket_iam
+        r
+        for r in bucket_iam
         if r["attrs"].get("role") == "roles/storage.objectCreator"
         and "backend_runtime" in str(r["attrs"].get("member", ""))
         and "trust_traces" in str(r["attrs"].get("bucket", ""))

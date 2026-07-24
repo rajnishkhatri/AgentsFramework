@@ -82,4 +82,18 @@ describe("POST /api/engine/session/current — FR-A1 / FR-A2a / FR-B3a", () => {
     expect(res.status).toBe(200);
     expect(setSessionCurrentQuestion).toHaveBeenCalledWith("sess-1", "q4");
   });
+
+  it("409 and never writes when the session is already closed (T R.12 / FR-C2)", async () => {
+    getSession.mockResolvedValue({ sub: "learner-A" });
+    getSessionRow.mockResolvedValue({
+      id: "sess-1",
+      learner_id: "learner-A",
+      ended_at: "2026-07-22T01:00:00.000Z", // already closed
+    });
+    const res = await POST(
+      req({ session_id: "sess-1", question_id: "q4" }),
+    );
+    expect(res.status).toBe(409);
+    expect(setSessionCurrentQuestion).not.toHaveBeenCalled();
+  });
 });

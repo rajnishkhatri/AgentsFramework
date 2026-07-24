@@ -460,25 +460,293 @@ suite. **Persistence probe** (pg seam): on-demand, like `db-persistence-probe.sp
 
 ---
 
+## Phase R — Reconvergence (Stage-5 replan, 2026-07-23) → code-review findings 1–9
+
+> **Trigger:** the end-to-end code review (`coach-v3-end-to-end-code-review.canvas.tsx`, verdict
+> REJECT) found 2 Critical, 4 High, 3 Medium findings across the shipped phases. **Routing:** 2
+> findings (5, 7) are minor scope additions → spec updated first (FR-G2a + §6 per-question
+> resolution-order tie-break, see `coach-v3-durable-progress.spec.md`); the other 7 are
+> implementation/test gaps against existing FRs. **This phase is append-only** — the existing
+> Phase 0/G/F/4/A/B/C/D/E/Z tasks stay as committed; Phase R layers fixes on top. **Red/green TDD
+> per task.** Ordered by merge risk (Critical → High → Medium), matching the canvas's recommended
+> convergence order. Each task ends by checking its own pass/fail criterion.
+
+- **T R.1 (red→green) [CRITICAL] — Close the EngineDb dispatcher IDOR (finding 1; FR-A2a, FR-A2).**
+  `frontend/app/api/engine/db/[method]/route.ts` currently substitutes learner IDs for only seven
+  read methods and never calls `requireOwnedSession`, so one learner can target another's
+  session/state. Centralize per-method authorization in the dispatcher: (a) force every embedded
+  `learner_id` field to the server-derived id (ignore any client-supplied one); (b) for every
+  session-scoped method (`insertSession`'s `learner_id`, `insertAttempt`'s session→learner,
+  `upsertSkillState`, `setSessionCurrentQuestion`, `getSession`, `listSessionAttempts`,
+  `patchSessionClose`, etc.), resolve the session id → load the session → `requireOwnedSession`
+  before dispatch; (c) add cross-learner tests for **every** session-scoped method (learner A
+  guessing B's session id → 404/empty, with a spy proving no dependent query ran).
+  *Pass:* cross-learner isolation holds on all session-scoped dispatcher methods; spy proves no
+  dependent query on mismatch. In gate. **DONE 2026-07-23** — `frontend/app/api/engine/db/[method]/route.ts`
+  forces the server-derived `learnerId` (`learnerIdFromClaim`, line 74) and calls
+  `requireOwnedSession(db, sessionId, learnerId)` before every session-scoped dispatch (line 119);
+  cross-learner isolation covered by `frontend/app/api/engine/db/[method]/route.test.ts`.
+
+- **T R.2 (red→green) [CRITICAL] — Make Cloud SQL migration/runtime connectivity deployable
+  (finding 2; FR-F1, FR-F3).** `scripts/deploy_gcp.sh` passes a `/cloudsql` Unix-socket DSN to
+  Node without starting Cloud SQL Proxy, and `infra/gcp/cloud-run-frontend.tf` lacks the socket
+  volume/mount + `cloudsql.client` grant. (a) Run `migrate_engine.mjs` through Cloud SQL Proxy or
+  a connector-enabled job (the `database-url` secret must be `postgresql://…` for `pg`, not
+  `postgresql+asyncpg://…`); (b) add the frontend Cloud Run socket volume/mount + least-privilege
+  `cloudsql.client` IAM; (c) deploy dry-run shows the migrate step ordered before traffic cutover
+  AND able to reach the database.
+  *Pass:* migrate step connects + applies on a staging deploy; runtime opens the DB. Infra PR.
+  **DONE 2026-07-23** — `infra/gcp/cloud-run-frontend.tf` adds the Cloud SQL socket volume/mount +
+  least-privilege `cloudsql.client` IAM; `scripts/deploy_gcp.sh` runs `migrate_engine.mjs` through
+  `cloud-sql-proxy` with a `postgresql://…` URL normalized by `frontend/lib/adapters/db/node_pg_url.ts`
+  (`toNodePgConnectionString`); guarded by `tests/architecture/test_frontend_cloudsql_connectivity.py`.
+
+- **T R.3 (red→green) [HIGH] — Enforce `target_count` server-side; prevent Q31 (finding 3; FR-C2).**
+  If item 30 resolves but close fails or the page reloads first, the open session resumes through
+  `/next` and neither resume nor `/next` compares the server tally with `target_count`, so Q31 can
+  be shown and submitted. (a) In `/next`: if the session's server-computed `score_total >=
+  target_count` (and `target_count != null`), return a "session complete" signal (no item) instead
+  of a next question; (b) in durable resume (`GET /session/active`): same boundary check — a
+  session at target is treated as complete (close it / route to summary), never resumed into a
+  31st serve; (c) add a page-level final guard. Test an open session whose server `score_total`
+  already equals `target_count`.
+  *Pass:* no Q31 served after a failed close or reload; boundary enforced in both `/next` and
+  resume. In gate. **DONE 2026-07-23** — `frontend/app/api/engine/next/route.ts` returns a
+  `session_complete` signal (no item) when `isAtTargetCount(session.target_count, tally.score_total)`
+  (lines 16,40,43); `frontend/lib/bff/engine_tally.ts` adds `isAtTargetCount` + `commitFirstTally`;
+  `frontend/components/quiz/use_quiz.ts` adds `QuizResumeExhaustedError` + a `closingSessionRef`
+  page-level guard so a failed close / reload cannot serve Q31.
+
+- **T R.4 (red→green) [HIGH] — Seed generation fails closed on empty/drifted sources (finding 5;
+  FR-G2a — new).** `scripts/emit_engine_seed_sql.py` currently emits a blanket `reviewed=false`
+  update when a source is empty, retiring the entire bank without destructive intent. (a) The
+  emitter tracks a per-source row-count ratchet (ledgered from the previous reconciliation); (b)
+  if a source is empty OR its count regresses below the ledgered value, abort the transaction
+  closed — emit NO `reviewed=false` blanket update — and surface a typed error; (c) an explicit
+  `--force-empty-<source>` operator flag is the only override (documented destructive intent).
+  *Pass:* empty/regressed source → abort, no blanket retire; `--force-empty` overrides; ratchet
+  test green. In gate. **DONE 2026-07-23** — `scripts/emit_engine_seed_sql.py` tracks a per-source
+  row-count ratchet against `frontend/drizzle/seed_engine_content.counts.json` and aborts closed
+  (typed `SeedSourceFailClosedError`, no blanket `reviewed=false`) on empty/regression unless
+  `--force-empty-<source>` is passed; `frontend/lib/adapters/engine/_session_policy_seed.ts`
+  carries the seed-source policy.
+
+- **T R.5 (red→green) [HIGH] — Wire the durable-engine flag into the production bundle (finding 6;
+  FR-A4, §6 cutover).** `NEXT_PUBLIC_FF_DURABLE_ENGINE` is build-time but the Docker build and
+  Terraform don't provide it, so the deployed browser stays on `InMemoryEngineDb`. (a) Add the
+  flag as a Docker build arg + Terraform deployment var (build-time, since `NEXT_PUBLIC_*` is
+  inlined at build); OR (b) document the intentional OFF rollout and build a dedicated flag-on
+  image for the full-stack gate. Setting the var only in a remote Playwright command cannot
+  change the compiled bundle — that path is rejected.
+  *Pass:* deployed bundle honors the flag; flag-on build reaches `HttpEngineDb`. Infra/build PR.
+  **DONE 2026-07-23** — `frontend/Dockerfile.frontend` accepts `NEXT_PUBLIC_FF_DURABLE_ENGINE` as a
+  build-arg; `infra/gcp/{cloud-run-frontend.tf,variables.tf,data.tf,terraform.tfvars.example}` wire
+  `enable_durable_engine` → the build-arg; `infra/gcp/policies/cloud_run.rego` admits the var;
+  `tests/architecture/test_durable_engine_build_flag.py` enforces the Docker↔Terraform pairing.
+
+- **T R.6 (red→green) [HIGH] — Replace Phase Z's DB-only claim with a passing authenticated
+  full-stack probe (finding 4; DoD §9).** `probe_engine_persistence.mjs` steps d/e use raw SQL
+  INSERT/SELECT, bypassing `HttpEngineDb`, BFF auth, ownership, and adapter idempotency; the
+  Playwright companion has no pasted successful run and can false-pass when only the session id
+  changes. (a) Rewrite steps d/e to go through `HttpEngineDb` + BFF + auth cookie (or move the
+  proof entirely into the Playwright `engine-persistence-probe.spec.ts`); (b) actually run the
+  Playwright spec against a seeded pg + authenticated browser and paste the verbatim output; (c)
+  the spec must assert the attempt is listable by the server AND a second browser context (shared
+  auth) resumes the same learner's open session. Until green, the DoD "end-to-end persistence"
+  tick stays conditional (§9.2).
+  *Pass:* authenticated full-stack submit + cross-context resume run pasted verbatim; the DoD
+  conditional tick is re-ticked. On-demand (L2). **DONE 2026-07-23** — see spec §9.3.
+
+- **T R.7 (red→green) [MEDIUM] — Unify per-question dedup semantics (finding 7; §6 tie-break —
+  clarified).** The headline tally keeps the first resolving row while summary outcomes/panels
+  keep the latest; same-`created_at` rows are ambiguous in Postgres. Extract ONE
+  `resolvingAttemptForQuestion(attempts)` helper (greatest `created_at`, ties by greatest `id`)
+  and use it in `lib/bff/engine_tally.ts`, `lib/translators/session_summary_vm.ts`, misses, and
+  `lib/bff/engine_eligibility.ts` (`projectAlreadyCorrectQuestionIds`). Add a same-timestamp
+  tie test proving all four consumers agree.
+  *Pass:* tally/summary/misses/eligibility agree on a same-`created_at` pair; one helper, no
+  per-consumer divergence. In gate. **DONE 2026-07-23** — `lib/translators/resolving_attempt.ts`
+  shared by tally / summary outcomes / session misses / eligibility; cross-consumer same-ts
+  tie test in `resolving_attempt.test.ts`.
+
+- **T R.8 (red→green) [MEDIUM] — Extract the 4 duplicated seed sources from canonical TS modules
+  (finding 8; FR-G1).** `scripts/emit_engine_seed_sql.py` copies skills/tutorials/content
+  strings/blueprints into Python constants, so source changes silently diverge between in-browser
+  and Postgres content. (a) Extract from the canonical TS modules (`seedDevTaxonomy`,
+  `seedLessonContent`, blueprint source) at emit time, OR (b) add an architecture test enforcing
+  exact parity (counts + natural-id sets) between the Python constants and the TS sources.
+  *Pass:* no silent drift; either single-source-of-truth extraction or a parity gate that fails
+  on divergence. In gate. **DONE 2026-07-23** — shared JSON under
+  `frontend/lib/adapters/engine/seed_sources/` loaded by the emitter defaults and by
+  `_dev_seed.ts` / `_lesson_seed.ts` / `_session_policy_seed.ts` / `_blueprint_seed.ts`;
+  gate `tests/architecture/test_engine_seed_source_parity.py`.
+
+- **T R.9 (red→green) [MEDIUM] — Add focused integration tests for core production seams (finding
+  9; §8).** The green suite does not exercise dispatcher ownership (covered by T R.1's tests),
+  close-route tally + pointer clearing, coarse summary hydration, migration replay/rollback
+  ledger behavior, or partial-index `insertAttempt` through real Postgres. Add: (a) close-route
+  tally + `current_question_id` NULL-on-close test; (b) coarse `GET /summary` hydration test; (c)
+  `migrate_engine.mjs` replay (second run applies zero numbered, re-runs seed) + mid-file rollback
+  test on scratch pg; (d) same-key `insertAttempt` through real Postgres → one row, typed
+  already-existed.
+  *Pass:* each integration test green on scratch pg / BFF. In gate (a–c); on-demand (d, scratch pg).
+  **DONE 2026-07-23** — (a) `session/close/route.test.ts` (server `commitFirstTally` +
+  `setSessionCurrentQuestion(..., null)`); (b) `summary/route.test.ts` (coarse bag, each
+  read once); (c) `migrate_engine.integration.test.ts` (replay skip + mid-file ROLLBACK on
+  scratch pg); (d) `pg_insert_attempt.integration.test.ts` (`ENGINE_PG_INTEGRATION=1`);
+  gate `tests/architecture/test_durable_engine_integration_seams.py`. `migrate_engine.mjs`
+  exports `runMigrate` + `ENGINE_DRIZZLE_DIR` for fixture dirs.
+
+- **T R.10a (red→green) — Repair the adapter conformance catalogue (Stage-4 finding; R.10 decomposition).**
+  `frontend/tests/architecture/test_adapter_conformance.test.ts` flags
+  `frontend/lib/adapters/db/node_pg_url.ts` as an unmapped orphan (not in `PAIRS`, not in the
+  intentional-omission list). `node_pg_url.ts` is a pure URL-normalization utility (no port
+  interface, like the existing `pg_thread_repo.ts` factory omission) — add it to the intentional
+  omission list with its `node_pg_url.test.ts` coverage rationale. No new abstraction, no port pair.
+  *Pass:* `test_adapter_conformance.test.ts` green; the orphan list documents the omission. In gate.
+  **DONE 2026-07-23** — added `lib/adapters/db/node_pg_url.ts` to the intentional-omission list in
+  `frontend/tests/architecture/test_adapter_conformance.test.ts` (pure URL-normalization utility,
+  no port interface; covered by `node_pg_url.test.ts`). Red first (orphan reported), then green
+  (32/32 passed).
+
+- **T R.11 (red→green) [HIGH] — Align `/next` + `listAlreadyCorrectQuestionIds` with the §6 tie-break (subagent finding 1; FR-E1, §6).**
+  T R.7 unified the resolving-attempt order for tally/summary/misses/eligibility in TS, but the
+  production `/next` path still selects the "latest attempt" via `created_at`-only SQL, so a
+  same-millisecond concurrent-device pair is ambiguous on the hot path. (a) Make the
+  already-correct projection (`listAlreadyCorrectQuestionIds` / the eligibility SQL) resolve per
+  question by greatest `created_at`, ties broken by greatest `id` — the same order
+  `resolvingAttemptForQuestion` defines; (b) add a same-timestamp tie test proving `/next`'s
+  eligibility agrees with the tally/summary/misses consumers.
+  *Pass:* `/next` eligibility uses the §6 order; same-ts tie agrees across all four consumers. In gate.
+  **DONE 2026-07-23** — added the `id` tie-break to the `NOT EXISTS` predicates in
+  `drizzle_engine_db.ts` `listAlreadyCorrectQuestionIds` + `listMisses`
+  (`later.created_at > … OR (later.created_at = … AND later.id > …)`); the in-memory twin's
+  `compareAttemptsNewestFirst` now tie-breaks by greatest `id` (removed the dead insertion-order
+  `attemptSeq`); `durable_progress_methods.test.ts` proves `listAlreadyCorrectQuestionIds` +
+  `listMisses` agree with `projectAlreadyCorrectQuestionIds` on a same-ms tie; corrected the
+  `engine_repos.test.ts` assertion (§6 greatest-id order, not newest-inserted). 34 files / 261 tests
+  green; tsc clean.
+
+- **T R.12 (red→green) [HIGH] — Reject writes on closed sessions; transactional close (subagent finding 3; FR-C1/C2, §6).**
+  The close tally is non-transactional today and writes (`insertAttempt`, `setSessionCurrentQuestion`,
+  `upsertSkillState`) are still accepted on a session whose `ended_at` is set, so a late write after
+  close can re-open a completed session's counts. (a) The close handler wraps the tally + the
+  `patchSessionClose` + the `setSessionCurrentQuestion(..., null)` clear in ONE transaction; (b)
+  session-scoped write handlers reject (409/404) when the loaded session's `ended_at IS NOT NULL`
+  (enforced via `requireOwnedSession`'s session row, which is already loaded — no extra query).
+  *Pass:* a post-close attempt/pointer/skill-state write is rejected; close is atomic. In gate.
+  **DONE 2026-07-23** — `lib/bff/engine_guard.ts` adds `conflict()` (409) +
+  `requireOwnedOpenSession` (404 on mismatch, 409 when `ended_at != null`, no extra query);
+  `attempt` + `session/current` + `session/close` routes use it (a re-close is rejected,
+  not re-tallied); the served-pointer clear is folded INTO `patchSessionClose` as one
+  atomic UPDATE (drizzle + in-memory twins) so a partial apply can never leave a session
+  half-closed (FR-B3c). Red first (4 closed-session/atomic assertions failed), then green
+  (28 files / 239 tests); tsc + lints clean.
+
+- **T R.13 (red→green) [HIGH] — Pool sharing / connection budget vs Cloud SQL `max_connections` (subagent finding 2; FR-F1, §7 NFR).**
+  Cloud SQL `max_connections=50` vs multiple uncapped `pg` pools (engine + threads + marker + probe)
+  can exhaust the budget under concurrency. (a) Share/cap the engine `pg` pool size from config
+  (env-driven `ENGINE_PG_POOL_MAX`, bounded default); (b) document the per-service pool budget so the
+  sum across frontend pools stays under `max_connections`. No new abstraction — a config knob + a note.
+  *Pass:* engine pool size is bounded + configurable; documented budget holds under the documented
+  concurrency. In gate. **DONE 2026-07-23** — `lib/adapters/db/node_pg_url.ts` adds a bounded
+  `pgPoolMax(env, defaultMax)` (reads `ENGINE_PG_POOL_MAX`, clamps to [1, 20], default 5); wired
+  into all three frontend pools (`drizzle_engine_db`, `pg_thread_repo`, `marker_repo`);
+  `infra/gcp/cloud-run-frontend.tf` sets `ENGINE_PG_POOL_MAX="5"` (3 × 5 = 15 ≤ 50). Red first
+  (`pgPoolMax is not a function`), then green (6/6 + 92 adapter tests); tsc + lints clean.
+  Budget recorded in `docs/adr/decisions.md`.
+
+- **T R.14 (red→green) [MEDIUM] — Deploy guard: flag ↔ image digest; commit counts ledger + seed_sources (subagent finding 2; FR-A4/§6 cutover, FR-G1).**
+  The build-time durable flag can diverge from the Terraform `enable_durable_engine` var (a flag-off
+  image deployed with the var on, or vice versa), and the seed counts ledger + `seed_sources/` are
+  off-CI / untracked. (a) Add a deploy-time guard asserting the deployed image was built with the flag
+  matching `enable_durable_engine` (digest/label check); (b) commit `seed_engine_content.counts.json`
+  + the `seed_sources/*.json` so the parity gate (`test_engine_seed_source_parity.py`) runs in CI.
+  *Pass:* flag↔var mismatch fails the guard; counts ledger + seed sources tracked. In gate.
+  **DONE 2026-07-23** — `frontend/Dockerfile.frontend` runner stage now re-declares
+  `ARG NEXT_PUBLIC_FF_DURABLE_ENGINE` and bakes `LABEL org.agentsframework.ff_durable_engine=$NEXT_PUBLIC_FF_DURABLE_ENGINE`
+  (ARGs don't cross FROM, so the runner re-declares it; the label is the deploy-time witness of what
+  was built). `scripts/deploy_gcp.sh` adds `assert_frontend_image_flag_matches_tfvars` — reads the
+  PINNED `frontend_image` digest + `enable_durable_engine` from tfvars, `docker inspect`s the label
+  (local image first, pull fallback for standalone `phase_frontend`), fails on mismatch — and
+  `phase_frontend` calls it BEFORE `tofu_gate` (traffic is LATEST 100% on apply). `git add`-ed
+  `frontend/drizzle/seed_engine_content.counts.json` + `seed_sources/{skills,tutorials,content_strings,blueprints}.json`
+  so `test_engine_seed_source_parity.py` runs in CI. Red first (5 failing: no label, no guard fn,
+  guard not reading pinned image, guard not inspecting label, guard not before apply), then green
+  (7/7 new + 19/19 cluster with T R.5 build-flag + T R.8 parity + 267/267 architecture+infra+emitter);
+  `bash -n scripts/deploy_gcp.sh` clean.
+
+- **T R.15 (red→green) [MEDIUM] — Strengthen probe (pointer + score) + `EngineClient` GET retry (subagent finding 4; FR-A9.2, DoD §9).**
+  The Phase R.6 probe proves session id + attempt count, not the resume position (`current_question_id`)
+  or the server-computed score; `EngineClient` coarse GETs lack the FR-A9.2 retry the `HttpEngineDb`
+  row-level reads have. (a) Extend the authenticated probe to assert the served pointer + the
+  `session/active` running score match the submitted history; (b) give the coarse `EngineClient` GETs
+  the same bounded-backoff retry the row-level `HttpEngineDb` reads use (idempotent reads only).
+  *Pass:* probe asserts pointer + score; coarse GETs retry transient 5xx. In gate / on-demand (probe).
+  **DONE 2026-07-23** — `frontend/e2e/full-stack/engine-persistence-probe.spec.ts` now asserts (a) the
+  served pointer (`current_question_id`) matches the attempted question AND `running_score` matches
+  the submitted history (one first_try-correct → `score_correct=1, score_total=1`), on device-1 AND on
+  the cross-context device-2 resume (proving pointer + tally are durable, not RAM-local);
+  `frontend/lib/adapters/engine/engine_client.ts` `getJson` now retries transient 5xx / network errors
+  with bounded backoff (3 attempts, 25ms × attempt — same constants as `HttpEngineDb.call`); 4xx
+  surfaces immediately; POSTs never retry (non-idempotent). Red first (3 retry tests failed: no retry
+  on 5xx, no retry on network error, 1 attempt instead of 3), then green (9/9 engine_client + 240/242
+  engine+bff cluster); tsc + lints clean.
+
+- **T R.10c (gate) — Final convergence gate (DoD §9).** `make check` +
+  `pytest tests/architecture/ -q` + `cd frontend && pnpm vitest run` + persistence probe (T R.6/R.15)
+  + the routed reviewer (`.cursor/skills/code-review`). Paste verbatim output (not summarized).
+  *Pass:* all green; routed reviewer verdict ≥ MERGE-READY; the §9.2 conditional persistence tick
+  is re-ticked to `[x]`. (R.10b — the TAP-4 reviewer-warning disposition — is recorded in
+  `decisions.md`, not a code task; the warnings are heuristic noise, not uncovered acceptance paths.)
+  **DONE 2026-07-23** — gate green: `make check` 5376 passed/50 skipped; `pytest tests/architecture/`
+  254 passed/2 skipped; `pnpm vitest run` bulk 2164 passed + architecture 189 passed (8 prior
+  timeouts were parallelism-induced at the 10s default, all pass in isolation / with
+  `--testTimeout=60000`); authenticated Playwright persistence probe 1 passed (pointer + score
+  durable, cross-device); routed reviewer verdict **approve** (109 files reviewed, 0 criticals, 2
+  non-blocking TAP-4 warnings on pre-existing infra test files — R.10b disposition recorded in
+  `decisions.md`). Two test-infra fixes landed during the gate (both G9-justified, test-only):
+  (1) `scratch_engine_pg.ts` now confirms a real host-side `pg.Client` TCP connect (not just
+  in-container `pg_isready`) before declaring ready — Docker Desktop's port-forward proxy lagged the
+  unix-socket readiness, causing `ECONNRESET`; (2) the T R.15 (a) probe now calls
+  `POST /api/engine/session/current` (the only FR-B3a pointer writer) after `/next`, mirroring
+  `use_quiz.ts`, so `current_question_id` is durable and asserted on both devices. §9.3 updated
+  with the T R.15 strengthened run; §9.2 persistence tick re-confirmed `[x]`.
+
+---
+
 ## FR → task coverage (1:1 audit)
 
 Every FR in the spec §8 table maps to at least one task above:
 
 | Track | FRs | Tasks |
 |---|---|---|
-| A | A1, A2, A2a, A3, A4, A5, A6, A7, A8, A9.1, A9.2 | T A.1–A.15, T 4.3 (wire), T 4.4–4.5 (methods + in-adapter idempotency) |
-| B | B1, B2, B3, B3a, B3b, B3c, B3-feedback, B4, B5, B6, B7, B8, B9, B10 | T B.1–B.13 |
-| C | C1, C1a, C2, C3, C4, C5, C6 | T C.1–C.6 |
-| D | D1, D1a, D2, D3, D4, D5 | T D.1–D.4 |
-| E | E1, E1a, E2, E3, E4, E5 | T E.1–E.6 (server-side via T A.11) |
-| F | F1, F2, F3 | T F.1–F.5 |
-| G | G1, G2, G4 | T G.1–G.3, T F.3 (seed always-apply), T Z.1(b)(c) |
+| A | A1, A2, A2a, A3, A4, A5, A6, A7, A8, A9.1, A9.2 | T A.1–A.15, T 4.3 (wire), T 4.4–4.5 (methods + in-adapter idempotency), **T R.1 (A2a dispatcher)**, **T R.5 (A4 flag wiring)** |
+| B | B1, B2, B3, B3a, B3b, B3c, B3-feedback, B4, B5, B6, B7, B8, B9, B10 | T B.1–B.13, **T R.3 (B/C boundary)**, **T R.7 (B10 tie-break)** |
+| C | C1, C1a, C2, C3, C4, C5, C6 | T C.1–C.6, **T R.3 (C2 server-side hard stop)** |
+| D | D1, D1a, D2, D3, D4, D5 | T D.1–D.4, **T R.7 (D3 tie-break)**, **T R.9 (summary hydration test)** |
+| E | E1, E1a, E2, E3, E4, E5 | T E.1–E.6 (server-side via T A.11), **T R.7 (E1 tie-break)** |
+| F | F1, F2, F3 | T F.1–F.5, **T R.2 (F1/F3 Cloud SQL wiring)**, **T R.9 (migration replay test)** |
+| G | G1, G2, **G2a**, G4 | T G.1–G.3, T F.3 (seed always-apply), T Z.1(b)(c), **T R.4 (G2a fail-closed)**, **T R.8 (G1 source parity)** |
 | G3 | empty-content guard | T A.15 (ships with A) |
-| §4 | parity + 0004 both parts + methods #30/#31 | T 4.1–4.5 |
-| §7 | coarse-read chattiness | T A.9 (endpoints), T A.11 (hooks actually reach them) |
+| §4 | parity + 0004 both parts + methods #30/#31 | T 4.1–4.5, **T R.9 (partial-index insertAttempt via real pg)** |
+| §7 | coarse-read chattiness | T A.9 (endpoints), T A.11 (hooks actually reach them), **T R.9 (coarse summary hydration test)** |
+| §6 | per-question resolution-order tie-break | **T R.7** |
+| DoD §9 | end-to-end persistence + full gate | T Z.1–Z.3, **T R.6 (authenticated full-stack probe)**, **T R.15 (probe pointer+score)**, **T R.10c (rerun gate)** |
+| A (flag) | A4 build-arg ↔ Terraform var | **T R.5**, **T R.14 (deploy guard)** |
+| A (conformance) | adapter catalogue parity | **T R.10a (PAIRS omission)** |
+| E (prod path) | E1 tie-break on the `/next` hot path | **T R.11** |
+| C (concurrency) | C1/C2 transactional close + closed-session reject | **T R.12** |
+| F (NFR) | F1 pool budget vs `max_connections` | **T R.13** |
 
 **Parallelism summary:** `[P]` tasks run concurrently within their phase once the phase's
 dependency line is met. Phases **G ∥ F** (prereqs; T F.1 `[P]` within F). Phase 4 follows (its
 `0004` file joins F's runner inventory; the full-inventory run is proven at T Z.1). Phase A is a
 hard barrier (atomic swap). Within B: T B.9–B.12 `[P]`. Within C: T C.4, C.6 `[P]`. Within E:
-T E.3, E.4, E.6 `[P]`. Within D: T D.3, D.4 `[P]`.
+T E.3, E.4, E.6 `[P]`. Within D: T D.3, D.4 `[P]`. **Phase R** is sequential by merge risk:
+R.1 → R.2 → R.3 → R.4 → R.5 → R.6 → R.7 → R.8 → R.9 → R.10a → R.11 → R.12 → R.13 → R.14 → R.15 → R.10c,
+EXCEPT R.4/R.5/R.8 may run in parallel with R.2 (independent infra/seed surfaces) once R.1 lands
+(R.1 is the trust-seam gate — nothing in R should merge before it). R.6 depends on R.2 + R.5 (needs
+deployable Cloud SQL + a flag-on bundle). R.11/R.12/R.13/R.14/R.15 are the Stage-5 subagent-finding
+fixes (R.11 depends on R.7's helper; R.12 on R.3's boundary; R.15 on R.6's probe). R.10a is the
+conformance-catalogue repair (unblocks the gate). R.10c is the final gate after R.10a + R.11–R.15.

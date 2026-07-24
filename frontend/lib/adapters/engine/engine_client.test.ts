@@ -7,6 +7,7 @@ import {
   EngineClient,
   _resetBrowserEngineClient,
 } from "./engine_client";
+import { EngineRepoError } from "../../ports/engine/errors";
 
 afterEach(() => {
   _resetBrowserEngineClient();
@@ -172,5 +173,95 @@ describe("EngineClient — one call per coarse loader (FR-A6 / §7)", () => {
         }),
       }),
     );
+  });
+});
+
+// T R.15 (b) / FR-A9.2 — coarse EngineClient GETs retry transient 5xx / network
+// errors with bounded backoff (same contract as the row-level HttpEngineDb
+// reads); POSTs (non-idempotent writes) surface failures immediately.
+describe("EngineClient GET retry (FR-A9.2 / T R.15b)", () => {
+  it("retries a transient 5xx on a coarse GET then succeeds", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("nope", { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            skills: [],
+            skill_states: [],
+            misses: [],
+            sessions: [],
+            focus_skill_id: null,
+            focus_question: null,
+            review_misses_count: 0,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+    const client = new EngineClient({ baseUrl: "http://x", fetchImpl });
+
+    await expect(client.loadDashboard({ subject: "act-english" })).resolves
+      .toBeDefined();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a network error on a coarse GET then succeeds", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            session: null,
+            running_score: null,
+            pointer_attempted: false,
+            complete: false,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+    const client = new EngineClient({ baseUrl: "http://x", fetchImpl });
+
+    await expect(client.getActiveSession("act-english")).resolves.toMatchObject({
+      session: null,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("does NOT retry a failed POST (non-idempotent write)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(new Response("nope", { status: 503 }));
+    const client = new EngineClient({ baseUrl: "http://x", fetchImpl });
+
+    await expect(client.closeSession("sess-1")).rejects.toBeInstanceOf(
+      EngineRepoError,
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT retry a 4xx on a coarse GET (client error is not transient)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(new Response("bad", { status: 404 }));
+    const client = new EngineClient({ baseUrl: "http://x", fetchImpl });
+
+    await expect(client.loadSummary("sess-1")).rejects.toBeInstanceOf(
+      EngineRepoError,
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives up after a bounded number of attempts on persistent 5xx", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(new Response("nope", { status: 503 }));
+    const client = new EngineClient({ baseUrl: "http://x", fetchImpl });
+
+    await expect(client.nextItem("sess-1")).rejects.toBeInstanceOf(
+      EngineRepoError,
+    );
+    // Bounded: 3 attempts (1 initial + 2 retries), then surface.
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 });

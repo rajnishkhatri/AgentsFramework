@@ -24,6 +24,8 @@ _SEED_FILES = (
     "_test_item_bank.ts",
     "_hint_bank.ts",
     "_lesson_seed.ts",
+    # T R.8: lesson rows live in shared JSON (imported by _lesson_seed.ts).
+    "seed_sources/tutorials.json",
 )
 
 
@@ -133,8 +135,8 @@ def test_detector_flags_a_row_with_a_long_body_md() -> None:
 
 def test_committed_lesson_seed_rows_are_actually_scanned() -> None:
     """Guard the guard: the lesson seed's rows must be VISIBLE to the detector."""
-    bank = _SEED_DIR / "_lesson_seed.ts"
-    assert bank.exists(), "committed lesson seed missing (_lesson_seed.ts)"
+    bank = _SEED_DIR / "seed_sources" / "tutorials.json"
+    assert bank.exists(), "committed lesson seed missing (seed_sources/tutorials.json)"
     provs = _reviewed_tutorial_provenances(bank.read_text(encoding="utf-8"))
     assert len(provs) >= 1, (
         f"expected the lesson seed's reviewed rows to be visible "

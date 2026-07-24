@@ -14,6 +14,7 @@ import {
   learnerIdFromClaim,
   notFound,
   requireEngineClaim,
+  requireOwnedSession,
 } from "@/lib/bff/engine_guard";
 import {
   ENGINE_DB_DISPOSITION,
@@ -34,8 +35,33 @@ const LEARNER_ARG: Partial<Record<EngineDbMethodName, number>> = {
   listProgressPoints: 1,
 };
 
+/** Methods whose object arg embeds a learner id the client must not choose. */
+const LEARNER_FIELD_ARG: Partial<Record<EngineDbMethodName, number>> = {
+  insertSession: 0,
+  upsertSkillState: 0,
+};
+
+/** Session-scoped methods whose session id is a positional argument. */
+const SESSION_ARG: Partial<Record<EngineDbMethodName, number>> = {
+  getSession: 0,
+  patchSessionClose: 0,
+  setSessionCurrentQuestion: 0,
+  listSessionQuestionIds: 0,
+  listSessionAttempts: 0,
+  listSessionSkillIds: 0,
+};
+
+/** Session-scoped methods whose object arg embeds the session id. */
+const SESSION_FIELD_ARG: Partial<Record<EngineDbMethodName, number>> = {
+  insertAttempt: 0,
+};
+
 function isMethodName(value: string): value is EngineDbMethodName {
   return Object.prototype.hasOwnProperty.call(ENGINE_DB_DISPOSITION, value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export async function POST(
@@ -66,7 +92,34 @@ export async function POST(
     args[learnerIdx] = learnerId;
   }
 
+  const learnerFieldIdx = LEARNER_FIELD_ARG[raw];
+  if (learnerFieldIdx !== undefined) {
+    const value = args[learnerFieldIdx];
+    if (!isRecord(value)) return badRequest();
+    args = [...args];
+    args[learnerFieldIdx] = { ...value, learner_id: learnerId };
+  }
+
   const db = engineDb();
+
+  const sessionIdx = SESSION_ARG[raw];
+  const sessionFieldIdx = SESSION_FIELD_ARG[raw];
+  let sessionId: unknown;
+  if (sessionIdx !== undefined) {
+    sessionId = args[sessionIdx];
+  } else if (sessionFieldIdx !== undefined) {
+    const value = args[sessionFieldIdx];
+    if (!isRecord(value)) return badRequest();
+    sessionId = value.session_id;
+  }
+  if (sessionIdx !== undefined || sessionFieldIdx !== undefined) {
+    if (typeof sessionId !== "string" || sessionId.length === 0) {
+      return badRequest();
+    }
+    const owned = await requireOwnedSession(db, sessionId, learnerId);
+    if (!owned.ok) return owned.response;
+  }
+
   const fn = db[raw] as (...a: unknown[]) => Promise<unknown>;
   const result = await fn.apply(db, args);
   if (result === undefined) {

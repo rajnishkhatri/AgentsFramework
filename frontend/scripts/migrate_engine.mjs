@@ -14,6 +14,10 @@
  * Pre-traffic deploy step only — never at Cloud Run boot (cold starts must
  * not race a migration). Uses the `pg` package already in frontend deps;
  * no drizzle-kit.
+ *
+ * T R.9: `runMigrate({ databaseUrl, drizzleDir })` is exported for scratch-pg
+ * integration tests (replay + mid-file rollback). Optional `ENGINE_DRIZZLE_DIR`
+ * overrides the drizzle folder for the CLI.
  */
 
 import fs from "node:fs";
@@ -22,25 +26,25 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DRIZZLE_DIR = path.resolve(__dirname, "../drizzle");
+const DEFAULT_DRIZZLE_DIR = path.resolve(__dirname, "../drizzle");
 
 function die(msg) {
   console.error(`migrate_engine: ${msg}`);
   process.exit(1);
 }
 
-function listSql(prefix) {
-  if (!fs.existsSync(DRIZZLE_DIR)) {
-    die(`drizzle dir missing: ${DRIZZLE_DIR}`);
+function listSql(drizzleDir, prefix) {
+  if (!fs.existsSync(drizzleDir)) {
+    throw new Error(`drizzle dir missing: ${drizzleDir}`);
   }
   return fs
-    .readdirSync(DRIZZLE_DIR)
+    .readdirSync(drizzleDir)
     .filter((name) => name.startsWith(prefix) && name.endsWith(".sql"))
     .sort()
     .map((name) => ({
       name,
-      full: path.join(DRIZZLE_DIR, name),
-      sql: fs.readFileSync(path.join(DRIZZLE_DIR, name), "utf8"),
+      full: path.join(drizzleDir, name),
+      sql: fs.readFileSync(path.join(drizzleDir, name), "utf8"),
     }));
 }
 
@@ -81,7 +85,7 @@ async function applyNumbered(client, file) {
     } catch {
       /* ignore rollback errors */
     }
-    die(`${file.name} failed (rolled back): ${err.message}`);
+    throw new Error(`${file.name} failed (rolled back): ${err.message}`);
   }
   return { applied: true, name: file.name };
 }
@@ -98,21 +102,42 @@ async function applySeed(client, file) {
     } catch {
       /* ignore */
     }
-    die(`${file.name} failed (rolled back): ${err.message}`);
+    throw new Error(`${file.name} failed (rolled back): ${err.message}`);
   }
   return { applied: true, name: file.name };
 }
 
-async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url || !url.trim()) {
-    die("DATABASE_URL is required");
+/**
+ * @param {{ databaseUrl: string, drizzleDir?: string }} opts
+ * @returns {Promise<{
+ *   ok: true,
+ *   drizzle_dir: string,
+ *   applied: string[],
+ *   skipped: string[],
+ *   numbered_total: number,
+ *   seed_total: number,
+ * }>}
+ */
+export async function runMigrate(opts) {
+  const rawUrl = opts?.databaseUrl;
+  if (!rawUrl || !String(rawUrl).trim()) {
+    throw new Error("DATABASE_URL is required");
   }
+  // Keep in sync with frontend/lib/adapters/db/node_pg_url.ts (T R.2).
+  const url = String(rawUrl).replace(
+    /^postgres(ql)?\+[A-Za-z0-9_]+:\/\//i,
+    "postgres$1://",
+  );
 
-  const numbered = listSql("0");
-  const seeds = listSql("seed_");
+  const drizzleDir =
+    opts.drizzleDir?.trim() ||
+    process.env.ENGINE_DRIZZLE_DIR?.trim() ||
+    DEFAULT_DRIZZLE_DIR;
+
+  const numbered = listSql(drizzleDir, "0");
+  const seeds = listSql(drizzleDir, "seed_");
   if (numbered.length === 0) {
-    die(`no numbered migrations (0*.sql) under ${DRIZZLE_DIR}`);
+    throw new Error(`no numbered migrations (0*.sql) under ${drizzleDir}`);
   }
 
   const client = new pg.Client({ connectionString: url });
@@ -128,19 +153,39 @@ async function main() {
     }
     const applied = results.filter((r) => r.applied).map((r) => r.name);
     const skipped = results.filter((r) => !r.applied).map((r) => r.name);
-    console.log(
-      JSON.stringify({
-        ok: true,
-        drizzle_dir: DRIZZLE_DIR,
-        applied,
-        skipped,
-        numbered_total: numbered.length,
-        seed_total: seeds.length,
-      }),
-    );
+    return {
+      ok: true,
+      drizzle_dir: drizzleDir,
+      applied,
+      skipped,
+      numbered_total: numbered.length,
+      seed_total: seeds.length,
+    };
   } finally {
     await client.end();
   }
 }
 
-main().catch((err) => die(err?.stack || String(err)));
+async function main() {
+  const rawUrl = process.env.DATABASE_URL;
+  if (!rawUrl || !rawUrl.trim()) {
+    die("DATABASE_URL is required");
+  }
+  try {
+    const summary = await runMigrate({
+      databaseUrl: rawUrl,
+      drizzleDir: process.env.ENGINE_DRIZZLE_DIR || DEFAULT_DRIZZLE_DIR,
+    });
+    console.log(JSON.stringify(summary));
+  } catch (err) {
+    die(err?.message || String(err));
+  }
+}
+
+const isMain =
+  process.argv[1] != null &&
+  path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1]);
+
+if (isMain) {
+  main().catch((err) => die(err?.stack || String(err)));
+}

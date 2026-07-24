@@ -121,6 +121,7 @@ describe("resumeQuizSession — durable (Phase B)", () => {
       session: openSession(),
       running_score: { score_correct: 2, score_total: 5 },
       pointer_attempted: false,
+      complete: false,
     });
 
     const got = await resumeQuizSession(ports, { subject: SUBJECT });
@@ -136,6 +137,7 @@ describe("resumeQuizSession — durable (Phase B)", () => {
       session: openSession(),
       running_score: { score_correct: 1, score_total: 2 },
       pointer_attempted: true,
+      complete: false,
     });
     durable.nextItem.mockResolvedValue({
       empty: false,
@@ -155,6 +157,7 @@ describe("resumeQuizSession — durable (Phase B)", () => {
       session: openSession({ current_question_id: null }),
       running_score: { score_correct: 0, score_total: 0 },
       pointer_attempted: false,
+      complete: false,
     });
     durable.nextItem.mockResolvedValue({
       empty: false,
@@ -174,6 +177,7 @@ describe("resumeQuizSession — durable (Phase B)", () => {
       session: openSession({ current_question_id: "gone-q" }),
       running_score: { score_correct: 0, score_total: 1 },
       pointer_attempted: false,
+      complete: false,
     });
 
     const got = await resumeQuizSession(ports, { subject: SUBJECT });
@@ -185,6 +189,7 @@ describe("resumeQuizSession — durable (Phase B)", () => {
       session: null,
       running_score: null,
       pointer_attempted: false,
+      complete: false,
     });
 
     expect(await resumeQuizSession(ports, { subject: SUBJECT })).toBeNull();
@@ -195,6 +200,7 @@ describe("resumeQuizSession — durable (Phase B)", () => {
       session: openSession({ current_question_id: null }),
       running_score: { score_correct: 3, score_total: 3 },
       pointer_attempted: false,
+      complete: false,
     });
     durable.nextItem.mockResolvedValue({
       empty: true,
@@ -214,6 +220,28 @@ describe("resumeQuizSession — durable (Phase B)", () => {
       if (isResumeExhaustedError(err)) {
         expect(err.session.id).toBe("sess-open");
         expect(err.score).toEqual({ correct: 3, total: 3 });
+      }
+    }
+  });
+
+  it("treats an at-target open session as complete — no Q31 via /next (FR-C2 / T R.3)", async () => {
+    durable.getActiveSession.mockResolvedValue({
+      session: openSession({ current_question_id: null, target_count: 30 }),
+      running_score: { score_correct: 20, score_total: 30 },
+      pointer_attempted: false,
+      complete: true,
+    });
+
+    await expect(resumeQuizSession(ports, { subject: SUBJECT })).rejects.toThrow(
+      QuizResumeExhaustedError,
+    );
+    expect(durable.nextItem).not.toHaveBeenCalled();
+    try {
+      await resumeQuizSession(ports, { subject: SUBJECT });
+    } catch (err) {
+      expect(isResumeExhaustedError(err)).toBe(true);
+      if (isResumeExhaustedError(err)) {
+        expect(err.score).toEqual({ correct: 20, total: 30 });
       }
     }
   });

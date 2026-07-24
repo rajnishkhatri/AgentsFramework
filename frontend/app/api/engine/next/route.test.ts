@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   listSessionQuestionIds: vi.fn(),
   listSessionSkillIds: vi.fn(),
+  listSessionAttempts: vi.fn(),
   listReviewedTestItems: vi.fn(),
   listAlreadyCorrectQuestionIds: vi.fn(),
   listMisses: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("@/lib/bff/server_composition", () => ({
     getSession: mocks.getSession,
     listSessionQuestionIds: mocks.listSessionQuestionIds,
     listSessionSkillIds: mocks.listSessionSkillIds,
+    listSessionAttempts: mocks.listSessionAttempts,
     listReviewedTestItems: mocks.listReviewedTestItems,
     listAlreadyCorrectQuestionIds: mocks.listAlreadyCorrectQuestionIds,
     listMisses: mocks.listMisses,
@@ -67,9 +69,124 @@ beforeEach(() => {
   });
   mocks.listSessionQuestionIds.mockResolvedValue(["q1"]);
   mocks.listSessionSkillIds.mockResolvedValue(["skill-1"]);
+  mocks.listSessionAttempts.mockResolvedValue([]);
   mocks.listAlreadyCorrectQuestionIds.mockResolvedValue([]);
   mocks.listMisses.mockResolvedValue([]);
   mocks.nextReviewed.mockResolvedValue(null);
+});
+
+describe("GET /api/engine/next — target_count hard stop (FR-C2 / T R.3)", () => {
+  it("returns session_complete (no item) when server tally already meets target", async () => {
+    const resolved = Array.from({ length: 30 }, (_, i) => ({
+      id: `a${i + 1}`,
+      session_id: "s1",
+      question_id: `q${i + 1}`,
+      learner_id: "learner-1",
+      subject: "act-english",
+      skill_id: "skill-1",
+      chosen_letter: "B",
+      correct: true,
+      used_hint: false,
+      elapsed_ms: 100,
+      created_at: `2026-07-22T00:00:${String(i).padStart(2, "0")}.000Z`,
+      resolution: "first_try",
+      idempotency_key: `k${i + 1}`,
+    }));
+    mocks.listSessionAttempts.mockResolvedValue(resolved);
+    mocks.listSessionQuestionIds.mockResolvedValue(
+      resolved.map((a) => a.question_id),
+    );
+    // Bank still has content — without the gate, /next would serve Q31.
+    mocks.nextReviewed.mockResolvedValue({
+      id: "q31",
+      subject: "act-english",
+      skill_id: "skill-1",
+      difficulty: 3,
+      context_html: "",
+      stem: "Q31?",
+      choices: [],
+      answer_letter: "A",
+      per_choice_rationale: {},
+      why_correct_md: "",
+      why_tempted_md: "",
+      rule_md: "",
+      item_type: "underlined-span-mc",
+      misconception: null,
+      reviewed: true,
+      generated_by: "test",
+    });
+    mocks.listReviewedTestItems.mockResolvedValue([{ id: "q31" }]);
+
+    const res = await GET(request());
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      empty: true,
+      reason: "session_complete",
+      question: null,
+    });
+    expect(mocks.nextReviewed).not.toHaveBeenCalled();
+    expect(mocks.schedulerNext).not.toHaveBeenCalled();
+  });
+
+  it("does not gate endless sessions (target_count null)", async () => {
+    mocks.getSession.mockResolvedValue({
+      id: "s1",
+      subject: "act-english",
+      learner_id: "learner-1",
+      mode: "drill",
+      skill_focus: "skill-1",
+      started_at: "2026-07-22T00:00:00.000Z",
+      ended_at: null,
+      score_correct: 0,
+      score_total: 0,
+      target_count: null,
+      current_question_id: null,
+    });
+    mocks.listSessionAttempts.mockResolvedValue(
+      Array.from({ length: 40 }, (_, i) => ({
+        id: `a${i + 1}`,
+        session_id: "s1",
+        question_id: `q${i + 1}`,
+        learner_id: "learner-1",
+        subject: "act-english",
+        skill_id: "skill-1",
+        chosen_letter: "B",
+        correct: true,
+        used_hint: false,
+        elapsed_ms: 100,
+        created_at: "2026-07-22T00:00:00.000Z",
+        resolution: "first_try",
+        idempotency_key: `k${i + 1}`,
+      })),
+    );
+    mocks.nextReviewed.mockResolvedValue({
+      id: "q41",
+      subject: "act-english",
+      skill_id: "skill-1",
+      difficulty: 3,
+      context_html: "",
+      stem: "Still going?",
+      choices: [],
+      answer_letter: "A",
+      per_choice_rationale: {},
+      why_correct_md: "",
+      why_tempted_md: "",
+      rule_md: "",
+      item_type: "underlined-span-mc",
+      misconception: null,
+      reviewed: true,
+      generated_by: "test",
+    });
+    mocks.hintList.mockResolvedValue([]);
+
+    const res = await GET(request());
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      empty: false,
+      question: { id: "q41" },
+    });
+  });
 });
 
 describe("GET /api/engine/next — empty reason", () => {

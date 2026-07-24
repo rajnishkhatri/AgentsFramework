@@ -39,6 +39,7 @@ import {
   type Skill,
   type SkillState,
 } from "../../wire/engine_entities";
+import skillsJson from "./seed_sources/skills.json";
 
 const SUBJECT = DEFAULT_SUBJECT; // "act-english"
 
@@ -49,69 +50,11 @@ export const DEV_LEARNER_ID = "Garvit";
  * The six ACT-English taxonomy buckets (mirrors the dashboard's SIX_SKILLS).
  * `share_of_test_pct` reflects the real ACT English weighting; `accent_var`
  * matches the `--color-bucket-*` tokens the BucketCard renders.
+ *
+ * T R.8 / FR-G1: rows live in ``seed_sources/skills.json`` (shared with
+ * ``scripts/emit_engine_seed_sql.py``) so browser and Postgres cannot drift.
  */
-export const DEV_SKILLS: readonly Skill[] = [
-  {
-    id: "s-punc",
-    subject: SUBJECT,
-    key: "punctuation",
-    name: "Punctuation",
-    share_of_test_pct: 15,
-    accent_var: "--color-bucket-punctuation",
-    description: "Commas, semicolons, colons, dashes, and apostrophes.",
-    order: 1,
-  },
-  {
-    id: "s-gram",
-    subject: SUBJECT,
-    key: "grammar",
-    name: "Usage",
-    share_of_test_pct: 20,
-    accent_var: "--color-bucket-usage",
-    description: "Subject–verb agreement, pronouns, verb tense, idioms.",
-    order: 2,
-  },
-  {
-    id: "s-sent",
-    subject: SUBJECT,
-    key: "sentence",
-    name: "Sentence Structure",
-    share_of_test_pct: 20,
-    accent_var: "--color-bucket-sentence-structure",
-    description: "Fragments, run-ons, modifiers, and parallelism.",
-    order: 3,
-  },
-  {
-    id: "s-rhet",
-    subject: SUBJECT,
-    key: "rhetoric",
-    name: "Rhetoric",
-    share_of_test_pct: 20,
-    accent_var: "--color-bucket-rhetoric",
-    description: "Word choice, tone, and conciseness in context.",
-    order: 4,
-  },
-  {
-    id: "s-org",
-    subject: SUBJECT,
-    key: "organization",
-    name: "Organization",
-    share_of_test_pct: 15,
-    accent_var: "--color-bucket-organization",
-    description: "Transitions, sentence order, and opening/closing sentences.",
-    order: 5,
-  },
-  {
-    id: "s-style",
-    subject: SUBJECT,
-    key: "style",
-    name: "Conciseness",
-    share_of_test_pct: 10,
-    accent_var: "--color-bucket-conciseness",
-    description: "Redundancy, wordiness, and consistent register.",
-    order: 6,
-  },
-];
+export const DEV_SKILLS: readonly Skill[] = skillsJson as readonly Skill[];
 
 
 /**

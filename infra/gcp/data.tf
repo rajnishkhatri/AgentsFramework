@@ -32,7 +32,8 @@
 # upgrades to `true` + multi-AZ HA.
 #
 # The Cloud Run built-in connector format for DATABASE_URL is:
-#   postgresql+asyncpg://USER:PASSWORD@/DB?host=/cloudsql/PROJECT:REGION:INSTANCE
+#   postgresql://USER:PASSWORD@/DB?host=/cloudsql/PROJECT:REGION:INSTANCE
+# (Historical postgresql+asyncpg:// values are normalized for Node pg.)
 
 resource "google_sql_database_instance" "main" {
   project             = var.gcp_project_id
@@ -165,6 +166,14 @@ resource "google_project_iam_member" "backend_runtime_cloudsql_client" {
   project = var.gcp_project_id
   role    = "roles/cloudsql.client"
   member  = local.backend_runtime_member
+}
+
+# Frontend BFF (coach-v3 FR-F1 / T R.2): same connector grant so the
+# agent-frontend Cloud SQL volume can open /cloudsql/… for DATABASE_URL.
+resource "google_project_iam_member" "frontend_runtime_cloudsql_client" {
+  project = var.gcp_project_id
+  role    = "roles/cloudsql.client"
+  member  = local.frontend_runtime_member
 }
 
 # ── IAM: runtime SA → GCS agent-facts (read + auto-provision write) ─────────

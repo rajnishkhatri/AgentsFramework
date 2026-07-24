@@ -614,6 +614,15 @@ async function resumeDurableQuizSession(
     correct: active.running_score?.score_correct ?? 0,
     total: active.running_score?.score_total ?? 0,
   };
+
+  // FR-C2 / T R.3: at-target open session → close to summary, never Q31.
+  if (
+    active.complete ||
+    (session.target_count != null && score.total >= session.target_count)
+  ) {
+    throw new QuizResumeExhaustedError(session, score);
+  }
+
   const pointerId = session.current_question_id ?? null;
 
   // FR-B8 (NULL) + FR-B3-feedback (any attempt, incl. non-resolving): advance.
@@ -623,6 +632,7 @@ async function resumeDurableQuizSession(
       if (next.reason === "no_content") {
         throw new EngineNotFoundError("no content available");
       }
+      // exhausted | session_complete → same close-to-summary path.
       throw new QuizResumeExhaustedError(session, score);
     }
     return {

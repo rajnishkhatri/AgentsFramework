@@ -119,9 +119,11 @@ variable "mem0_api_key" {
 variable "database_url" {
   type        = string
   description = <<-EOT
-    Cloud SQL connection string for AsyncPostgresSaver. Format used by the
-    Cloud Run built-in connector:
-      postgresql+asyncpg://USER:PASSWORD@/DB?host=/cloudsql/PROJECT:REGION:INSTANCE
+    Cloud SQL connection string for the checkpointer + frontend engine BFF.
+    Prefer the plain scheme (Node pg + psycopg both accept it):
+      postgresql://USER:PASSWORD@/DB?host=/cloudsql/PROJECT:REGION:INSTANCE
+    Historical `postgresql+asyncpg://…` values still work: deploy_gcp.sh and
+    frontend/lib/adapters/db/node_pg_url.ts strip the +dialect marker for Node.
     Populated in Recipe 2 once the Cloud SQL instance is provisioned.
     Set to a placeholder value for Recipe 1 so the secret shell is created.
   EOT
@@ -313,6 +315,12 @@ variable "frontend_workos_redirect_uri" {
   type        = string
   description = "WorkOS OAuth callback URL for NEXT_PUBLIC_WORKOS_REDIRECT_URI. Set before apply using the project-scoped *.a.run.app hash from any Cloud Run URL in this project (replace the service segment with agent-frontend). After apply, verify with tofu output -raw frontend_workos_redirect_uri."
   default     = ""
+}
+
+variable "enable_durable_engine" {
+  type        = bool
+  description = "Coach-v3 durable engine (FR-A4/§6). Build-time intent for NEXT_PUBLIC_FF_DURABLE_ENGINE — deploy_gcp.sh maps this into a Docker --build-arg when building Dockerfile.frontend. Default false (shadow→canary / InMemoryEngineDb). Flipping true requires rebuilding + pinning a new frontend_image digest; Cloud Run runtime env cannot change an already-inlined NEXT_PUBLIC_* bundle."
+  default     = false
 }
 
 # ── Meta ring (Recipe 6, optional) ───────────────────────────────────────────

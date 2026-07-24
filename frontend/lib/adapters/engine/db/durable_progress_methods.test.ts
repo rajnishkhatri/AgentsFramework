@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Attempt, QuizSession } from "../../../wire/engine_entities";
+import { projectAlreadyCorrectQuestionIds } from "../../../bff/engine_eligibility";
 import { InMemoryEngineDb } from "./in_memory_engine_db";
 
 const SUBJECT = "act-english";
@@ -210,5 +211,64 @@ describe("listAlreadyCorrectQuestionIds (FR-E4)", () => {
       "q1",
     ]);
     expect(await db.listMisses(SUBJECT, "learner-a")).toEqual([]);
+  });
+});
+
+describe("§6 same-timestamp tie-break (T R.11)", () => {
+  // §6: the resolving attempt per question is greatest `created_at`, ties broken
+  // by greatest `id`. listAlreadyCorrectQuestionIds + listMisses are §6
+  // consumers (per-question dedup) and MUST agree with the canonical TS helper
+  // `projectAlreadyCorrectQuestionIds` / `resolvingAttemptForQuestion` on a
+  // same-`created_at` pair. The in-memory twin previously tie-broke by
+  // insertion order (newest-inserted first), which diverges from §6 when
+  // insertion order ≠ id order — the exact concurrent-device same-ms case §6
+  // was added for.
+  it("listAlreadyCorrectQuestionIds + listMisses agree with the §6 id tie-break on a same-ms tie", async () => {
+    const db = new InMemoryEngineDb();
+    await db.insertSession(session({ id: "tie-sess" }));
+    const T = "2026-07-22T12:00:00.000Z";
+    // Greater id, incorrect, inserted FIRST.
+    await db.insertAttempt(
+      attempt({
+        id: "zz-greater-id",
+        session_id: "tie-sess",
+        question_id: "q-tie",
+        correct: false,
+        resolution: "first_try",
+        created_at: T,
+        idempotency_key: "11111111-1111-4111-8111-111111111111",
+      }),
+    );
+    // Smaller id, correct, inserted SECOND (newest-inserted).
+    await db.insertAttempt(
+      attempt({
+        id: "aa-smaller-id",
+        session_id: "tie-sess",
+        question_id: "q-tie",
+        correct: true,
+        resolution: "first_try",
+        created_at: T,
+        idempotency_key: "22222222-2222-4222-8222-222222222222",
+      }),
+    );
+
+    // §6 canonical: greatest id = "zz-greater-id" (incorrect) → NOT already-correct,
+    // and IS a miss. Both DB methods must agree with the TS helper.
+    const sessionAttempts = await db.listSessionAttempts("tie-sess");
+    const canonicalAlreadyCorrect = projectAlreadyCorrectQuestionIds(
+      sessionAttempts.map((a) => ({
+        id: a.id,
+        question_id: a.question_id,
+        correct: a.correct,
+        created_at: a.created_at,
+      })),
+    );
+    expect(await db.listAlreadyCorrectQuestionIds(SUBJECT, "learner-a")).toEqual(
+      canonicalAlreadyCorrect,
+    );
+    expect(canonicalAlreadyCorrect).toEqual([]); // §6: greater-id row is incorrect
+
+    const misses = await db.listMisses(SUBJECT, "learner-a");
+    expect(misses.map((m) => m.question_id)).toEqual(["q-tie"]); // §6: greater-id row is a miss
   });
 });

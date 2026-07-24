@@ -25,6 +25,7 @@ import type {
   RecommendedNext,
   Skill,
 } from "../wire/engine_entities";
+import { resolvingAttemptForQuestion } from "./resolving_attempt";
 
 /** Score ratio at which the Summary title flips to framed "Nice work" copy. */
 export const SUMMARY_FRAMED_TITLE_RATIO = 0.6;
@@ -46,7 +47,7 @@ export interface OutcomeCountsVM {
 
 type SessionAttemptProjection = Pick<
   Attempt,
-  "question_id" | "correct" | "resolution" | "created_at"
+  "id" | "question_id" | "correct" | "resolution" | "created_at"
 >;
 
 export interface SessionMissVM {
@@ -92,27 +93,6 @@ export interface SessionSummaryVM {
   readonly skillPerformance: readonly SessionSkillPerformanceVM[];
 }
 
-function resolvingAttemptsByQuestion(
-  attempts: ReadonlyArray<SessionAttemptProjection>,
-): ReadonlyMap<string, SessionAttemptProjection> {
-  const byQuestion = new Map<string, SessionAttemptProjection>();
-  for (const attempt of attempts) {
-    const previous = byQuestion.get(attempt.question_id);
-    if (
-      previous == null ||
-      (attempt.resolution != null &&
-        (previous.resolution == null ||
-          attempt.created_at >= previous.created_at)) ||
-      (attempt.resolution == null &&
-        previous.resolution == null &&
-        attempt.created_at >= previous.created_at)
-    ) {
-      byQuestion.set(attempt.question_id, attempt);
-    }
-  }
-  return byQuestion;
-}
-
 /**
  * Phase D projections from rows supplied by the coarse Summary response.
  * This reshapes session attempts; it never recomputes the authoritative score.
@@ -127,7 +107,7 @@ export function projectSessionInsights(
   const misses: SessionMissVM[] = [];
   const tallies = new Map<string, { correct: number; total: number }>();
 
-  for (const attempt of resolvingAttemptsByQuestion(attempts).values()) {
+  for (const attempt of resolvingAttemptForQuestion(attempts).values()) {
     const question = questionsById.get(attempt.question_id);
     // G9 / AP-6: an attempt without its content row cannot be identified or
     // assigned to a skill honestly, so omit it instead of fabricating labels.
@@ -174,12 +154,14 @@ export function projectSessionInsights(
 
 /**
  * Derive per-item outcomes from session attempts (FR-11 / AP-6).
- * Uses the resolving attempt per question_id (last row with a resolution, else
- * legacy single-attempt rule: correct ⇒ first_try). Non-resolving retries ignored.
+ * Uses the §6 resolving attempt per question_id (greatest `created_at`, ties by
+ * greatest `id`); legacy single-attempt rule: correct ⇒ first_try when
+ * resolution is null. Non-resolving retries ignored when the winner has no resolution
+ * and is incorrect.
  */
 export function countSessionOutcomes(
   attempts: ReadonlyArray<
-    Pick<Attempt, "question_id" | "correct" | "resolution" | "created_at">
+    Pick<Attempt, "id" | "question_id" | "correct" | "resolution" | "created_at">
   >,
 ): OutcomeCountsVM | null {
   if (attempts.length === 0) return null;
@@ -189,7 +171,7 @@ export function countSessionOutcomes(
   let walkedThrough = 0;
   let anyResolution = false;
 
-  for (const a of resolvingAttemptsByQuestion(attempts).values()) {
+  for (const a of resolvingAttemptForQuestion(attempts).values()) {
     const res: AttemptResolution | null | undefined = a.resolution;
     if (res == null) {
       // Legacy: one attempt per item; correct ⇒ first_try (AP-6 — no fabricate).
@@ -271,7 +253,7 @@ export function toSessionSummaryVM(
   selfCorrected: boolean,
   scoreRatioMet: boolean,
   sessionAttempts: ReadonlyArray<
-    Pick<Attempt, "question_id" | "correct" | "resolution" | "created_at">
+    Pick<Attempt, "id" | "question_id" | "correct" | "resolution" | "created_at">
   > = [],
   sessionQuestions: ReadonlyArray<
     Pick<Question, "id" | "skill_id" | "stem">

@@ -41,6 +41,7 @@ import {
 } from "drizzle-orm";
 import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { pgPoolMax, toNodePgConnectionString } from "@/lib/adapters/db/node_pg_url";
 import * as pg from "./schema.pg";
 import { EngineRepoError } from "../../../ports/engine/errors";
 import type {
@@ -278,7 +279,13 @@ export function pgEngineDb(databaseUrl: string): EngineDb {
   if (!databaseUrl || !databaseUrl.trim()) {
     throw new EngineRepoError("pgEngineDb requires a non-empty DATABASE_URL");
   }
-  const pool = new Pool({ connectionString: databaseUrl });
+  const pool = new Pool({
+    connectionString: toNodePgConnectionString(databaseUrl),
+    // T R.13 — bounded pool so the engine + threads + marker pools stay
+    // under Cloud SQL max_connections=50. Default 5; override via
+    // ENGINE_PG_POOL_MAX (clamped to [1, 20]).
+    max: pgPoolMax(process.env, 5),
+  });
   const db = drizzlePg(pool);
   return pgEngineDbFrom(db);
 }
@@ -457,6 +464,9 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
             ended_at: sql`coalesce(${pg.quizSession.ended_at}, ${new Date(patch.ended_at)})`,
             score_correct: patch.score_correct,
             score_total: patch.score_total,
+            // T R.12 / FR-B3c: clear the served pointer in the SAME UPDATE so
+            // the close is one atomic statement (no partial apply possible).
+            current_question_id: null,
           })
           .where(eq(pg.quizSession.id, id))
           .returning(),
@@ -577,13 +587,11 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       // the item from the review pool. NOT EXISTS is portable across PG+SQLite
       // (unlike DISTINCT ON). Matches InMemoryEngineDb.listMisses.
       //
-      // Ordering: newest-first by `created_at` alone — no secondary key. That is
-      // safe because `DrizzleAttemptRepo.record` stamps `created_at` strictly
-      // increasing per repo instance, so within a session the ordering key is a
-      // total order (no same-tick ties for the summary recap to mis-resolve).
-      // Do NOT add a `desc(id)` tiebreak "for determinism": `id` is a random
-      // UUID, so it would diverge from the in-memory fake's insertion-order
-      // tiebreak instead of agreeing with it.
+      // §6 per-question resolution order: greatest `created_at`, ties broken
+      // by greatest `id` (server-assigned PK, stable across devices — the
+      // concurrent-device same-ms case). The `NOT EXISTS` predicate therefore
+      // excludes a row when a later row has a strictly-greater `created_at`,
+      // OR an equal `created_at` with a greater `id`.
       const rows = await wrap(
         "listMisses",
         db
@@ -608,7 +616,11 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
                   AND later.subject = ${subject}
                   AND later_sess.learner_id = ${learnerId}
                   AND later_sess.subject = ${subject}
-                  AND later.created_at > ${pg.attempt.created_at}
+                  AND (
+                    later.created_at > ${pg.attempt.created_at}
+                    OR (later.created_at = ${pg.attempt.created_at}
+                        AND later.id > ${pg.attempt.id})
+                  )
               )`,
             ),
           )
@@ -620,7 +632,8 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
     },
     async listAlreadyCorrectQuestionIds(subject, learnerId) {
       // FR-E4 — inverse of listMisses: latest attempt per question is correct.
-      // question_id-only projection; order is not significant (used as a set).
+      // §6 order: greatest `created_at`, ties by greatest `id` (same predicate
+      // shape as listMisses). question_id-only projection; order not significant.
       const rows = await wrap(
         "listAlreadyCorrectQuestionIds",
         db
@@ -642,7 +655,11 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
                   AND later.subject = ${subject}
                   AND later_sess.learner_id = ${learnerId}
                   AND later_sess.subject = ${subject}
-                  AND later.created_at > ${pg.attempt.created_at}
+                  AND (
+                    later.created_at > ${pg.attempt.created_at}
+                    OR (later.created_at = ${pg.attempt.created_at}
+                        AND later.id > ${pg.attempt.id})
+                  )
               )`,
             ),
           ),

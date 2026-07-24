@@ -217,7 +217,9 @@ adapters), A4/F-R8 (no SDK type escapes the adapter), C1/C2 (composition-root-on
   attempts (the earlier draft) would make the **resumed** score higher than the same session's **live**
   score — a resume showing the wrong number. `quiz_session.score_correct`/`score_total` are written
   **on close only** (`schema.pg.ts:209-210`, default 0 while open), so the running score is derived
-  from attempts, grouped by `question_id` (unique), with the `first_try`-only numerator. `POST
+  from attempts, grouped by `question_id` (unique), with the `first_try`-only numerator. The
+  **resolving attempt** per question is the one defined in §6 "Per-question resolution order"
+  (greatest `created_at`, ties by greatest `id`) — the same order FR-D1/D2 and FR-E1 use. `POST
   /session/close` computes the **same** server-side and ignores any client-provided tally. This
   extends the FR-D3 "never re-tally on the client" discipline to resume AND close.
 - **FR-B5 (failure).** IF the resumable session's stored question id no longer resolves (e.g.
@@ -300,9 +302,11 @@ adapters), A4/F-R8 (no SDK type escapes the adapter), C1/C2 (composition-root-on
   resolution=walked_through`) — a walked-through item was never independently solved, so it STAYS
   eligible (consistent with FR-D1a and FR-E2). **"Latest" is by `created_at`** across the question's
   attempt history; the coached loop produces multiple rows per question, so the resolving (newest)
-  row is the one that decides eligibility. (A same-millisecond tie from concurrent-device inserts is
-  theoretically possible and negligible; if belt-and-suspenders is wanted, break ties by row id —
-  plan-time, not an FR.)
+  row is the one that decides eligibility. **Tie-break (added Stage-5 replan 2026-07-23, code-review
+  finding 7): greatest `created_at`, ties broken by greatest `id`** — a stable, cross-device order
+  defined once and reused by every consumer (see the §6 "Per-question resolution order" edge case).
+  A same-millisecond tie from concurrent-device inserts is no longer "negligible and unhandled";
+  the `id` tie-break resolves it deterministically.
 - **FR-E1a (layering — not a replacement).** THE SYSTEM SHALL apply eligibility as a **prefer/
   filter layer around** the existing FSRS skill pick, NOT a replacement for it: FSRS still chooses
   the weakest/most-due skill and the easiest-difficulty item; eligibility narrows *which* items
@@ -373,6 +377,18 @@ adapters), A4/F-R8 (no SDK type escapes the adapter), C1/C2 (composition-root-on
   `attempt.question_id` carries `onDelete: "cascade"` (`schema.pg.ts:230-231`), so a hard DELETE of a
   question **cascades-deletes the learner's attempt history** — destroying the exact durable record
   this spec exists to keep. The schema forces retire; it is not a style preference.
+- **FR-G2a (failure — added Stage-5 replan 2026-07-23, code-review finding 5).** IF an
+  authoritative seed source is empty OR its row count regresses below the count the previous
+  reconciliation ledgered for that source THEN THE SYSTEM SHALL fail the seed reconciliation
+  **closed** — abort the transaction, emit **no** `reviewed = false` blanket update, and surface a
+  typed error — UNLESS an explicit operator `--force-empty-<source>` flag is supplied. Rationale:
+  FR-G2's retire-not-delete is correct for *intentional* per-row removals, but a corrupt or empty
+  promoted source would otherwise drive a blanket `reviewed = false` update that retires the
+  entire servable bank with no destructive intent — the exact silent destructive fallback G9
+  forbids. The ratchet is per-source (a single empty source aborts the whole run; one source
+  growing while another shrinks is still a regression on the shrinking one). This is a defensive
+  addition to FR-G2, not a replacement: retire-not-delete still governs *individual* dropped rows
+  once the source passes the fail-closed gate.
 - **FR-G3 (failure).** IF the engine content tables are empty when a learner opens a session THEN
   THE SYSTEM SHALL surface an explicit "no content available" state — it SHALL NOT present an
   empty or broken quiz as though content existed.
@@ -500,6 +516,16 @@ adapters), A4/F-R8 (no SDK type escapes the adapter), C1/C2 (composition-root-on
   **wrong** answer still in the coached loop has a *non-resolving* attempt row, and per
   FR-B3-feedback the learner must **advance**, not be re-shown the mid-coaching question. Only a
   question with **zero** attempt rows (served-but-never-submitted, FR-B3a) is re-shown.
+- **Per-question resolution order (added Stage-5 replan 2026-07-23, code-review finding 7).** When a
+  question has multiple attempt rows in the same session (coached loop, concurrent devices,
+  retried submit), the **resolving attempt** is the one with the **greatest `created_at`, ties
+  broken by the greatest `id`**. This single order is reused by EVERY consumer that dedups by
+  `question_id`: the FR-B10 running/close tally (numerator = unique questions whose resolving
+  attempt is `first_try`; denominator = unique questions with a resolving attempt), the FR-D1 misses
+  list, the FR-D2 strong/weak panel, and the FR-E1 eligibility projection. No consumer may pick
+  "first" vs "latest" independently — that divergence (tally kept first-resolving, summary kept
+  latest) was the code-review bug. The `id` tie-break is stable across devices because `id` is the
+  server-assigned primary key.
 - **Exhausted pool mid-session** (FR-C5): graceful close to summary at count reached.
 - **Zero-miss completed session** (FR-D4): explicit clean-sweep state.
 - **Skill with no on-skill attempts** (FR-D5): omit from strong/weak panel (AP-6), never 0%.
@@ -581,6 +607,7 @@ like the existing `db-persistence-probe.spec`).
 | FR-D4 | zero-miss → clean-sweep empty state | L1 | yes |
 | FR-D5 | no-attempt skill omitted, not 0% | L1 | yes |
 | FR-E1 | exclude latest correct===true; coached-correct excluded, walked-through kept | L1 | yes |
+| §6 tie-break | same-`created_at` resolving rows → tie broken by greatest `id`; tally/summary/misses/eligibility all agree | L1 | yes |
 | FR-E1a | eligibility layers over FSRS pick; within-session servedIds still applies | L1 | yes |
 | FR-E2 | misses (incorrect + walked-through) stay eligible | L1 | yes |
 | FR-E3 | pool empty → FSRS full-bank fallback | L1 | yes |
@@ -589,6 +616,7 @@ like the existing `db-persistence-probe.spec`).
 | FR-F1 | Terraform: frontend service gets `DATABASE_URL` secret (plan review) | n/a | infra PR |
 | FR-G1 | seed loads ALL sources (items+skills+hints+tutorials+content+blueprints) into pg; per-table row counts match each source (not items-only) | L2 | on-demand |
 | FR-G2 | re-emit of a CHANGED row → durable store UPDATED (`ON CONFLICT DO UPDATE`, not DO NOTHING); dropped-source row → soft-retired `reviewed=false`, NEVER hard-deleted (FK cascade would destroy attempt history); no drift | L2 | on-demand |
+| FR-G2a | empty/regressed seed source → reconciliation aborts closed (no blanket `reviewed=false`), unless `--force-empty-<source>` set; per-source ratchet | L2 | on-demand |
 | FR-G3 | empty content tables → explicit "no content" state, not broken quiz | L1 | yes |
 | FR-G4 | write tables start empty per learner (expected) | L1 | yes |
 
@@ -601,9 +629,51 @@ like the existing `db-persistence-probe.spec`).
       `HttpEngineDb` new-abstraction (G1) states what it buys + the rejected simpler options.
       Linked from `http_engine_db.ts` + `server_composition.ts` `engineDb()` (ADR-0038).
 - [x] Engine persistence proven end-to-end at least once (persistence probe against seeded pg) —
-      `frontend/scripts/probe_engine_persistence.mjs` (T Z.1 a–e) + optional Playwright
-      `e2e/full-stack/engine-persistence-probe.spec.ts` (BFF/auth path).
+      `frontend/scripts/probe_engine_persistence.mjs` (T Z.1 a–c + DB-schema smoke) **and**
+      authenticated Playwright `e2e/full-stack/engine-persistence-probe.spec.ts` (T R.6: BFF +
+      auth cookie + `listSessionAttempts` + cross-context resume). Re-ticked 2026-07-23 after
+      Phase R task **T R.6** — see §9.3 for the verbatim Playwright run.
 - [x] Actual command output pasted (not summarized) for the verification claims.
+
+### 9.2 Phase R — Reconvergence (Stage-5 replan, 2026-07-23)
+
+Code-review findings 1–9 (see `docs/plan/coach-v3-durable-progress.tasks.md` Phase R) are tracked
+as fix tasks **T R.1–R.10**, ordered by merge risk. The DoD items above are not re-opened; Phase R
+adds the missing evidence (T R.6 re-ticks the conditional persistence item; T R.10 re-runs the
+full gate). Spec additions: **FR-G2a** (fail-closed on empty/regressed seed source) and the **§6
+per-question resolution order** tie-break (greatest `created_at`, ties by greatest `id`), reused
+by FR-B10 / FR-D1 / FR-D2 / FR-E1.
+
+### 9.3 T R.6 / T R.15 authenticated full-stack evidence (2026-07-23)
+
+Against local `next dev` with `DATABASE_URL` → seeded Postgres + real WorkOS storage state
+(`E2E_AUTHENTICATED=1`; `E2E_FAKE_SESSION` is insufficient — AuthKit JWKS rejects local HS256):
+
+```
+cd frontend
+BASE_URL=http://localhost:3000 E2E_AUTHENTICATED=1 E2E_REUSE_STORAGE=1 \
+  NEXT_PUBLIC_FF_DURABLE_ENGINE=1 \
+  pnpm exec playwright test e2e/full-stack/engine-persistence-probe.spec.ts \
+  --project=chromium-desktop
+```
+
+```
+[global-setup] E2E_REUSE_STORAGE=1 — reusing …/frontend/e2e/.auth/state.json.
+
+Running 1 test using 1 worker
+
+[1/1] [chromium-desktop] › e2e/full-stack/engine-persistence-probe.spec.ts:77:3 › Engine persistence probe (unmocked) › submit persists; second context resumes the open session (FR-A5 / FR-B4)
+  1 passed (5.5s)
+```
+
+Post-run SQL (same `DATABASE_URL`): `quiz_session` count=1, `attempt` count=1, learner_id from
+WorkOS session. Probe asserts `listSessionAttempts` via BFF + second context resumes the same
+`session.id` (never session-id-change alone). **T R.15 (a)** strengthened the probe to also assert
+the served pointer (`current_question_id` === attempted question, after writing it via
+`POST /api/engine/session/current` — the only FR-B3a pointer writer) and the server-computed
+`running_score` (`score_correct=1, score_total=1` for one first_try-correct attempt), both on
+device-1 and on the cross-context device-2 resume — proving pointer + tally are durable, not
+RAM-local.
 
 ### 9.1 Phase Z verification evidence (2026-07-22)
 

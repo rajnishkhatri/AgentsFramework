@@ -13,6 +13,7 @@ import {
   requireEngineClaim,
   requireOwnedSession,
 } from "@/lib/bff/engine_guard";
+import { commitFirstTally, isAtTargetCount } from "@/lib/bff/engine_tally";
 import { EngineNotFoundError } from "@/lib/ports/engine/errors";
 import type { Question } from "@/lib/wire/engine_entities";
 
@@ -31,6 +32,20 @@ export async function GET(req: NextRequest): Promise<Response> {
   const owned = await requireOwnedSession(db, sessionId, learnerId);
   if (!owned.ok) return owned.response;
   const session = owned.session;
+
+  // FR-C2 / T R.3: never serve Q(target+1) when the server tally already meets
+  // target_count (failed close / reload race). Endless sessions are exempt.
+  const attempts = await db.listSessionAttempts(sessionId);
+  const tally = commitFirstTally(attempts);
+  if (isAtTargetCount(session.target_count, tally.score_total)) {
+    return jsonOk({
+      empty: true,
+      reason: "session_complete",
+      question: null,
+      hints: [],
+      skill_id: null,
+    });
+  }
 
   const servedIds = await db.listSessionQuestionIds(sessionId);
   const servedSkillIds = await db.listSessionSkillIds(sessionId);

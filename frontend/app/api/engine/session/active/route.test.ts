@@ -71,6 +71,7 @@ describe("GET /api/engine/session/active — FR-A1 / FR-B2 / FR-B10", () => {
       session: null,
       running_score: null,
       pointer_attempted: false,
+      complete: false,
     });
     expect(getNewestOpenSession).toHaveBeenCalledWith(
       "act-english",
@@ -124,6 +125,7 @@ describe("GET /api/engine/session/active — FR-A1 / FR-B2 / FR-B10", () => {
     // q4 is non-resolving so denominator stays 1.
     expect(body.running_score).toEqual({ score_correct: 1, score_total: 1 });
     expect(body.pointer_attempted).toBe(true);
+    expect(body.complete).toBe(false);
   });
 
   it("pointer_attempted is false when the served question has zero attempts", async () => {
@@ -151,5 +153,54 @@ describe("GET /api/engine/session/active — FR-A1 / FR-B2 / FR-B10", () => {
     const body = await res.json();
     expect(body.pointer_attempted).toBe(false);
     expect(body.running_score).toEqual({ score_correct: 1, score_total: 1 });
+    expect(body.complete).toBe(false);
+  });
+
+  it("marks complete when server tally already meets target_count (FR-C2 / T R.3)", async () => {
+    getSession.mockResolvedValue({ sub: "learner-A" });
+    getNewestOpenSession.mockResolvedValue({
+      ...openSession,
+      target_count: 2,
+      current_question_id: null,
+    });
+    listSessionAttempts.mockResolvedValue([
+      {
+        id: "a1",
+        session_id: "sess-open",
+        question_id: "q1",
+        learner_id: "learner-A",
+        subject: "act-english",
+        skill_id: "s1",
+        chosen_letter: "B",
+        correct: true,
+        used_hint: false,
+        elapsed_ms: 100,
+        created_at: "t1",
+        resolution: "first_try",
+        idempotency_key: "k1",
+      },
+      {
+        id: "a2",
+        session_id: "sess-open",
+        question_id: "q2",
+        learner_id: "learner-A",
+        subject: "act-english",
+        skill_id: "s1",
+        chosen_letter: "A",
+        correct: true,
+        used_hint: false,
+        elapsed_ms: 100,
+        created_at: "t2",
+        resolution: "coached",
+        idempotency_key: "k2",
+      },
+    ]);
+
+    const res = await GET(req());
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.session.id).toBe("sess-open");
+    expect(body.running_score).toEqual({ score_correct: 1, score_total: 2 });
+    expect(body.complete).toBe(true);
   });
 });

@@ -1,4 +1,4 @@
-"""L1 contract for scripts/emit_engine_seed_sql.py (coach-v3 durable FR-G1/G2/G4).
+"""L1 contract for scripts/emit_engine_seed_sql.py (coach-v3 durable FR-G1/G2/G2a/G4).
 
 The multi-source SQL emitter reconciles ALL authoritative content tables into
 `frontend/drizzle/seed_engine_content.sql`: test_item + skill + hint + tutorial
@@ -7,6 +7,10 @@ DO NOTHING — a re-emit of changed content must propagate, FR-G2). Rows present
 in pg but dropped from the source are soft-retired (`reviewed = false`) with
 NO DELETE anywhere in the bundle (attempt.question_id cascade would destroy
 learner history). Learner write tables are never touched (FR-G4).
+
+FR-G2a: empty or count-regressed sources fail closed (no SQL write, no blanket
+retire) unless `--force-empty-<source>` / `force_empty=` is supplied; successful
+emits ledger per-source counts beside the SQL.
 """
 
 from __future__ import annotations
@@ -254,3 +258,190 @@ class TestRowCounts:
         assert sql.count("tut-hand-nec-s-punc") >= 1
         assert sql.count("session.target_count.adaptive") >= 1
         assert sql.count("bp-act-english-default") >= 1
+
+
+class TestFailClosedFrG2a:
+    """FR-G2a / T R.4: empty or regressed source aborts — no blanket retire."""
+
+    def test_empty_test_item_source_aborts_without_blanket_retire(self, tmp_path: Path):
+        from scripts.emit_engine_seed_sql import (
+            SeedSourceFailClosedError,
+            emit_engine_seed_sql,
+        )
+
+        src = _write_sources(tmp_path / "src")
+        src["test_items"].write_text("[]", encoding="utf-8")
+        out = tmp_path / "seed_engine_content.sql"
+        try:
+            emit_engine_seed_sql(
+                test_items_path=src["test_items"],
+                hints_path=src["hints"],
+                skills_path=src["skills"],
+                tutorials_path=src["tutorials"],
+                content_strings_path=src["content_strings"],
+                blueprints_path=src["blueprints"],
+                sql_out=out,
+            )
+        except SeedSourceFailClosedError as exc:
+            assert exc.source == "test_item"
+            assert exc.count == 0
+        else:
+            raise AssertionError("expected SeedSourceFailClosedError on empty source")
+        assert not out.exists(), "fail-closed must not write seed SQL"
+        # No ledger update either.
+        ledger = out.with_suffix(".counts.json")
+        assert not ledger.exists()
+
+    def test_empty_hint_source_aborts(self, tmp_path: Path):
+        from scripts.emit_engine_seed_sql import (
+            SeedSourceFailClosedError,
+            emit_engine_seed_sql,
+        )
+
+        src = _write_sources(tmp_path / "src")
+        src["hints"].write_text(json.dumps({"rows": []}), encoding="utf-8")
+        out = tmp_path / "seed.sql"
+        try:
+            emit_engine_seed_sql(
+                test_items_path=src["test_items"],
+                hints_path=src["hints"],
+                skills_path=src["skills"],
+                tutorials_path=src["tutorials"],
+                content_strings_path=src["content_strings"],
+                blueprints_path=src["blueprints"],
+                sql_out=out,
+            )
+        except SeedSourceFailClosedError as exc:
+            assert exc.source == "hint"
+            assert exc.count == 0
+        else:
+            raise AssertionError("expected SeedSourceFailClosedError")
+        assert not out.exists()
+
+    def test_regressed_count_below_ledger_aborts(self, tmp_path: Path):
+        from scripts.emit_engine_seed_sql import (
+            SeedSourceFailClosedError,
+            emit_engine_seed_sql,
+        )
+
+        src = _write_sources(tmp_path / "src")
+        out = tmp_path / "seed.sql"
+        # First successful emit ledgers counts (2 test_items).
+        emit_engine_seed_sql(
+            test_items_path=src["test_items"],
+            hints_path=src["hints"],
+            skills_path=src["skills"],
+            tutorials_path=src["tutorials"],
+            content_strings_path=src["content_strings"],
+            blueprints_path=src["blueprints"],
+            sql_out=out,
+        )
+        ledger = out.with_suffix(".counts.json")
+        assert ledger.exists()
+        prior = json.loads(ledger.read_text(encoding="utf-8"))
+        assert prior["test_item"] == 2
+
+        # Shrink test_item source below ledgered count.
+        src["test_items"].write_text(json.dumps([_item()]), encoding="utf-8")
+        out.unlink()
+        try:
+            emit_engine_seed_sql(
+                test_items_path=src["test_items"],
+                hints_path=src["hints"],
+                skills_path=src["skills"],
+                tutorials_path=src["tutorials"],
+                content_strings_path=src["content_strings"],
+                blueprints_path=src["blueprints"],
+                sql_out=out,
+            )
+        except SeedSourceFailClosedError as exc:
+            assert exc.source == "test_item"
+            assert exc.count == 1
+            assert exc.ledgered == 2
+        else:
+            raise AssertionError("expected SeedSourceFailClosedError on regression")
+        assert not out.exists(), "regression must not rewrite seed SQL"
+        # Ledger unchanged (still 2).
+        assert json.loads(ledger.read_text(encoding="utf-8"))["test_item"] == 2
+
+    def test_force_empty_test_item_overrides_and_allows_blanket_retire(
+        self, tmp_path: Path
+    ):
+        from scripts.emit_engine_seed_sql import emit_engine_seed_sql
+
+        src = _write_sources(tmp_path / "src")
+        src["test_items"].write_text("[]", encoding="utf-8")
+        out = tmp_path / "seed.sql"
+        emit_engine_seed_sql(
+            test_items_path=src["test_items"],
+            hints_path=src["hints"],
+            skills_path=src["skills"],
+            tutorials_path=src["tutorials"],
+            content_strings_path=src["content_strings"],
+            blueprints_path=src["blueprints"],
+            sql_out=out,
+            force_empty=frozenset({"test_item"}),
+        )
+        sql = out.read_text(encoding="utf-8")
+        # Documented destructive intent: empty keep-set → blanket soft-retire.
+        assert (
+            'UPDATE "test_item" SET "reviewed" = false WHERE "reviewed" = true;' in sql
+        )
+        ledger = json.loads(out.with_suffix(".counts.json").read_text(encoding="utf-8"))
+        assert ledger["test_item"] == 0
+
+    def test_force_empty_allows_intentional_regression(self, tmp_path: Path):
+        from scripts.emit_engine_seed_sql import emit_engine_seed_sql
+
+        src = _write_sources(tmp_path / "src")
+        out = tmp_path / "seed.sql"
+        emit_engine_seed_sql(
+            test_items_path=src["test_items"],
+            hints_path=src["hints"],
+            skills_path=src["skills"],
+            tutorials_path=src["tutorials"],
+            content_strings_path=src["content_strings"],
+            blueprints_path=src["blueprints"],
+            sql_out=out,
+        )
+        src["test_items"].write_text(json.dumps([_item()]), encoding="utf-8")
+        emit_engine_seed_sql(
+            test_items_path=src["test_items"],
+            hints_path=src["hints"],
+            skills_path=src["skills"],
+            tutorials_path=src["tutorials"],
+            content_strings_path=src["content_strings"],
+            blueprints_path=src["blueprints"],
+            sql_out=out,
+            force_empty=frozenset({"test_item"}),
+        )
+        ledger = json.loads(out.with_suffix(".counts.json").read_text(encoding="utf-8"))
+        assert ledger["test_item"] == 1
+        sql = out.read_text(encoding="utf-8")
+        assert "ti-gen-aaaaaaaaaaaaaaaa" in sql
+        assert "ti-gen-bbbbbbbbbbbbbbbb" not in sql
+
+    def test_successful_emit_writes_per_source_count_ledger(self, tmp_path: Path):
+        from scripts.emit_engine_seed_sql import emit_engine_seed_sql
+
+        src = _write_sources(tmp_path / "src")
+        out = tmp_path / "seed.sql"
+        emit_engine_seed_sql(
+            test_items_path=src["test_items"],
+            hints_path=src["hints"],
+            skills_path=src["skills"],
+            tutorials_path=src["tutorials"],
+            content_strings_path=src["content_strings"],
+            blueprints_path=src["blueprints"],
+            sql_out=out,
+        )
+        ledger_path = out.with_suffix(".counts.json")
+        ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+        assert ledger == {
+            "test_item": 2,
+            "hint": 1,
+            "skill": 2,
+            "tutorial": 1,
+            "content_string": 3,
+            "test_blueprint": 1,
+        }

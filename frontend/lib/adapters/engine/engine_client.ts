@@ -20,12 +20,18 @@ import type {
 } from "../../wire/engine_entities";
 
 export function durableEngineEnabled(
-  env: Readonly<Record<string, string | undefined>> = process.env as Record<
-    string,
-    string | undefined
-  >,
+  env?: Readonly<Record<string, string | undefined>>,
 ): boolean {
-  return new EnvVarFlagsAdapter({ env }).isEnabled("durable_engine");
+  // Next.js only inlines NEXT_PUBLIC_* values referenced with static member
+  // access. Passing the whole `process.env` object makes dynamic env[key]
+  // lookups undefined in the browser and silently selects the RAM engine.
+  const browserSafeEnv = env ?? {
+    NEXT_PUBLIC_FF_DURABLE_ENGINE:
+      process.env.NEXT_PUBLIC_FF_DURABLE_ENGINE,
+  };
+  return new EnvVarFlagsAdapter({ env: browserSafeEnv }).isEnabled(
+    "durable_engine",
+  );
 }
 
 export interface EngineClientOptions {
@@ -82,6 +88,11 @@ export type ActiveSessionPayload = {
    * non-resolving). Resume advances in that case (FR-B3-feedback).
    */
   pointer_attempted: boolean;
+  /**
+   * True when server `score_total >= target_count` (and target is non-null).
+   * Resume must close to summary — never serve Q(target+1) (FR-C2 / T R.3).
+   */
+  complete: boolean;
 };
 
 export class EngineClient {
@@ -94,22 +105,46 @@ export class EngineClient {
   }
 
   private async getJson<T>(path: string): Promise<T> {
-    let res: Response;
-    try {
-      res = await this.fetchImpl(`${this.baseUrl}${path}`, {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-      });
-    } catch (e) {
-      throw new EngineRepoError(
-        `engine client failed: ${e instanceof Error ? e.message : String(e)}`,
-      );
+    // T R.15 (b) / FR-A9.2: coarse GETs are idempotent reads — retry transient
+    // 5xx / network errors with bounded backoff (same contract as the row-level
+    // HttpEngineDb reads). 4xx is a client error, not transient → surface.
+    const maxAttempts = 3;
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      let res: Response;
+      try {
+        res = await this.fetchImpl(`${this.baseUrl}${path}`, {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
+      } catch (e) {
+        lastErr = e;
+        const retry = attempt < maxAttempts;
+        if (!retry) {
+          throw new EngineRepoError(
+            `engine client failed: ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
+        await new Promise((r) => setTimeout(r, 25 * attempt));
+        continue;
+      }
+      if (!res.ok) {
+        const transient = /\b5\d\d\b/.test(String(res.status));
+        if (transient && attempt < maxAttempts) {
+          lastErr = new EngineRepoError(
+            `engine client failed (${res.status})`,
+          );
+          await new Promise((r) => setTimeout(r, 25 * attempt));
+          continue;
+        }
+        throw new EngineRepoError(`engine client failed (${res.status})`);
+      }
+      return (await res.json()) as T;
     }
-    if (!res.ok) {
-      throw new EngineRepoError(`engine client failed (${res.status})`);
-    }
-    return (await res.json()) as T;
+    throw lastErr instanceof Error
+      ? new EngineRepoError(`engine client failed: ${lastErr.message}`)
+      : new EngineRepoError("engine client failed: exhausted retries");
   }
 
   private async postJson<T>(path: string, body: unknown): Promise<T> {

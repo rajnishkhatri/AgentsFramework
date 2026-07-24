@@ -268,9 +268,11 @@ export default function QuizPage(): React.JSX.Element {
               return;
             }
             if (isResumeExhaustedError(err)) {
-              // FR-C5 at mount: open session, pool gone → close to summary.
-              setSession(err.session);
+              // FR-C5 / T R.3 at mount: open session at target or pool gone →
+              // close to summary. Set the closing ref BEFORE setSession so
+              // Effect 2 cannot race a /next serve for Q(target+1).
               closingSessionRef.current = err.session.id;
+              setSession(err.session);
               dispatch({ type: "finish" });
               closeSession({
                 sessionId: err.session.id,
@@ -375,8 +377,14 @@ export default function QuizPage(): React.JSX.Element {
   // Effect 2: whenever we enter `loading` (initial + after Next) and a session
   // exists, fetch the next scheduled item and fold it into the phase machine.
   // Skipped on FLAG-4 resume (resume_item lands in answering, not loading).
+  // T R.3 page guard: if local tally already meets target, or a close is in
+  // flight, never call /next (blocks Q31 after failed-close / reload races).
   React.useEffect(() => {
     if (session == null || state.phase !== "loading") return;
+    if (closingSessionRef.current === session.id || progressVm.complete) {
+      if (progressVm.complete) closeAndRouteToSummary();
+      return;
+    }
     let cancelled = false;
     // S3: pass the session id so openItem derives this session's served-ids and
     // never re-serves a question already answered this session (FR-9/FR-13).
@@ -422,6 +430,7 @@ export default function QuizPage(): React.JSX.Element {
   }, [
     session,
     state.phase,
+    progressVm.complete,
     openItem,
     learnerId,
     closeAndRouteToSummary,

@@ -11,6 +11,8 @@
  * State rides `data-*` (§13).
  *
  * FR-6: ThemeToggle is always the last rail item (collapsed and expanded).
+ * Sign out sits above it so every /learn screen can clear the WorkOS session
+ * and re-auth to exercise cross-session resume (FR-B1).
  */
 
 "use client";
@@ -26,6 +28,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/chat/ThemeToggle";
+import { SignOutLink } from "@/components/shell/SignOutLink";
 import { cn } from "@/lib/utils";
 import {
   navItemsForSurface,
@@ -57,12 +60,15 @@ export function AppNav(props: {
   collapsed?: boolean;
   /** Desktop/iPad: render ThemeToggle as last rail item (FR-6). */
   showThemeToggle?: boolean;
+  /** Desktop/iPad: Sign out above ThemeToggle (cross-session resume testing). */
+  showSignOut?: boolean;
 }): React.JSX.Element {
   const {
     surface,
     pathname,
     collapsed = false,
     showThemeToggle = false,
+    showSignOut = false,
   } = props;
   const items = navItemsForSurface(surface);
   const active = activeScreenId(pathname);
@@ -138,7 +144,7 @@ export function AppNav(props: {
           </Link>
         );
       })}
-      {showThemeToggle && !isTabBar ? (
+      {(showSignOut || showThemeToggle) && !isTabBar ? (
         <>
           <div
             role="separator"
@@ -148,15 +154,28 @@ export function AppNav(props: {
               isRail ? "mx-auto my-3 w-6" : "my-3",
             )}
           />
-          <div
-            data-testid="nav-theme-toggle"
-            className={cn(
-              isRail && "flex justify-center pb-1",
-              !isRail && "flex items-center px-1",
-            )}
-          >
-            <ThemeToggle />
-          </div>
+          {showSignOut ? (
+            <div
+              data-testid="nav-sign-out"
+              className={cn(
+                isRail && "flex justify-center",
+                !isRail && "flex items-center px-1",
+              )}
+            >
+              <SignOutLink iconOnly={isRail} />
+            </div>
+          ) : null}
+          {showThemeToggle ? (
+            <div
+              data-testid="nav-theme-toggle"
+              className={cn(
+                isRail && "flex justify-center pb-1",
+                !isRail && "flex items-center px-1",
+              )}
+            >
+              <ThemeToggle />
+            </div>
+          ) : null}
         </>
       ) : null}
     </nav>

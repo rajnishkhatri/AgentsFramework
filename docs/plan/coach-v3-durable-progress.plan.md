@@ -8,6 +8,73 @@
 **Status:** APPROVED (re-approved 2026-07-22 after review rounds 5–6) + ADR-0038 accepted; tasks
 regenerated same day. The **Replan log** below records what rounds 5–6 changed and why.
 
+> ## Replan log — 2026-07-23 (Stage 5, post-implementation code review)
+> The end-to-end code review (`coach-v3-end-to-end-code-review.canvas.tsx`, verdict REJECT) found
+> 2 Critical, 4 High, 3 Medium findings across the shipped phases. Direction (D1/Shape B) is
+> **unchanged**. Routing: 2 findings are minor scope additions → spec change (Stage 2) → back
+> through tasks (Stage 3); 7 are implementation/test gaps against existing FRs → new fix tasks.
+> **Phase R (Reconvergence)** appended to `tasks.md` with T R.1–R.10, ordered by merge risk.
+>
+> 1. **Critical — EngineDb dispatcher IDOR (finding 1, FR-A2a/A2).** The fine-grained
+>    `/api/engine/db/[method]` dispatcher substitutes learner IDs for only seven read methods and
+>    never calls `requireOwnedSession`, so one learner can target another's session/state. Fix
+>    (T R.1): centralize per-method authorization — force embedded `learner_id` to the
+>    server-derived id, resolve session ids, `requireOwnedSession` before every session-scoped
+>    dispatch, cross-learner tests for each.
+> 2. **Critical — Cloud SQL migration/runtime connector (finding 2, FR-F1/F3).** The deploy host
+>    passes a `/cloudsql` socket DSN to Node without Cloud SQL Proxy; the frontend service lacks
+>    the socket volume/mount + `cloudsql.client` grant; the `database-url` secret is in
+>    `+asyncpg` format (incompatible with `pg`). Fix (T R.2): run migration through Cloud SQL Proxy
+>    or a connector-enabled job, add the volume/mount + IAM, fix the secret format.
+> 3. **High — Q31 can be served (finding 3, FR-C2).** A failed close or reload lets the open
+>    session resume through `/next`, which never compares the server tally to `target_count`. Fix
+>    (T R.3): enforce the boundary in `/next` AND durable resume; page-level final guard.
+> 4. **High — Phase Z overstates end-to-end durability (finding 4, DoD §9).** The probe's
+>    submit/resume steps use raw SQL (bypassing `HttpEngineDb` + BFF + auth + ownership); the
+>    Playwright companion has no pasted green run. Fix (T R.6): rewrite steps d/e through the real
+>    app layers and paste a verbatim green Playwright run. DoD "end-to-end" tick downgraded to
+>    **conditional** until R.6 passes (spec §9.2).
+> 5. **High — Empty source can wipe the reviewed bank (finding 5, FR-G2a — NEW).** A corrupt/empty
+>    promoted source drives a blanket `reviewed=false` update, retiring all servable content with
+>    no destructive intent. **Scope change → spec:** new FR-G2a (fail-closed on empty/regressed
+>    source unless `--force-empty-<source>`; per-source count ratchet). Fix (T R.4).
+> 6. **High — No durable-engine flag in the production bundle (finding 6, FR-A4/§6).**
+>    `NEXT_PUBLIC_FF_DURABLE_ENGINE` is build-time but Docker/Terraform don't pass it; deployed
+>    browsers stay on `InMemoryEngineDb`. Fix (T R.5): add the build arg + deployment var, OR
+>    document intentional OFF + build a flag-on image for the gate.
+> 7. **Medium — Inconsistent per-question dedup (finding 7, §6 tie-break — clarified).** Tally
+>    keeps first-resolving, summary keeps latest; same-`created_at` rows ambiguous. **Scope
+>    change (minor) → spec:** §6 "Per-question resolution order" = greatest `created_at`, ties by
+>    greatest `id`, reused by FR-B10/D1/D2/E1. Fix (T R.7): one `resolvingAttemptForQuestion`
+>    helper across all four consumers.
+> 8. **Medium — Seed emitter duplicates 4 sources in Python (finding 8, FR-G1).** Skills/tutorials/
+>    content/blueprints are copied into Python constants, so TS source changes drift. Fix (T R.8):
+>    extract from canonical TS at emit time, or add a parity architecture test.
+> 9. **Medium — Core production seams lack integration tests (finding 9, §8).** Dispatcher
+>    ownership, close-route tally + pointer clearing, coarse summary hydration, migration
+>    replay/rollback, partial-index `insertAttempt` through real pg are untested. Fix (T R.9).
+>
+> **Phase R ordering:** R.1 (trust seam) first — nothing in R merges before it. R.2/R.4/R.5/R.8 may
+> parallelize (independent infra/seed surfaces) once R.1 lands. R.6 depends on R.2 + R.5. R.10 is
+> the final gate. Existing Phase 0/G/F/4/A/B/C/D/E/Z tasks stay as committed; Phase R is
+> append-only. Spec additions: FR-G2a + §6 per-question resolution-order tie-break (both
+> propagated backwards before the task list, per Stage-5 routing).
+>
+> ## Replan log — 2026-07-23 (Stage 5, post-R.1–R.9 three-lane subagent review)
+> The post-implementation review (BFF trust / DB-deploy / client-runtime lanes) found Phase R
+> closed the dispatcher IDOR and landed most reconvergence, but merge was still blocked by 5
+> residual risks. **No spec change** (all are implementation/infra/NFR gaps against existing FRs);
+> the approved decomposition appends R.10a + R.11–R.15 + R.10c to `tasks.md` (R.10 split into
+> R.10a catalogue repair + R.10c final gate; R.10b = TAP-4 disposition in `decisions.md`, not code):
+> 1. **R.10a — adapter conformance catalogue:** `node_pg_url.ts` orphan in `PAIRS` (the one real
+>    gate red). 2. **R.11 — `/next` eligibility tie-break:** prod path still `created_at`-only SQL;
+>    align with the §6 `id` tie-break from R.7. 3. **R.12 — closed-session reject + transactional
+>    close:** late writes after close re-open counts; close tally is non-transactional. 4. **R.13 —
+>    pool budget:** uncapped `pg` pools vs Cloud SQL `max_connections=50`. 5. **R.14 — deploy guard:**
+>    flag ↔ image digest can diverge; counts ledger + seed_sources off-CI. 6. **R.15 — probe strength
+>    + coarse GET retry:** probe proves id+count, not pointer/score; `EngineClient` GETs lack
+>    FR-A9.2 retry. R.11 depends on R.7; R.12 on R.3; R.15 on R.6; R.10c is the final gate.
+
 > ## Replan log — 2026-07-22 (Stage 5, review round 5)
 > Six issues found at pre-implementation review, all validated against code. Direction (D1/Shape B)
 > is **unchanged**; these correct *premises within it*. Routing: #1 + #3 change FRs → spec change →
@@ -81,8 +148,8 @@ screen unchanged" claim was refuted; see the Replan log and the next paragraph).
 
 **The atomic swap (FR-A4):** one shared `db` builds the whole bag, so replacing it puts *every*
 `useEngine()` screen's **write/row-level** path on the network at once. `HttpEngineDb` implements the
-**full 30-method** `EngineDb` surface (29 today + 1 new method `setSessionCurrentQuestion`; the pointer
-read is a *field*, not a method — corrected review #2).
+**full 31-method** `EngineDb` surface (29 today + 2 new methods: `setSessionCurrentQuestion`
++ `getNewestOpenSession`; the pointer read is a *field*, not a method — corrected review #2).
 
 **But the read screens don't reach the coarse endpoints through `EngineDb` (review #1 — design fix).**
 The coarse `/dashboard`/`/summary`/`/skill`/`/next` endpoints are **not** `EngineDb` methods, and the
@@ -143,11 +210,13 @@ would let any learner mutate the bank. Table (rows 1–29 existing; 30–31 adde
 | **+** | **pointer field on `getSession` return (`QuizSession.current_question_id`)** | **R** | **session/active (FR-B3b — a field, not a method)** |
 
 **Note:** `patchSessionClose` (#16) already provides the close-with-tally write FR-C1 needs — no new
-close method. The only genuinely new `EngineDb` method is #30 (`setSessionCurrentQuestion`); the read
-side is an added **field** on the existing `getSession`/`QuizSession` shape, NOT a method. So the count
-is **29 + 1 = 30** (corrected review #2 — an earlier draft's "+2 → ~31" wrongly counted the pointer
-read as a second method). `insertAttempt` also gains in-adapter `.onConflictDoNothing()` idempotency
-(FR-A9.1) — a behavior change to an existing method, not a new one.
+close method. The two genuinely new `EngineDb` methods are #30 (`setSessionCurrentQuestion`) and #31
+(`getNewestOpenSession`); the pointer read is an added **field** on the existing `getSession`/
+`QuizSession` shape, NOT a method. So the count is **29 + 2 = 31** (corrected review #2 — an earlier
+draft's "+1 → 30" wrongly omitted `getNewestOpenSession`, and the still-earlier "+2 → ~31" wrongly
+counted the pointer *field* as a second method; the table lists both #30 and #31 as methods, so 31 is
+correct). `insertAttempt` also gains in-adapter `.onConflictDoNothing()` idempotency (FR-A9.1) — a
+behavior change to an existing method, not a new one.
 
 ---
 

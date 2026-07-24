@@ -21,13 +21,24 @@ from __future__ import annotations
 
 import pytest
 
-from tests.infra._hcl_helpers import find_resources, get_one, unwrap_block, unwrap_blocks
+from tests.infra._hcl_helpers import (
+    find_resources,
+    get_one,
+    unwrap_block,
+    unwrap_blocks,
+)
 from tests.infra.gcp.test_secret_manager import REQUIRED_SECRET_IDS
 
 
 pytestmark = pytest.mark.infra_gcp
 
-BACKEND_ONLY_SECRET_IDS = REQUIRED_SECRET_IDS - {"workos-api-key", "workos-cookie-password"}
+# coach-v3 FR-F1: database-url is intentionally shared with the frontend BFF
+# (engine + threads + coach-marker). Still reject LLM / agent-facts secrets.
+BACKEND_ONLY_SECRET_IDS = REQUIRED_SECRET_IDS - {
+    "workos-api-key",
+    "workos-cookie-password",
+    "database-url",
+}
 
 
 def _frontend_service(resources):
@@ -90,15 +101,41 @@ def test_frontend_service_named_agent_frontend(resources):
     )
 
 
-def test_frontend_has_no_cloud_sql_volume(resources):
-    """REJECT Cloud SQL volume on frontend — BFF talks to backend over HTTPS."""
+def test_frontend_cloud_sql_volume_wired(resources):
+    """ACCEPT (T R.2 / FR-F1): frontend mounts Cloud SQL for engine DATABASE_URL."""
     template = _template(_frontend_service(resources))
     volumes = unwrap_blocks(template.get("volumes"))
+    assert volumes, (
+        "Recipe 5 / T R.2: template.volumes required — frontend DATABASE_URL is a "
+        "/cloudsql/ socket DSN and needs the built-in connector."
+    )
     cloudsql_volumes = [
         v for v in volumes if unwrap_block(v.get("cloud_sql_instance")) is not None
     ]
-    assert not cloudsql_volumes, (
-        "Recipe 5: frontend must not mount Cloud SQL; DATABASE_URL belongs on backend only."
+    assert cloudsql_volumes, (
+        "Recipe 5 / T R.2: no cloud_sql_instance volume on agent-frontend. "
+        "Runtime cannot open the engine DATABASE_URL socket without it."
+    )
+    csi = unwrap_block(cloudsql_volumes[0].get("cloud_sql_instance"))
+    instances = csi.get("instances") or []
+    assert instances, "Recipe 5: cloud_sql_instance.instances must be non-empty"
+    assert any("google_sql_database_instance" in str(inst) for inst in instances), (
+        "Recipe 5: cloud_sql_instance must reference "
+        "google_sql_database_instance.main.connection_name."
+    )
+
+
+def test_frontend_cloud_sql_volume_mounted(resources):
+    """ACCEPT (T R.2): container mounts the Cloud SQL volume at /cloudsql."""
+    container = _container(_template(_frontend_service(resources)))
+    mounts = unwrap_blocks(container.get("volume_mounts"))
+    cloudsql_mounts = [m for m in mounts if m.get("name") == "cloudsql"]
+    assert cloudsql_mounts, (
+        "Recipe 5 / T R.2: volume_mounts must include cloudsql so Node pg can "
+        "dial host=/cloudsql/…"
+    )
+    assert cloudsql_mounts[0].get("mount_path") == "/cloudsql", (
+        "Recipe 5: Cloud SQL socket directory must mount at /cloudsql."
     )
 
 
@@ -157,7 +194,10 @@ def test_frontend_workos_redirect_uri_wired(resources):
     """ACCEPT: NEXT_PUBLIC_WORKOS_REDIRECT_URI ends with /api/auth/callback."""
     envs = _env_map(_container(_template(_frontend_service(resources))))
     redirect = str(envs.get("NEXT_PUBLIC_WORKOS_REDIRECT_URI", {}).get("value", ""))
-    wired = redirect.endswith("/api/auth/callback") or "frontend_workos_redirect_uri" in redirect
+    wired = (
+        redirect.endswith("/api/auth/callback")
+        or "frontend_workos_redirect_uri" in redirect
+    )
     assert wired, (
         f"Recipe 5: NEXT_PUBLIC_WORKOS_REDIRECT_URI must end with /api/auth/callback "
         f"or reference local/var frontend_workos_redirect_uri, got {redirect!r}."
@@ -179,9 +219,9 @@ def test_frontend_workos_client_id_is_plain_env(resources):
     """ACCEPT: WORKOS_CLIENT_ID is a public plain env var (not secret_key_ref)."""
     envs = _env_map(_container(_template(_frontend_service(resources))))
     entry = envs.get("WORKOS_CLIENT_ID", {})
-    assert entry.get("value") is not None or "workos_client_id" in str(entry.get("value", "")), (
-        "Recipe 5: WORKOS_CLIENT_ID must be a plain env var."
-    )
+    assert entry.get("value") is not None or "workos_client_id" in str(
+        entry.get("value", "")
+    ), "Recipe 5: WORKOS_CLIENT_ID must be a plain env var."
     assert unwrap_block(entry.get("value_source")) is None, (
         "Recipe 5: WORKOS_CLIENT_ID must not use secret_key_ref."
     )
@@ -193,7 +233,10 @@ def test_frontend_workos_client_id_is_plain_env(resources):
 
 
 def test_frontend_has_no_backend_secret_refs(resources):
-    """REJECT backend-only secrets on frontend (DATABASE_URL, LLM keys, etc.)."""
+    """REJECT backend-only secrets on frontend (LLM keys, agent-facts, etc.).
+
+    database-url is allowed (coach-v3 FR-F1); other backend secrets are not.
+    """
     container = _container(_template(_frontend_service(resources)))
     env_blocks = container.get("env") or []
     if isinstance(env_blocks, dict):
@@ -219,8 +262,8 @@ def test_frontend_has_no_backend_secret_refs(resources):
     )
 
 
-def test_frontend_workos_secrets_wired(resources):
-    """ACCEPT: WorkOS BFF secrets injected via secret_key_ref."""
+def test_frontend_bff_secrets_wired(resources):
+    """ACCEPT: WorkOS + engine DATABASE_URL injected via secret_key_ref (FR-F1)."""
     container = _container(_template(_frontend_service(resources)))
     env_blocks = container.get("env") or []
     if isinstance(env_blocks, dict):
@@ -231,9 +274,13 @@ def test_frontend_workos_secrets_wired(resources):
         for env_entry in env_blocks
         if unwrap_block(env_entry.get("value_source")) is not None
     }
-    assert secret_env_names == {"WORKOS_API_KEY", "WORKOS_COOKIE_PASSWORD"}, (
-        "Recipe 5: frontend secret env vars must be exactly WORKOS_API_KEY and "
-        f"WORKOS_COOKIE_PASSWORD, got {sorted(secret_env_names)!r}."
+    assert secret_env_names == {
+        "WORKOS_API_KEY",
+        "WORKOS_COOKIE_PASSWORD",
+        "DATABASE_URL",
+    }, (
+        "Recipe 5: frontend secret env vars must be WORKOS_API_KEY, "
+        f"WORKOS_COOKIE_PASSWORD, and DATABASE_URL; got {sorted(secret_env_names)!r}."
     )
 
 
@@ -299,9 +346,7 @@ def test_frontend_public_invoker_binding_exists(resources):
 
 def test_frontend_url_output_exists(outputs):
     """ACCEPT: frontend_url output for WorkOS redirect gate + smoke tests."""
-    assert "frontend_url" in outputs, (
-        "Recipe 5: outputs.tf must declare frontend_url."
-    )
+    assert "frontend_url" in outputs, "Recipe 5: outputs.tf must declare frontend_url."
 
 
 def test_frontend_workos_redirect_uri_output_exists(outputs):

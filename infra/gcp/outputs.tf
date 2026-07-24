@@ -123,6 +123,11 @@ output "frontend_workos_redirect_uri" {
   value       = "${google_cloud_run_v2_service.frontend.uri}/api/auth/callback"
 }
 
+output "enable_durable_engine" {
+  description = "Build-time durable-engine intent (T R.5). True only takes effect after rebuilding frontend_image with --build-arg NEXT_PUBLIC_FF_DURABLE_ENGINE=1; runtime env cannot flip an inlined NEXT_PUBLIC_* bundle."
+  value       = var.enable_durable_engine
+}
+
 output "frontend_runtime_service_account_email" {
   description = "Email of the frontend runtime SA. Used to audit least-privilege secretAccessor grants."
   value       = google_service_account.frontend_runtime.email

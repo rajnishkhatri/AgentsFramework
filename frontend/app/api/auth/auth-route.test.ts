@@ -28,9 +28,12 @@ const mockGetSignInUrl = vi.fn(
 vi.mock("@workos-inc/authkit-nextjs", () => ({
   getSignInUrl: mockGetSignInUrl,
   getSignUpUrl: vi.fn(async () => MOCK_SIGN_UP_URL),
-  signOut: vi.fn(async () => {
-    mockSignOut();
-    return new Response(null, { status: 302, headers: { location: "/" } });
+  signOut: vi.fn(async (opts?: { returnTo?: string }) => {
+    mockSignOut(opts);
+    return new Response(null, {
+      status: 302,
+      headers: { location: opts?.returnTo ?? "/" },
+    });
   }),
   handleAuth: () => mockCallbackHandler,
 }));
@@ -192,10 +195,33 @@ describe("auth route handler — sign-out dispatch", () => {
     GET = mod.GET;
   });
 
-  it("calls signOut() for /api/auth/sign-out", async () => {
+  it("calls signOut() for /api/auth/sign-out with absolute returnTo=/", async () => {
     const req = new NextRequest("https://example.com/api/auth/sign-out");
     await GET(req, { params: Promise.resolve({ workos: ["sign-out"] }) });
     expect(mockSignOut).toHaveBeenCalledOnce();
+    expect(mockSignOut).toHaveBeenCalledWith({
+      returnTo: "https://example.com/",
+    });
+  });
+
+  it("honors ?returnTo= when it is a same-origin path", async () => {
+    const req = new NextRequest(
+      "https://example.com/api/auth/sign-out?returnTo=/learn",
+    );
+    await GET(req, { params: Promise.resolve({ workos: ["sign-out"] }) });
+    expect(mockSignOut).toHaveBeenCalledWith({
+      returnTo: "https://example.com/learn",
+    });
+  });
+
+  it("rejects protocol-relative returnTo (open-redirect guard)", async () => {
+    const req = new NextRequest(
+      "https://example.com/api/auth/sign-out?returnTo=//evil.example",
+    );
+    await GET(req, { params: Promise.resolve({ workos: ["sign-out"] }) });
+    expect(mockSignOut).toHaveBeenCalledWith({
+      returnTo: "https://example.com/",
+    });
   });
 });
 

@@ -11,7 +11,7 @@ import {
   jsonOk,
   learnerIdFromClaim,
   requireEngineClaim,
-  requireOwnedSession,
+  requireOwnedOpenSession,
 } from "@/lib/bff/engine_guard";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   const db = engineDb();
-  const owned = await requireOwnedSession(db, parsed.session_id, learnerId);
+  const owned = await requireOwnedOpenSession(db, parsed.session_id, learnerId);
   if (!owned.ok) return owned.response;
 
   await db.setSessionCurrentQuestion(parsed.session_id, parsed.question_id);

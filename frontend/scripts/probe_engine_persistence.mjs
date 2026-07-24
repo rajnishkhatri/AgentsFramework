@@ -7,8 +7,13 @@
  *   (b) per-table seed counts match the committed emitter sources (FR-G1)
  *   (c) re-seed UPDATEs a mutated row and soft-retires a dropped row without
  *       deleting attempt history (FR-G2)
- *   (d) submit-shaped insertAttempt lands an attempt row (FR-A5)
- *   (e) getNewestOpenSession-by-learner_id resumes the open session (FR-B4)
+ *   (d/e DB-schema smoke) attempt + newest-open SQL shape still round-trip
+ *       (NOT an authenticated FR-A5/FR-B4 claim — see T R.6)
+ *
+ * Authenticated full-stack submit + cross-context resume (FR-A5 / FR-B4) lives
+ * ONLY in Playwright:
+ *   frontend/e2e/full-stack/engine-persistence-probe.spec.ts
+ * Optional: set PROBE_BASE_URL + PROBE_COOKIE to also exercise BFF HTTP here.
  *
  * Usage (managed local Postgres — default when DATABASE_URL unset):
  *   node frontend/scripts/probe_engine_persistence.mjs
@@ -17,7 +22,7 @@
  * the probe's own learner/orphan rows):
  *   DATABASE_URL=postgres://... node frontend/scripts/probe_engine_persistence.mjs
  *
- * Not CI. Paste the JSON summary into the Phase Z close-out.
+ * Not CI. Paste the JSON summary into the Phase Z / T R.6 close-out.
  */
 
 import { spawnSync } from "node:child_process";
@@ -117,6 +122,130 @@ function stopManagedPg() {
 async function countTable(client, table) {
   const res = await client.query(`SELECT count(*)::int AS n FROM "${table}"`);
   return res.rows[0].n;
+}
+
+async function runAuthenticatedBffProbe({ baseUrl, cookie }) {
+  /** Optional T R.6 path: HttpEngineDb/BFF under a real auth cookie. */
+  const headers = {
+    "content-type": "application/json",
+    cookie,
+  };
+
+  async function api(method, path, body) {
+    const res = await fetch(`${baseUrl}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store",
+    });
+    const text = await res.text();
+    let json = null;
+    if (text) {
+      try {
+        json = JSON.parse(text);
+      } catch {
+        json = text;
+      }
+    }
+    return { status: res.status, json };
+  }
+
+  const open = await api("POST", "/api/engine/session/open", {
+    subject: "act-english",
+    mode: "adaptive",
+    target_count: 30,
+  });
+  if (open.status !== 200 || !open.json?.id) {
+    return {
+      step: "f_authenticated_fullstack",
+      ok: false,
+      phase: "session/open",
+      status: open.status,
+      body: open.json,
+    };
+  }
+  const sessionId = open.json.id;
+
+  const next = await api(
+    "GET",
+    `/api/engine/next?session=${encodeURIComponent(sessionId)}`,
+  );
+  if (next.status !== 200 || next.json?.empty || !next.json?.question?.id) {
+    return {
+      step: "f_authenticated_fullstack",
+      ok: false,
+      phase: "next",
+      status: next.status,
+      body: next.json,
+      session_id: sessionId,
+    };
+  }
+  const questionId = next.json.question.id;
+
+  const attempt = await api("POST", "/api/engine/attempt", {
+    subject: "act-english",
+    session_id: sessionId,
+    question_id: questionId,
+    chosen_letter: "A",
+    correct: true,
+    elapsed_ms: 100,
+    used_hint: false,
+    resolution: "first_try",
+    idempotency_key: randomUUID(),
+  });
+  if (attempt.status !== 200 || !attempt.json?.id) {
+    return {
+      step: "f_authenticated_fullstack",
+      ok: false,
+      phase: "attempt",
+      status: attempt.status,
+      body: attempt.json,
+      session_id: sessionId,
+    };
+  }
+
+  const listed = await api("POST", "/api/engine/db/listSessionAttempts", {
+    args: [sessionId],
+  });
+  if (
+    listed.status !== 200 ||
+    !Array.isArray(listed.json) ||
+    listed.json.length < 1
+  ) {
+    return {
+      step: "f_authenticated_fullstack",
+      ok: false,
+      phase: "listSessionAttempts",
+      status: listed.status,
+      body: listed.json,
+      session_id: sessionId,
+    };
+  }
+
+  const active = await api(
+    "GET",
+    "/api/engine/session/active?subject=act-english",
+  );
+  if (active.status !== 200 || active.json?.session?.id !== sessionId) {
+    return {
+      step: "f_authenticated_fullstack",
+      ok: false,
+      phase: "session/active",
+      status: active.status,
+      body: active.json,
+      expected_session_id: sessionId,
+    };
+  }
+
+  return {
+    step: "f_authenticated_fullstack",
+    ok: true,
+    session_id: sessionId,
+    attempt_id: attempt.json.id,
+    question_id: questionId,
+    listed_attempts: listed.json.length,
+    via: "PROBE_BASE_URL+PROBE_COOKIE → BFF",
+  };
 }
 
 async function main() {
@@ -268,7 +397,9 @@ async function main() {
         attempt_preserved: orphanAttempt,
       });
 
-      // (d) submit → attempt row (FR-A5), with idempotency_key
+      // (d/e) DB-schema smoke only — NOT authenticated FR-A5/FR-B4 (T R.6).
+      // Authenticated submit + cross-context resume is owned by
+      // e2e/full-stack/engine-persistence-probe.spec.ts.
       const learnerId = `learner-probe-${randomUUID().slice(0, 8)}`;
       const sessionId = `qs-probe-${randomUUID().slice(0, 8)}`;
       const attemptId = `att-probe-${randomUUID().slice(0, 8)}`;
@@ -296,17 +427,19 @@ async function main() {
            FROM "attempt" WHERE id = $1`,
         [attemptId],
       );
-      if (attemptRow.rowCount !== 1) die("FR-A5: attempt row missing after insert");
+      if (attemptRow.rowCount !== 1) {
+        die("DB-schema smoke: attempt row missing after insert");
+      }
       steps.push({
-        step: "d_attempt_persisted",
+        step: "d_db_schema_attempt_row",
         ok: true,
+        note: "schema/idempotency_key smoke only — not FR-A5; see engine-persistence-probe.spec.ts",
         session_id: sessionId,
         attempt_id: attemptId,
         question_id: attemptRow.rows[0].question_id,
         idempotency_key: attemptRow.rows[0].idem,
       });
 
-      // (e) cross-device resume by learner_id (FR-B4) — newest open session
       const olderId = `qs-probe-older-${randomUUID().slice(0, 8)}`;
       await client.query(
         `INSERT INTO "quiz_session" (
@@ -326,26 +459,51 @@ async function main() {
       );
       if (newest.rowCount !== 1 || newest.rows[0].id !== sessionId) {
         die(
-          `FR-B4: expected newest open=${sessionId}, got ${JSON.stringify(newest.rows)}`,
+          `DB-schema smoke: expected newest open=${sessionId}, got ${JSON.stringify(newest.rows)}`,
         );
       }
       if (newest.rows[0].current_question_id !== probeItem.id) {
-        die("FR-B4: served pointer not readable on resume candidate");
+        die("DB-schema smoke: served pointer not readable on resume candidate");
       }
       steps.push({
-        step: "e_resume_by_learner",
+        step: "e_db_schema_newest_open",
         ok: true,
+        note: "SQL newest-open smoke only — not FR-B4; see engine-persistence-probe.spec.ts",
         learner_id: learnerId,
         resumed_session_id: newest.rows[0].id,
         current_question_id: newest.rows[0].current_question_id,
         older_open_skipped: olderId,
       });
 
+      // Optional authenticated BFF path (T R.6) when an operator points at a
+      // running durable frontend with a session cookie.
+      const probeBase = (process.env.PROBE_BASE_URL ?? "").replace(/\/$/, "");
+      const probeCookie = (process.env.PROBE_COOKIE ?? "").trim();
+      if (probeBase && probeCookie) {
+        const authStep = await runAuthenticatedBffProbe({
+          baseUrl: probeBase,
+          cookie: probeCookie,
+        });
+        steps.push(authStep);
+        if (!authStep.ok) {
+          die(`authenticated BFF probe failed: ${JSON.stringify(authStep)}`);
+        }
+      } else {
+        steps.push({
+          step: "f_authenticated_fullstack",
+          status: "deferred",
+          owner: "engine-persistence-probe.spec.ts",
+          note:
+            "Set PROBE_BASE_URL+PROBE_COOKIE to exercise BFF here; otherwise run Playwright",
+        });
+      }
+
       const summary = {
         ok: true,
         managed_pg: managed,
         steps,
         expected_counts: EXPECTED_COUNTS,
+        authenticated_fullstack: "engine-persistence-probe.spec.ts",
       };
       console.log(JSON.stringify(summary, null, 2));
     } finally {

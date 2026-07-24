@@ -1,0 +1,20 @@
+[
+  {
+    "subject": "act-english",
+    "key": "session.target_count.adaptive",
+    "locale": "en",
+    "value": "30"
+  },
+  {
+    "subject": "act-english",
+    "key": "session.target_count.drill",
+    "locale": "en",
+    "value": "30"
+  },
+  {
+    "subject": "act-english",
+    "key": "session.target_count.review",
+    "locale": "en",
+    "value": "30"
+  }
+]

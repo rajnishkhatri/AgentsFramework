@@ -479,4 +479,29 @@ describe("QuizPage — Phase B durable resume + served pointer", () => {
     expect(mocks.resumeSession).not.toHaveBeenCalled();
     expect(mocks.openSession).toHaveBeenCalled();
   });
+
+  it("closes to summary when durable resume finds an at-target open session (T R.3)", async () => {
+    const exhausted = Object.assign(new Error("no next item"), {
+      name: "QuizResumeExhaustedError",
+      session: { ...session, target_count: 30, current_question_id: null },
+      score: { correct: 20, total: 30 },
+    });
+    mocks.resumeSession.mockRejectedValue(exhausted);
+    mocks.openSession.mockResolvedValue({
+      session,
+      skillStateAtStart: new Map(),
+    });
+
+    await mountPage();
+
+    expect(mocks.closeSession).toHaveBeenCalledWith({
+      sessionId: "session-1",
+      scoreCorrect: 20,
+      scoreTotal: 30,
+    });
+    expect(mocks.openItem).not.toHaveBeenCalled();
+    expect(mocks.push).toHaveBeenCalledWith(
+      "/learn/summary?session=session-1",
+    );
+  });
 });

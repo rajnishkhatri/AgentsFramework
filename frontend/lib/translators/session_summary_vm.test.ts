@@ -241,24 +241,28 @@ describe("countSessionOutcomes — commit-first FR-11", () => {
   it("counts first_try / coached / walked_through from resolving rows", () => {
     const counts = countSessionOutcomes([
       {
+        id: "att-1",
         question_id: "q1",
         correct: true,
         resolution: "first_try",
         created_at: "2026-07-19T00:00:01Z",
       },
       {
+        id: "att-2",
         question_id: "q2",
         correct: false,
         resolution: null,
         created_at: "2026-07-19T00:00:02Z",
       },
       {
+        id: "att-3",
         question_id: "q2",
         correct: true,
         resolution: "coached",
         created_at: "2026-07-19T00:00:03Z",
       },
       {
+        id: "att-4",
         question_id: "q3",
         correct: false,
         resolution: "walked_through",
@@ -272,6 +276,7 @@ describe("countSessionOutcomes — commit-first FR-11", () => {
     expect(countSessionOutcomes([])).toBeNull();
     const legacy = countSessionOutcomes([
       {
+        id: "att-5",
         question_id: "q1",
         correct: true,
         resolution: null,
@@ -287,24 +292,28 @@ describe("projectSessionInsights — Phase D misses (FR-D1/D1a)", () => {
     const insights = projectSessionInsights(
       [
         {
+        id: "att-6",
           question_id: "q-coached",
           correct: false,
           resolution: null,
           created_at: "2026-07-19T00:00:01Z",
         },
         {
+        id: "att-7",
           question_id: "q-coached",
           correct: true,
           resolution: "coached",
           created_at: "2026-07-19T00:00:02Z",
         },
         {
+        id: "att-8",
           question_id: "q-walked",
           correct: false,
           resolution: "walked_through",
           created_at: "2026-07-19T00:00:03Z",
         },
         {
+        id: "att-9",
           question_id: "q-wrong",
           correct: false,
           resolution: null,
@@ -346,24 +355,28 @@ describe("projectSessionInsights — this-session skill panel (FR-D2/D3)", () =>
     const insights = projectSessionInsights(
       [
         {
+        id: "att-10",
           question_id: "q1",
           correct: true,
           resolution: "first_try",
           created_at: "2026-07-19T00:00:01Z",
         },
         {
+        id: "att-11",
           question_id: "q2",
           correct: false,
           resolution: null,
           created_at: "2026-07-19T00:00:02Z",
         },
         {
+        id: "att-12",
           question_id: "q2",
           correct: true,
           resolution: "coached",
           created_at: "2026-07-19T00:00:03Z",
         },
         {
+        id: "att-13",
           question_id: "q3",
           correct: false,
           resolution: "walked_through",
@@ -416,6 +429,7 @@ describe("projectSessionInsights — this-session skill panel (FR-D2/D3)", () =>
     const insights = projectSessionInsights(
       [
         {
+        id: "att-14",
           question_id: "q1",
           correct: true,
           resolution: "first_try",

@@ -28,6 +28,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import { Pool } from "pg";
+import { pgPoolMax, toNodePgConnectionString } from "@/lib/adapters/db/node_pg_url";
 import type { CoachSessionMarkerRepo } from "@/lib/ports/coach_session_marker_repo";
 import { coach_session_marker } from "./db/schema";
 
@@ -76,7 +77,13 @@ export class PgCoachMarkerRepo implements CoachSessionMarkerRepo {
 
   private db() {
     if (!this._db) {
-      this._db = drizzle(new Pool({ connectionString: this.connectionString }));
+      this._db = drizzle(
+        new Pool({
+          connectionString: toNodePgConnectionString(this.connectionString),
+          // T R.13 — bounded pool (shared Cloud SQL budget). Default 5.
+          max: pgPoolMax(process.env, 5),
+        }),
+      );
     }
     return this._db;
   }

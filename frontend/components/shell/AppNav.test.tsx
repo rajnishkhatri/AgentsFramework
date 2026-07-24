@@ -116,4 +116,25 @@ describe("AppNav — collapsed icon rail (FR-6 / B1)", () => {
     const children = [...doc.querySelector("nav")!.children];
     expect(children[children.length - 1]).toBe(theme);
   });
+
+  it("showSignOut places Sign out above ThemeToggle (ThemeToggle still last)", () => {
+    const doc = dom(
+      <AppNav
+        surface="desktop"
+        pathname={QUIZ}
+        collapsed
+        showThemeToggle
+        showSignOut
+      />,
+    );
+    const signOut = doc.querySelector('[data-testid="nav-sign-out"]');
+    const theme = doc.querySelector('[data-testid="nav-theme-toggle"]');
+    expect(signOut).not.toBeNull();
+    expect(
+      signOut!.querySelector('[data-testid="sign-out"]')?.getAttribute("href"),
+    ).toContain("/api/auth/sign-out");
+    const children = [...doc.querySelector("nav")!.children];
+    expect(children[children.length - 1]).toBe(theme);
+    expect(children.indexOf(signOut!)).toBeLessThan(children.indexOf(theme!));
+  });
 });

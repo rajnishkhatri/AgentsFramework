@@ -9,7 +9,7 @@ import {
   learnerIdFromClaim,
   requireEngineClaim,
 } from "@/lib/bff/engine_guard";
-import { commitFirstTally } from "@/lib/bff/engine_tally";
+import { commitFirstTally, isAtTargetCount } from "@/lib/bff/engine_tally";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +29,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       session: null,
       running_score: null,
       pointer_attempted: false,
+      complete: false,
     });
   }
   const attempts = await db.listSessionAttempts(session.id);
@@ -39,5 +40,8 @@ export async function GET(req: NextRequest): Promise<Response> {
   const pointer_attempted =
     pointerId != null &&
     attempts.some((attempt) => attempt.question_id === pointerId);
-  return jsonOk({ session, running_score, pointer_attempted });
+  // FR-C2 / T R.3: at-target open sessions are complete — client closes to
+  // summary instead of resuming into a (target+1)th serve.
+  const complete = isAtTargetCount(session.target_count, running_score.score_total);
+  return jsonOk({ session, running_score, pointer_attempted, complete });
 }

@@ -46,6 +46,16 @@ resource "google_cloud_run_v2_service" "frontend" {
     service_account       = google_service_account.frontend_runtime.email
     execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
 
+    # Cloud SQL built-in connector (T R.2 / FR-F1): DATABASE_URL is a
+    # host=/cloudsql/… socket DSN — same shape as the backend. Without this
+    # volume the BFF cannot open engine/threads/marker tables at runtime.
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = [google_sql_database_instance.main.connection_name]
+      }
+    }
+
     containers {
       image = var.frontend_image
 
@@ -61,6 +71,11 @@ resource "google_cloud_run_v2_service" "frontend" {
         }
         cpu_idle          = true
         startup_cpu_boost = true
+      }
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
       }
 
       startup_probe {
@@ -140,6 +155,15 @@ resource "google_cloud_run_v2_service" "frontend" {
           }
         }
       }
+
+      # T R.13 — Cloud SQL connection budget. Caps each frontend pg.Pool (engine
+      # + threads + coach-marker) so their sum stays under max_connections=50.
+      # Default 5 per pool (3 × 5 = 15, leaving headroom for the on-demand
+      # migrate/probe clients). Override per deploy; clamped to [1, 20] in code.
+      env {
+        name  = "ENGINE_PG_POOL_MAX"
+        value = "5"
+      }
     }
   }
 
@@ -153,6 +177,7 @@ resource "google_cloud_run_v2_service" "frontend" {
     google_secret_manager_secret_iam_member.workos_api_key_frontend_accessor,
     google_secret_manager_secret_iam_member.workos_cookie_password_accessor,
     google_secret_manager_secret_iam_member.database_url_frontend_accessor,
+    google_project_iam_member.frontend_runtime_cloudsql_client,
   ]
 }
 

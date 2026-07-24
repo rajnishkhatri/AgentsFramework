@@ -34,6 +34,16 @@ export function notFound(): Response {
   });
 }
 
+export function conflict(error = "session_closed"): Response {
+  return new Response(JSON.stringify({ error }), {
+    status: 409,
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+    },
+  });
+}
+
 export function badRequest(error = "invalid_body"): Response {
   return new Response(JSON.stringify({ error }), {
     status: 400,
@@ -100,4 +110,27 @@ export async function requireOwnedSession(
     return { ok: false, response: notFound() };
   }
   return { ok: true, session };
+}
+
+/**
+ * T R.12 / FR-C2 — like `requireOwnedSession`, but additionally rejects with
+ * 409 when the session is already closed (`ended_at != null`). Used by the
+ * session-scoped write handlers (`attempt`, `session/current`, `session/close`)
+ * so a late write after close can never re-open a completed session's counts.
+ * The session row is already loaded by `requireOwnedSession` — no extra query.
+ */
+export async function requireOwnedOpenSession(
+  db: SessionLookup,
+  sessionId: string,
+  learnerId: string,
+): Promise<
+  | { ok: true; session: QuizSession }
+  | { ok: false; response: Response }
+> {
+  const owned = await requireOwnedSession(db, sessionId, learnerId);
+  if (!owned.ok) return owned;
+  if (owned.session.ended_at != null) {
+    return { ok: false, response: conflict() };
+  }
+  return { ok: true, session: owned.session };
 }

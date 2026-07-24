@@ -11,7 +11,7 @@ import {
   jsonOk,
   learnerIdFromClaim,
   requireEngineClaim,
-  requireOwnedSession,
+  requireOwnedOpenSession,
 } from "@/lib/bff/engine_guard";
 import { Attempt, AttemptInput } from "@/lib/wire/engine_entities";
 import { newUuid } from "@/lib/new_uuid";
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   const db = engineDb();
-  const owned = await requireOwnedSession(db, input.session_id, learnerId);
+  const owned = await requireOwnedOpenSession(db, input.session_id, learnerId);
   if (!owned.ok) return owned.response;
 
   const row = Attempt.parse({

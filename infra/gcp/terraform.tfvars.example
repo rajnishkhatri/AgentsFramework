@@ -47,10 +47,12 @@ cloud_sql_user          = "agent_runtime"
 # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
 cloud_sql_password = "REPLACE_WITH_SECURE_PASSWORD"
 
-# database_url is set AFTER Cloud SQL is provisioned. Format:
-#   postgresql+asyncpg://USER:PASSWORD@/DB?host=/cloudsql/PROJECT:REGION:INSTANCE
+# database_url is set AFTER Cloud SQL is provisioned. Prefer plain postgresql://
+# (Node pg + psycopg). Historical +asyncpg values are normalized for Node at
+# migrate/runtime. Format:
+#   postgresql://USER:PASSWORD@/DB?host=/cloudsql/PROJECT:REGION:INSTANCE
 # Update the database-url secret via:
-#   echo -n "postgresql+asyncpg://agent_runtime:PASSWORD@/agent?host=/cloudsql/PROJECT:REGION:agent-db" \
+#   echo -n "postgresql://agent_runtime:PASSWORD@/agent?host=/cloudsql/PROJECT:REGION:agent-db" \
 #     | gcloud secrets versions add database-url --data-file=-
 database_url = "placeholder-set-in-recipe-2"
 
@@ -77,6 +79,15 @@ database_url = "placeholder-set-in-recipe-2"
 #   frontend_image = "<artifact_registry_url>/agent-frontend:v1"
 
 # frontend_image = "us-central1-docker.pkg.dev/your-gcp-project-id/agent-backend/agent-frontend:v1"
+
+# Coach-v3 durable engine (T R.5 / FR-A4 §6). Default false → InMemoryEngineDb in
+# the compiled bundle. Set true AND rebuild the frontend image so deploy_gcp.sh
+# passes --build-arg NEXT_PUBLIC_FF_DURABLE_ENGINE=1 (NEXT_PUBLIC_* is build-time
+# only — a Cloud Run runtime env cannot flip an already-built image).
+# enable_durable_engine = true
+#   docker build -f frontend/Dockerfile.frontend \
+#     --build-arg NEXT_PUBLIC_FF_DURABLE_ENGINE=1 \
+#     -t agent-frontend:dev ./frontend
 
 # ── Meta ring (Recipe 6, optional — disabled by default) ─────────────────────
 #

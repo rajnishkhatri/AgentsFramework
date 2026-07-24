@@ -93,12 +93,17 @@ export interface BuildBrowserEngineAdaptersOptions {
  * client.
  */
 function durableEngineEnabled(
-  env: Readonly<Record<string, string | undefined>> = process.env as Record<
-    string,
-    string | undefined
-  >,
+  env?: Readonly<Record<string, string | undefined>>,
 ): boolean {
-  return new EnvVarFlagsAdapter({ env }).isEnabled("durable_engine");
+  // Static member access is required for Next.js to inline NEXT_PUBLIC_* into
+  // the browser bundle; dynamic process.env[key] sees no value client-side.
+  const browserSafeEnv = env ?? {
+    NEXT_PUBLIC_FF_DURABLE_ENGINE:
+      process.env.NEXT_PUBLIC_FF_DURABLE_ENGINE,
+  };
+  return new EnvVarFlagsAdapter({ env: browserSafeEnv }).isEnabled(
+    "durable_engine",
+  );
 }
 
 export function buildBrowserEngineAdapters(

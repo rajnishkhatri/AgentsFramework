@@ -1,20 +1,30 @@
-"""Emit the multi-source engine content seed SQL (coach-v3 durable FR-G1/G2/G4).
+"""Emit the multi-source engine content seed SQL (coach-v3 durable FR-G1/G2/G2a/G4).
 
 Reconciles ALL authoritative content tables into
 ``frontend/drizzle/seed_engine_content.sql``:
 
 - ``test_item`` ← ``docs/plan/coach-item-bank-live.promoted.json`` (987 items)
 - ``hint`` ← ``docs/plan/coach-bank-hints.seed.json``
-- ``skill`` ← embedded DEV taxonomy (``seedDevTaxonomy`` / ``_dev_seed.ts``)
-- ``tutorial`` ← embedded lesson seed (``seedLessonContent`` / ``_lesson_seed.ts``)
-- ``content_string`` ← per-mode session target defaults (``session.target_count.*``)
-- ``test_blueprint`` ← default ACT-English blueprint
+- ``skill`` ← ``frontend/lib/adapters/engine/seed_sources/skills.json``
+  (canonical; also imported by ``_dev_seed.ts`` / ``seedDevTaxonomy``)
+- ``tutorial`` ← ``…/seed_sources/tutorials.json``
+  (canonical; also imported by ``_lesson_seed.ts`` / ``seedLessonContent``)
+- ``content_string`` ← ``…/seed_sources/content_strings.json``
+  (``session.target_count.*``; also ``_session_policy_seed.ts``)
+- ``test_blueprint`` ← ``…/seed_sources/blueprints.json``
+  (also ``_blueprint_seed.ts``)
 
 Inserts use ``ON CONFLICT … DO UPDATE`` (never ``DO NOTHING`` — FR-G2). Rows
 present in pg but dropped from the source are soft-retired
 (``reviewed = false``) with **no DELETE** anywhere in the bundle. Learner write
 tables (``quiz_session`` / ``attempt`` / ``skill_state`` / ``progress_point``)
 are never touched (FR-G4).
+
+FR-G2a fail-closed: an empty or count-regressed source aborts before any
+blanket ``reviewed = false`` update is emitted. Override only with an explicit
+``--force-empty-<source>`` flag (documented destructive intent). Successful
+emits ledger per-source counts next to the SQL
+(``seed_engine_content.counts.json``).
 
 Deterministic, stdlib-only. Regenerate:
 
@@ -33,206 +43,64 @@ _REPO = Path(__file__).resolve().parent.parent
 DEFAULT_ITEMS = _REPO / "docs" / "plan" / "coach-item-bank-live.promoted.json"
 DEFAULT_HINTS = _REPO / "docs" / "plan" / "coach-bank-hints.seed.json"
 DEFAULT_SQL_OUT = _REPO / "frontend" / "drizzle" / "seed_engine_content.sql"
+# T R.8 / FR-G1: the four small sources are shared JSON (single source of
+# truth) — also imported by the canonical TS seed modules. No Python row
+# copies; silent TS↔Postgres drift is gated by
+# tests/architecture/test_engine_seed_source_parity.py.
+_SEED_SOURCES = _REPO / "frontend" / "lib" / "adapters" / "engine" / "seed_sources"
+DEFAULT_SKILLS_PATH = _SEED_SOURCES / "skills.json"
+DEFAULT_TUTORIALS_PATH = _SEED_SOURCES / "tutorials.json"
+DEFAULT_CONTENT_STRINGS_PATH = _SEED_SOURCES / "content_strings.json"
+DEFAULT_BLUEPRINTS_PATH = _SEED_SOURCES / "blueprints.json"
 
-# Canonical small sources that live as TS constants today (seedDevTaxonomy /
-# seedLessonContent / session-target policy). Embedded so the SQL emitter does
-# not need a TS parser; keep byte-stable and mirrored with those modules.
-DEFAULT_SKILLS: list[dict[str, Any]] = [
-    {
-        "id": "s-punc",
-        "subject": "act-english",
-        "key": "punctuation",
-        "name": "Punctuation",
-        "share_of_test_pct": 15,
-        "accent_var": "--color-bucket-punctuation",
-        "description": "Commas, semicolons, colons, dashes, and apostrophes.",
-        "order": 1,
-    },
-    {
-        "id": "s-gram",
-        "subject": "act-english",
-        "key": "grammar",
-        "name": "Usage",
-        "share_of_test_pct": 20,
-        "accent_var": "--color-bucket-usage",
-        "description": "Subject–verb agreement, pronouns, verb tense, idioms.",
-        "order": 2,
-    },
-    {
-        "id": "s-sent",
-        "subject": "act-english",
-        "key": "sentence",
-        "name": "Sentence Structure",
-        "share_of_test_pct": 20,
-        "accent_var": "--color-bucket-sentence-structure",
-        "description": "Fragments, run-ons, modifiers, and parallelism.",
-        "order": 3,
-    },
-    {
-        "id": "s-rhet",
-        "subject": "act-english",
-        "key": "rhetoric",
-        "name": "Rhetoric",
-        "share_of_test_pct": 20,
-        "accent_var": "--color-bucket-rhetoric",
-        "description": "Word choice, tone, and conciseness in context.",
-        "order": 4,
-    },
-    {
-        "id": "s-org",
-        "subject": "act-english",
-        "key": "organization",
-        "name": "Organization",
-        "share_of_test_pct": 15,
-        "accent_var": "--color-bucket-organization",
-        "description": "Transitions, sentence order, and opening/closing sentences.",
-        "order": 5,
-    },
-    {
-        "id": "s-style",
-        "subject": "act-english",
-        "key": "style",
-        "name": "Conciseness",
-        "share_of_test_pct": 10,
-        "accent_var": "--color-bucket-conciseness",
-        "description": "Redundancy, wordiness, and consistent register.",
-        "order": 6,
-    },
-]
+# Authoritative sources gated by FR-G2a (table name == CLI ``--force-empty-*`` key).
+SEED_SOURCES: tuple[str, ...] = (
+    "test_item",
+    "hint",
+    "skill",
+    "tutorial",
+    "content_string",
+    "test_blueprint",
+)
 
-DEFAULT_TUTORIALS: list[dict[str, Any]] = [
-    {
-        "id": "tut-hand-nec-s-punc",
-        "subject": "act-english",
-        "skill_id": "s-punc",
-        "body_md": (
-            "Run the removal test: lift the clause out of the sentence. If it "
-            "still stands, the clause is non-essential — fence it with a pair "
-            "of commas. If the clause pins down which thing you mean, it's "
-            "essential — no commas."
-        ),
-        "examples": [
-            "My kitchen, which provides an alternative to eating out, is small.",
-            "The car that I bought is electric.",
-        ],
-        "generated_from": "hand:rajnish@2026-07-11",
-        "reviewed": True,
-        "ground_md": (
-            "You already use commas every day — to list things, to mark a "
-            "pause, to keep parts of a sentence from colliding. Nothing here "
-            "is new machinery; it builds on habits you already have."
-        ),
-        "pitfall_md": (
-            "But one clause can need a pair of commas while another needs "
-            "none — and the wrong choice quietly flips what the sentence "
-            "means. The clauses that catch people cluster right after words "
-            'like "which" and "who."'
-        ),
-        "question_md": "So how do you tell when a clause actually needs its commas?",
-        "self_explain_prompt": (
-            "Before you read the rule — take a guess. When do you think a "
-            "clause needs commas around it?"
-        ),
-        "worked_example": {
-            "sentence": (
-                "My kitchen, which provides an alternative to eating out, is small."
-            ),
-            "steps": [
-                'Remove the clause → "My kitchen is small." Still a complete sentence.',
-                "So the clause is extra detail — non-essential.",
-                "Non-essential → fence it with a pair of commas.",
-            ],
-            "answer": "Keep both commas.",
-        },
-        "completion_try": {
-            "sentence": "The teacher, who grades fairly, is popular.",
-            "choices": [
-                {"text": "Keep both commas", "correct": True},
-                {"text": "Delete the commas", "correct": False},
-            ],
-            "why": (
-                'Remove "who grades fairly" → "The teacher is popular" still '
-                "stands, so the clause is non-essential — keep both commas."
-            ),
-        },
-        "annotated_examples": [
-            {
-                "pre": "My kitchen",
-                "clause": "which provides an alternative to eating out",
-                "post": " is small.",
-                "essential": False,
-                "callouts": [
-                    'remove it → "My kitchen is small." still works',
-                    "so → fence with a pair of commas",
-                ],
-            },
-            {
-                "pre": "The car ",
-                "clause": "that I bought",
-                "post": " is electric.",
-                "essential": True,
-                "callouts": ["identifies which car → essential → no commas"],
-            },
-        ],
-    }
-]
 
-DEFAULT_CONTENT_STRINGS: list[dict[str, Any]] = [
-    {
-        "subject": "act-english",
-        "key": "session.target_count.adaptive",
-        "locale": "en",
-        "value": "30",
-    },
-    {
-        "subject": "act-english",
-        "key": "session.target_count.drill",
-        "locale": "en",
-        "value": "30",
-    },
-    {
-        "subject": "act-english",
-        "key": "session.target_count.review",
-        "locale": "en",
-        "value": "30",
-    },
-]
+class SeedSourceFailClosedError(Exception):
+    """FR-G2a: empty or regressed source without ``--force-empty-<source>``."""
 
-DEFAULT_BLUEPRINTS: list[dict[str, Any]] = [
-    {
-        "id": "bp-act-english-default",
-        "subject": "act-english",
-        "skill_mix": {
-            "s-punc": 0.15,
-            "s-gram": 0.20,
-            "s-sent": 0.20,
-            "s-rhet": 0.20,
-            "s-org": 0.15,
-            "s-style": 0.10,
-        },
-        "difficulty_dist": {"2": 0.2, "3": 0.5, "4": 0.3},
-        "count": 30,
-        "minutes": 35,
-        "scale_band_table": [
-            {"raw_min": 0, "raw_max": 10, "scale": 10},
-            {"raw_min": 11, "raw_max": 20, "scale": 20},
-            {"raw_min": 21, "raw_max": 30, "scale": 30},
-        ],
-        "pass_criteria": None,
-        "seed": 1,
-    }
-]
+    def __init__(
+        self,
+        source: str,
+        *,
+        count: int,
+        ledgered: int | None,
+        reason: str,
+    ) -> None:
+        self.source = source
+        self.count = count
+        self.ledgered = ledgered
+        self.reason = reason
+        super().__init__(
+            f"seed source {source!r} fail-closed ({reason}): count={count}"
+            + (f", ledgered={ledgered}" if ledgered is not None else "")
+            + f"; pass --force-empty-{source.replace('_', '-')} to override"
+        )
+
+
+# Small sources (skill / tutorial / content_string / test_blueprint) load
+# from DEFAULT_*_PATH JSON above — see T R.8 / FR-G1 seed_sources parity.
 
 _HEADER = """\
 -- seed_engine_content.sql — multi-source engine content reconciliation
 -- GENERATED FILE — do not edit by hand.
 --
--- Emitted by scripts/emit_engine_seed_sql.py (coach-v3 durable FR-G1/G2/G4).
+-- Emitted by scripts/emit_engine_seed_sql.py (coach-v3 durable FR-G1/G2/G2a/G4).
 -- Applied by frontend/scripts/migrate_engine.mjs AFTER 0000–0004 every run
--- (the seed is idempotent DO UPDATE reconciliation — ledgering it would skip
--- a re-emit and reintroduce FR-G2 drift).
+-- (the seed is idempotent DO UPDATE reconciliation — ledgering the SQL itself
+-- would skip a re-emit and reintroduce FR-G2 drift; per-source *counts* are
+-- ledgered separately in seed_engine_content.counts.json for FR-G2a).
 --
 -- Soft-retire (reviewed=false), never hard-DELETE. No learner write tables.
+-- FR-G2a: empty/regressed sources fail closed unless --force-empty-<source>.
 -- Transaction ownership: migrate_engine.mjs wraps each file in one txn —
 -- this file must NOT contain BEGIN/COMMIT (nested BEGIN warns in PG).
 -- Regenerate:
@@ -243,6 +111,72 @@ _HEADER = """\
 
 def _die(msg: str) -> None:
     raise SystemExit(f"emit_engine_seed_sql: {msg}")
+
+
+def _default_ledger_path(sql_out: Path) -> Path:
+    """``seed_engine_content.sql`` → ``seed_engine_content.counts.json``."""
+    return sql_out.with_name(f"{sql_out.stem}.counts.json")
+
+
+def _load_count_ledger(path: Path) -> dict[str, int] | None:
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        _die(f"cannot read count ledger {path}: {exc}")
+    if not isinstance(data, dict):
+        _die(f"count ledger {path} must be a JSON object")
+    out: dict[str, int] = {}
+    for key, value in data.items():
+        if (
+            not isinstance(key, str)
+            or not isinstance(value, int)
+            or isinstance(value, bool)
+        ):
+            _die(f"count ledger {path}: invalid entry {key!r}={value!r}")
+        out[key] = value
+    return out
+
+
+def _write_count_ledger(path: Path, counts: dict[str, int]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Stable key order matching SEED_SOURCES, then any extras.
+    ordered = {src: counts[src] for src in SEED_SOURCES if src in counts}
+    for key, value in counts.items():
+        if key not in ordered:
+            ordered[key] = value
+    path.write_text(
+        json.dumps(ordered, indent=2, sort_keys=False) + "\n", encoding="utf-8"
+    )
+
+
+def _assert_sources_fail_closed(
+    counts: dict[str, int],
+    *,
+    ledger: dict[str, int] | None,
+    force_empty: frozenset[str],
+) -> None:
+    """FR-G2a: abort on empty or regressed source unless explicitly forced."""
+    unknown = force_empty - set(SEED_SOURCES)
+    if unknown:
+        _die(f"unknown --force-empty source(s): {sorted(unknown)}")
+    for source in SEED_SOURCES:
+        count = counts.get(source, 0)
+        forced = source in force_empty
+        if count == 0 and not forced:
+            raise SeedSourceFailClosedError(
+                source, count=0, ledgered=None, reason="empty"
+            )
+        if ledger is not None and source in ledger:
+            prior = ledger[source]
+            if count < prior and not forced:
+                raise SeedSourceFailClosedError(
+                    source,
+                    count=count,
+                    ledgered=prior,
+                    reason="regressed",
+                )
 
 
 def _sql_str(value: Any) -> str:
@@ -283,12 +217,9 @@ def _load_json_array(
     return rows
 
 
-def _load_optional_array(
-    path: Path | None, default: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
-    if path is None:
-        return list(default)
-    return _load_json_array(path)
+def _load_optional_array(path: Path | None, default_path: Path) -> list[dict[str, Any]]:
+    """Load a JSON array from ``path``, or from the shared default JSON path."""
+    return _load_json_array(path if path is not None else default_path)
 
 
 def _upsert(
@@ -369,8 +300,18 @@ def emit_engine_seed_sql(
     tutorials_path: Path | None = None,
     content_strings_path: Path | None = None,
     blueprints_path: Path | None = None,
+    force_empty: frozenset[str] | None = None,
+    ledger_path: Path | None = None,
 ) -> None:
-    """Read all content sources and write the transactional reconciliation SQL."""
+    """Read all content sources and write the transactional reconciliation SQL.
+
+    FR-G2a: aborts with ``SeedSourceFailClosedError`` (and writes nothing) when
+    a source is empty or its count regresses below the previous ledger, unless
+    that source is listed in ``force_empty``.
+    """
+    forced = force_empty or frozenset()
+    counts_ledger_path = ledger_path or _default_ledger_path(sql_out)
+
     items = [_normalize_item(r) for r in _load_json_array(test_items_path)]
     items.sort(
         key=lambda r: (
@@ -395,12 +336,12 @@ def emit_engine_seed_sql(
         )
     )
 
-    skills = _load_optional_array(skills_path, DEFAULT_SKILLS)
+    skills = _load_optional_array(skills_path, DEFAULT_SKILLS_PATH)
     skills.sort(key=lambda r: (int(r.get("order", 0)), str(r["id"])))
-    tutorials = _load_optional_array(tutorials_path, DEFAULT_TUTORIALS)
+    tutorials = _load_optional_array(tutorials_path, DEFAULT_TUTORIALS_PATH)
     tutorials.sort(key=lambda r: str(r["id"]))
     content_strings = _load_optional_array(
-        content_strings_path, DEFAULT_CONTENT_STRINGS
+        content_strings_path, DEFAULT_CONTENT_STRINGS_PATH
     )
     content_strings.sort(
         key=lambda r: (
@@ -409,8 +350,23 @@ def emit_engine_seed_sql(
             str(r.get("locale", "")),
         )
     )
-    blueprints = _load_optional_array(blueprints_path, DEFAULT_BLUEPRINTS)
+    blueprints = _load_optional_array(blueprints_path, DEFAULT_BLUEPRINTS_PATH)
     blueprints.sort(key=lambda r: str(r["id"]))
+
+    counts = {
+        "test_item": len(items),
+        "hint": len(hints),
+        "skill": len(skills),
+        "tutorial": len(tutorials),
+        "content_string": len(content_strings),
+        "test_blueprint": len(blueprints),
+    }
+    # Fail closed BEFORE any SQL is written (no blanket retire on corrupt sources).
+    _assert_sources_fail_closed(
+        counts,
+        ledger=_load_count_ledger(counts_ledger_path),
+        force_empty=forced,
+    )
 
     parts: list[str] = [_HEADER]
 
@@ -599,27 +555,59 @@ def emit_engine_seed_sql(
     if not text.endswith("\n"):
         text += "\n"
     sql_out.write_text(text, encoding="utf-8")
+    # Ledger only after a successful write (FR-G2a ratchet for the next run).
+    _write_count_ledger(counts_ledger_path, counts)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--test-items", type=Path, default=DEFAULT_ITEMS)
     parser.add_argument("--hints", type=Path, default=DEFAULT_HINTS)
-    parser.add_argument("--skills", type=Path, default=None)
-    parser.add_argument("--tutorials", type=Path, default=None)
-    parser.add_argument("--content-strings", type=Path, default=None)
-    parser.add_argument("--blueprints", type=Path, default=None)
-    parser.add_argument("--sql-out", type=Path, default=DEFAULT_SQL_OUT)
-    args = parser.parse_args()
-    emit_engine_seed_sql(
-        test_items_path=args.test_items,
-        hints_path=args.hints,
-        skills_path=args.skills,
-        tutorials_path=args.tutorials,
-        content_strings_path=args.content_strings,
-        blueprints_path=args.blueprints,
-        sql_out=args.sql_out,
+    parser.add_argument("--skills", type=Path, default=DEFAULT_SKILLS_PATH)
+    parser.add_argument("--tutorials", type=Path, default=DEFAULT_TUTORIALS_PATH)
+    parser.add_argument(
+        "--content-strings", type=Path, default=DEFAULT_CONTENT_STRINGS_PATH
     )
+    parser.add_argument("--blueprints", type=Path, default=DEFAULT_BLUEPRINTS_PATH)
+    parser.add_argument("--sql-out", type=Path, default=DEFAULT_SQL_OUT)
+    parser.add_argument(
+        "--ledger",
+        type=Path,
+        default=None,
+        help="Per-source count ledger path (default: <sql-out-stem>.counts.json)",
+    )
+    for source in SEED_SOURCES:
+        flag = f"--force-empty-{source.replace('_', '-')}"
+        parser.add_argument(
+            flag,
+            action="store_true",
+            help=(
+                f"FR-G2a override: allow empty/regressed {source} source "
+                "(documented destructive intent — may blanket soft-retire)"
+            ),
+        )
+    args = parser.parse_args()
+    forced = frozenset(
+        src for src in SEED_SOURCES if getattr(args, f"force_empty_{src}")
+    )
+    try:
+        emit_engine_seed_sql(
+            test_items_path=args.test_items,
+            hints_path=args.hints,
+            skills_path=args.skills,
+            tutorials_path=args.tutorials,
+            content_strings_path=args.content_strings,
+            blueprints_path=args.blueprints,
+            sql_out=args.sql_out,
+            force_empty=forced,
+            ledger_path=args.ledger,
+        )
+    except SeedSourceFailClosedError as exc:
+        print(f"emit_engine_seed_sql: {exc}", file=sys.stderr)
+        raise SystemExit(2) from exc
     print(f"emitted {args.sql_out}", file=sys.stderr)
 
 

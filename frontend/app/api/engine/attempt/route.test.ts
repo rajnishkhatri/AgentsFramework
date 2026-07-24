@@ -107,4 +107,23 @@ describe("POST /api/engine/attempt", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(stored);
   });
+
+  it("409 and no insert when the session is already closed (T R.12 / FR-C2)", async () => {
+    getSession.mockResolvedValue({ sub: "learner-A" });
+    engineGetSession.mockResolvedValue({
+      id: "sess-1",
+      learner_id: "learner-A",
+      subject: "act-english",
+      mode: "adaptive",
+      skill_focus: null,
+      started_at: "t",
+      ended_at: "2026-07-22T01:00:00.000Z", // already closed
+      score_correct: 5,
+      score_total: 30,
+      target_count: 30,
+    });
+    const res = await POST(req(baseBody));
+    expect(res.status).toBe(409);
+    expect(insertAttempt).not.toHaveBeenCalled();
+  });
 });

@@ -12,6 +12,144 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-23 — **T R.10c: final convergence gate green (no new ADR).** Ran the full gate: `make
+  check` 5376 passed/50 skipped; `pytest tests/architecture/ -q` 254 passed/2 skipped; `pnpm vitest
+  run` bulk 2164 passed + architecture 189 passed (the 8 prior timeouts were parallelism-induced at
+  the 10s default `testTimeout` — all 176/189 pass in isolation / with `--testTimeout=60000`; not a
+  code defect); authenticated Playwright persistence probe 1 passed (pointer + score durable,
+  cross-device); routed reviewer verdict **approve** (109 files reviewed, 0 criticals). Two test-infra
+  fixes landed during the gate, both G9-justified: (1) `scratch_engine_pg.ts` `pg_isready` runs INSIDE
+  the container (unix socket) and reported ready before Docker Desktop's host-side TCP port-forward
+  proxy was accepting → `ECONNRESET` on the first `client.connect()`; now also confirms a real
+  host-side `pg.Client` TCP connect before declaring ready. (2) the T R.15 (a) probe asserted
+  `current_question_id === attemptedQuestion` but never called `POST /api/engine/session/current`
+  (the ONLY pointer writer, FR-B3a) — the real client (`use_quiz.ts`) does this after `/next`; the
+  probe now mirrors it. Both are test-only; no product behavior changed. §9.2 persistence tick
+  re-confirmed; §9.3 updated with the T R.15 strengthened run.
+- 2026-07-23 — **T R.10b: TAP-4 reviewer-warning disposition (no new ADR, no code task).** The
+  routed reviewer's two TAP-4 warnings — `tests/infra/gcp/test_cloud_run_frontend.py` (failure-path
+  ratio 3/18 = 17% < 25%) and `tests/infra/gcp/test_data.py` (5/26 = 19% < 25%) — are heuristic
+  file-level noise on **pre-existing** infra test files (both exist on `origin/main`; verified via
+  `git cat-file -e origin/main:<file>`), not uncovered acceptance paths and not branch-introduced
+  regressions. TAP-4 is file-level happy-path-ratio coverage, not per-decision-point; these two
+  files are Terraform-plan/fixture validators where the happy path IS the contract. No action
+  required beyond recording the disposition (this entry); the warnings are non-blocking
+  (`request_changes` is informational in the CI reviewer gate, which blocks on `reject` only).
+- 2026-07-23 — **T R.15: strengthen probe (pointer + score) + EngineClient GET retry (no new ADR).**
+  The T R.6 probe proved session id + attempt count, not the resume position
+  (`current_question_id`) or the server-computed score; `EngineClient` coarse GETs
+  lacked the FR-A9.2 retry the row-level `HttpEngineDb` reads have. (a) The Playwright
+  `engine-persistence-probe.spec.ts` now asserts the served pointer matches the attempted
+  question AND `running_score` matches the submitted history (one first_try-correct →
+  `score_correct=1, score_total=1`), both on device-1 and on the cross-context device-2
+  resume (proving pointer + tally are durable, not RAM-local). (b) `EngineClient.getJson`
+  now retries transient 5xx / network errors with bounded backoff (3 attempts, 25ms ×
+  attempt — same constants as `HttpEngineDb.call`); 4xx surfaces immediately (client
+  error, not transient); POSTs never retry (non-idempotent writes). Rejected retrying in
+  `postJson` — only GETs are idempotent; a retried close/attempt/pointer write could double-
+  apply. ADR-0038 governs the `/api/engine/*` seam; this closes the FR-A9.2 parity gap
+  between the coarse and row-level client paths.
+
+- 2026-07-23 — **T R.14: deploy-time flag↔var guard + commit seed parity sources (no new ADR).**
+  `NEXT_PUBLIC_FF_DURABLE_ENGINE` is build-time-inlined (T R.5), so a stale pin
+  — operator flips `enable_durable_engine` in tfvars WITHOUT rebuilding + repinning
+  `frontend_image` — would silently deploy a revision whose bundle contradicts the
+  var (shadow↔canary drift). `Dockerfile.frontend` now bakes the flag into a runner-stage
+  `LABEL org.agentsframework.ff_durable_engine=$NEXT_PUBLIC_FF_DURABLE_ENGINE` (ARGs don't
+  cross FROM, so it's re-declared in the runner), and `deploy_gcp.sh`'s new
+  `assert_frontend_image_flag_matches_tfvars` reads the PINNED `frontend_image` digest from
+  tfvars, `docker inspect`s its label, and fails the deploy in `phase_frontend` BEFORE
+  `tofu_gate` (traffic is LATEST 100% on apply). Tries the local image first (cheap, post
+  `phase_images`), falls back to a pull for standalone `phase_frontend`. Rejected a runtime
+  env-var mirror + startup-check — the task asked for a digest/label deploy-time guard, and
+  a label is the only witness that survives a stale pin (a runtime mirror could itself be
+  flipped without a rebuild). Also `git add`-ed `seed_engine_content.counts.json` +
+  `seed_sources/*.json` (created in T R.8 but untracked) so `test_engine_seed_source_parity.py`
+  runs in CI. ADR-0038 governs the `/api/engine/*` seam; this is the deploy-side closer.
+
+- 2026-07-23 — **T R.13: frontend pg pool budget vs Cloud SQL max_connections (no new ADR).**
+  The three frontend `pg.Pool`s (engine `drizzle_engine_db`, threads
+  `pg_thread_repo`, coach-marker `marker_repo`) were uncapped (default 10 each
+  = 30, too close to Cloud SQL `max_connections=50` under concurrency). Added
+  a bounded env-driven `pgPoolMax(env, default)` in `lib/adapters/db/node_pg_url.ts`
+  (reads `ENGINE_PG_POOL_MAX`, clamps to [1, 20], default 5) and wired it into
+  all three pools; `infra/gcp/cloud-run-frontend.tf` sets the var to "5"
+  (3 × 5 = 15, leaving headroom for the on-demand migrate/probe clients).
+  Rejected a shared singleton pool — the three repos construct independently
+  and a shared pool is a new abstraction (G1) the task explicitly excluded
+  ("a config knob + a note"); the per-pool cap is the simpler thing. Budget:
+  engine 5 + threads 5 + marker 5 = 15 ≤ 50, plus transient migrate/probe
+  clients (single `pg.Client`, not pooled).
+
+- 2026-07-23 — **T R.12: closed-session reject + atomic close (no new ADR).**
+  Close tally/NULL-pointer and coarse `/summary` covered by colocated Vitest route
+  tests; migrate replay/rollback via scratch Docker + fixture drizzle dir; real-pg
+  `insertAttempt` on-demand (`ENGINE_PG_INTEGRATION`). Rejected relying only on
+  InMemory/mocked routes for (c)(d) — finding 9 was the missing scratch-pg proof.
+- 2026-07-23 — **T R.8: shared JSON seed sources (no new ADR).**
+  Skills/tutorials/content_strings/blueprints live in
+  `frontend/lib/adapters/engine/seed_sources/*.json` — emitter defaults + TS
+  seed modules import the same files. Rejected keeping Python `DEFAULT_*`
+  mirrors (silent TS↔Postgres drift) and rejected a TS-parser-in-Python emit.
+- 2026-07-23 — **T R.7: one §6 resolving-attempt helper (no new ADR).**
+  `resolvingAttemptForQuestion` (greatest `created_at`, ties by greatest `id`)
+  lives in `lib/translators/resolving_attempt.ts` and is the sole dedup for
+  FR-B10 tally, FR-D1/D2 summary misses/panels, and FR-E1 eligibility. Rejected
+  keeping tally's first-resolving win — that was the code-review divergence.
+- 2026-07-23 — **T R.6: authenticated full-stack persistence probe (DoD §9, no new ADR).**
+  FR-A5/FR-B4 proof moved to Playwright `engine-persistence-probe.spec.ts` (BFF
+  open→next→attempt→`listSessionAttempts` + shared-auth second context). Node
+  probe keeps migrate/seed/FR-G2 + DB-schema smoke only; raw-SQL steps no longer
+  claim end-to-end durability. DoD §9 re-ticked with verbatim green run (§9.3).
+- 2026-07-23 — **T R.5: durable-engine flag is a Docker build-arg (no new ADR).**
+  `NEXT_PUBLIC_FF_DURABLE_ENGINE` is inlined at `next build`, so Cloud Run
+  runtime env / Playwright-only env cannot flip the deployed bundle. Wired as
+  `ARG`/`ENV` in `Dockerfile.frontend` + `--build-arg` from `deploy_gcp.sh`,
+  driven by TF `enable_durable_engine` (default false, shadow→canary). Rejected
+  naming a TF var `NEXT_PUBLIC_*` (FE-AP-18) and rejected runtime-only wiring.
+
+- 2026-07-23 — **T R.4: seed emit fail-closed ledger (FR-G2a, no new ADR).**
+  `scripts/emit_engine_seed_sql.py` now aborts on empty/regressed sources before
+  writing SQL (typed `SeedSourceFailClosedError`); per-source counts live in
+  `frontend/drizzle/seed_engine_content.counts.json`; override only via
+  `--force-empty-<source>`. Spec already captured FR-G2a in the Stage-5 replan.
+
+- 2026-07-23 — **T R.3: server-side `target_count` boundary (FR-C2, no new ADR).**
+  `/next` and durable resume now compare the server-computed `score_total` to
+  `target_count` (`isAtTargetCount` in `lib/bff/engine_tally.ts`) and return a
+  `session_complete` signal instead of a 31st item; a `closingSessionRef` page
+  guard + `QuizResumeExhaustedError` close the failed-close/reload race. Rejected
+  a client-only guard — the boundary must hold across reload and cross-device
+  resume, so it is server-authoritative.
+
+- 2026-07-23 — **T R.2: frontend Cloud SQL connector + Node URL shape (no new ADR).**
+  Engine `DATABASE_URL` on `agent-frontend` needs the same built-in connector
+  (volume/mount + `roles/cloudsql.client` on `frontend_runtime`) as the backend;
+  migrate runs via `cloud-sql-proxy` + `to_node_pg_url` so a `/cloudsql/` secret
+  is reachable from the deploy host and Node `pg` accepts historical
+  `postgresql+asyncpg://` values. Prefer plain `postgresql://` in new secrets;
+  rejected a second secret — one URL, normalize at the Node boundary.
+
+- 2026-07-23 — **T R.1: dispatcher IDOR closure (FR-A2a/A2, no new ADR).**
+  `app/api/engine/db/[method]/route.ts` now derives `learnerId` server-side
+  (`learnerIdFromClaim`) and calls `requireOwnedSession(db, sessionId, learnerId)`
+  before every session-scoped dispatch, forcing embedded `learner_id` fields to
+  the derived id. Rejected per-method handler guards — the dispatcher is the one
+  choke point, so centralizing there closes the IDOR for all 7+ session-scoped
+  methods at once. ADR-0038 already governs the `/api/engine/*` seam.
+
+- 2026-07-23 — **Stage-5 replan (Phase R) added two minor spec FRs, not a new ADR.**
+  Code-review findings 5 + 7 were small enough to land as spec clarifications, not
+  structural decisions: **FR-G2a** (seed reconciliation fails closed on empty/
+  regressed source unless `--force-empty-<source>` — a defensive guard on FR-G2's
+  retire-not-delete, not a new abstraction) and the **§6 per-question resolution
+  order** tie-break (greatest `created_at`, ties by greatest `id`, reused by
+  FR-B10/D1/D2/E1 — replaces the "negligible" hand-wave with a defined rule). The
+  seven implementation/test gaps (dispatcher IDOR, Cloud SQL wiring, Q31, Phase Z
+  probe, flag wiring, source duplication, integration tests) are fix tasks
+  (T R.1–R.10) against existing FRs, not new scope. ADR-0038 still governs the
+  durable seam; no new ADR triggered.
+
 - 2026-07-22 — **FR-E4 `listAlreadyCorrectQuestionIds` is server-only on EngineDb.**
   Content-fresh eligibility runs only in `GET /api/engine/next` (prefer-exclude +
   FR-E3 fallback); the browser never needs the cross-session correct set. Marked
