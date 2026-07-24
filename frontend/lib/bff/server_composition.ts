@@ -26,10 +26,18 @@ import {
 import { selectThreadRepo } from "../adapters/thread_store/neon_thread_repo";
 import { selectCoachMarkerRepo } from "../adapters/coach_marker/marker_repo";
 import type { CoachSessionMarkerRepo } from "../ports/coach_session_marker_repo";
+import type { EngineDb } from "../adapters/engine/db/engine_db";
+import {
+  buildEngineAdapters,
+  selectEngineDb,
+  type EnginePortBag,
+} from "../composition_engine";
 
 let _bag: PortBag | null = null;
 let _middlewareUrl: string | null = null;
 let _markerRepo: CoachSessionMarkerRepo | null = null;
+let _engineDb: EngineDb | null = null;
+let _enginePorts: EnginePortBag | null = null;
 
 function middlewareUrl(): string {
   if (_middlewareUrl) return _middlewareUrl;
@@ -77,6 +85,36 @@ export function coachMarkerRepo(): CoachSessionMarkerRepo {
 }
 
 /**
+ * Durable engine DB (coach-v3 FR-A3 / T A.6 / ADR-0038). Mirrors
+ * `coachMarkerRepo()`: memoized, env-reading, called directly by
+ * `/api/engine/*` handlers — NOT a param on `serverPortBag()`/`buildAdapters`.
+ * Unset `DATABASE_URL` → typed `EngineRepoError` via `selectEngineDb` (no
+ * silent in-memory fallback).
+ */
+export function engineDb(): EngineDb {
+  if (_engineDb) return _engineDb;
+  _engineDb = selectEngineDb(
+    process.env as Record<string, string | undefined>,
+  );
+  return _engineDb;
+}
+
+/**
+ * Engine port bag over the durable `engineDb()` seam. Used by coarse handlers
+ * that need Scheduler / repos (`next`, dashboard assembly) without naming
+ * adapters in the route file.
+ */
+export function enginePorts(): EnginePortBag {
+  if (_enginePorts) return _enginePorts;
+  _enginePorts = buildEngineAdapters({
+    env: process.env as Record<string, string | undefined>,
+    engineDb: engineDb(),
+    questionSource: "bank",
+  });
+  return _enginePorts;
+}
+
+/**
  * Forward a request to the middleware service. Owned by the composition
  * seam so route handlers never reach into `process.env` themselves
  * (Rule C4/C5, FE-AP-3 / B6). Returns the raw upstream `Response` so the
@@ -95,4 +133,6 @@ export function _resetServerComposition(): void {
   _bag = null;
   _middlewareUrl = null;
   _markerRepo = null;
+  _engineDb = null;
+  _enginePorts = null;
 }

@@ -25,7 +25,11 @@ import type {
   TestItem,
   Tutorial,
 } from "../../../wire/engine_entities";
-import type { EngineDb, SessionClosePatch } from "./engine_db";
+import type {
+  EngineDb,
+  InsertAttemptResult,
+  SessionClosePatch,
+} from "./engine_db";
 
 function skillStateKey(subject: string, skillId: string, learnerId: string): string {
   return `${subject}\0${skillId}\0${learnerId}`;
@@ -47,16 +51,6 @@ export class InMemoryEngineDb implements EngineDb {
   private testBlueprints = new Map<string, TestBlueprint>();
   private sessions = new Map<string, QuizSession>();
   private attempts: Attempt[] = [];
-  /**
-   * Monotonic insertion sequence per stored attempt copy. Used only to
-   * tie-break `listMisses` when two rows share a `created_at` (directly-injected
-   * fixtures can still tie; `DrizzleAttemptRepo.record` keeps live writes
-   * strictly increasing). Newest-inserted wins — the deterministic stand-in for
-   * a Postgres heap's physical order, so this fake never disagrees with the pg
-   * adapter's `orderBy(desc(created_at))`. WeakMap keeps it off the wire shape.
-   */
-  private attemptSeq = new WeakMap<Attempt, number>();
-  private nextAttemptSeq = 0;
   private skillState = new Map<string, SkillState>();
   private content = new Map<string, string>();
   private tutorials = new Map<string, Tutorial>(); // key: subject\0skillId
@@ -203,11 +197,14 @@ export class InMemoryEngineDb implements EngineDb {
 
   // --- quiz_session ---
   async insertSession(s: QuizSession): Promise<void> {
-    this.sessions.set(s.id, { ...s });
+    this.sessions.set(s.id, {
+      ...s,
+      current_question_id: s.current_question_id ?? null,
+    });
   }
   async getSession(id: string): Promise<QuizSession | null> {
     const s = this.sessions.get(id);
-    return s ? { ...s } : null;
+    return s ? { ...s, current_question_id: s.current_question_id ?? null } : null;
   }
   async patchSessionClose(
     id: string,
@@ -222,6 +219,9 @@ export class InMemoryEngineDb implements EngineDb {
       ended_at: s.ended_at ?? patch.ended_at,
       score_correct: patch.score_correct,
       score_total: patch.score_total,
+      // T R.12 / FR-B3c: clear the served pointer on close (mirrors the live
+      // seam's atomic single-UPDATE clear).
+      current_question_id: null,
     };
     this.sessions.set(id, updated);
     return { ...updated };
@@ -248,48 +248,109 @@ export class InMemoryEngineDb implements EngineDb {
     return rows.map((s) => ({ ...s }));
   }
 
+  async setSessionCurrentQuestion(
+    sessionId: string,
+    questionId: string | null,
+  ): Promise<void> {
+    const s = this.sessions.get(sessionId);
+    if (!s) return;
+    this.sessions.set(sessionId, { ...s, current_question_id: questionId });
+  }
+
+  async getNewestOpenSession(
+    subject: string,
+    learnerId: string,
+  ): Promise<QuizSession | null> {
+    const rows = [...this.sessions.values()].filter(
+      (s) =>
+        s.subject === subject &&
+        s.learner_id === learnerId &&
+        s.ended_at == null,
+    );
+    rows.sort((a, b) => {
+      const startCmp = (b.started_at ?? "").localeCompare(a.started_at ?? "");
+      if (startCmp !== 0) return startCmp;
+      return b.id.localeCompare(a.id);
+    });
+    const first = rows[0];
+    return first
+      ? { ...first, current_question_id: first.current_question_id ?? null }
+      : null;
+  }
+
   // --- attempt ---
-  async insertAttempt(a: Attempt): Promise<void> {
-    const stored = { ...a };
-    this.attemptSeq.set(stored, this.nextAttemptSeq++);
+  async insertAttempt(a: Attempt): Promise<InsertAttemptResult> {
+    const key = a.idempotency_key ?? null;
+    if (key != null) {
+      const existing = this.attempts.find(
+        (row) =>
+          row.session_id === a.session_id &&
+          row.question_id === a.question_id &&
+          row.idempotency_key === key,
+      );
+      if (existing) {
+        return { status: "already-existed", attempt: { ...existing } };
+      }
+    }
+    const stored = { ...a, idempotency_key: key };
     this.attempts.push(stored);
+    return { status: "inserted", attempt: { ...stored } };
   }
   async listMisses(subject: string, learnerId: string): Promise<Attempt[]> {
     // Outstanding misses only (FR-D4 / FR-C5): latest attempt per question_id
     // for this learner+subject — include iff that latest row is incorrect. A
     // later correct answer clears the item from the review pool (append-only
     // history is preserved; this read is a projection).
+    const latestByQuestion = this.latestAttemptsByQuestion(subject, learnerId);
+    return [...latestByQuestion.values()]
+      .filter((a) => a.correct === false)
+      .sort((a, b) => this.compareAttemptsNewestFirst(a, b))
+      .map((a) => ({ ...a }));
+  }
+  async listAlreadyCorrectQuestionIds(
+    subject: string,
+    learnerId: string,
+  ): Promise<string[]> {
+    // FR-E4 — inverse of listMisses: latest attempt correct===true.
+    const latestByQuestion = this.latestAttemptsByQuestion(subject, learnerId);
+    const ids: string[] = [];
+    for (const a of latestByQuestion.values()) {
+      if (a.correct === true) ids.push(a.question_id);
+    }
+    return ids;
+  }
+  private compareAttemptsNewestFirst(a: Attempt, b: Attempt): number {
+    if (a.created_at !== b.created_at) {
+      return a.created_at < b.created_at ? 1 : -1;
+    }
+    // §6 same-ms tie: greatest `id` wins. `id` is the server-assigned primary
+    // key, stable across devices — the same order the drizzle adapter's
+    // `NOT EXISTS (later.created_at > … OR (later.created_at = … AND
+    // later.id > …))` predicate enforces, so this fake agrees with pg on the
+    // concurrent-device same-ms case §6 was added for.
+    return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+  }
+  private latestAttemptsByQuestion(
+    subject: string,
+    learnerId: string,
+  ): Map<string, Attempt> {
     const learnerSessionIds = new Set(
       [...this.sessions.values()]
         .filter((s) => s.subject === subject && s.learner_id === learnerId)
         .map((s) => s.id),
     );
-    const byNewest = (a: Attempt, b: Attempt): number => {
-      if (a.created_at !== b.created_at) {
-        return a.created_at < b.created_at ? 1 : -1;
-      }
-      // Same-ms tie: fall back to insertion order (newest-inserted first).
-      // The `id` is a random UUID here, so sorting on it would surface an
-      // arbitrary row — the summary recap must show the LAST miss recorded.
-      const seqA = this.attemptSeq.get(a) ?? -1;
-      const seqB = this.attemptSeq.get(b) ?? -1;
-      return seqB - seqA;
-    };
     const learnerAttempts = this.attempts
       .filter(
         (a) => a.subject === subject && learnerSessionIds.has(a.session_id),
       )
-      .sort(byNewest);
+      .sort((a, b) => this.compareAttemptsNewestFirst(a, b));
     const latestByQuestion = new Map<string, Attempt>();
     for (const a of learnerAttempts) {
       if (!latestByQuestion.has(a.question_id)) {
         latestByQuestion.set(a.question_id, a);
       }
     }
-    return [...latestByQuestion.values()]
-      .filter((a) => a.correct === false)
-      .sort(byNewest)
-      .map((a) => ({ ...a }));
+    return latestByQuestion;
   }
   async listSessionQuestionIds(sessionId: string): Promise<string[]> {
     // Every question answered in this session (any correctness) — the served

@@ -79,7 +79,7 @@ deny contains msg if {
   msg := "Tier A Cloud Run: must reference a dedicated google_service_account, not a literal SA email."
 }
 
-# ── Cloud SQL connector volume required (Recipe 4 backend only) ───────────
+# ── Cloud SQL connector volume required (backend + frontend) ──────────────
 
 deny contains msg if {
   some attrs in cloud_run_attrs
@@ -87,6 +87,14 @@ deny contains msg if {
   some t in attrs.template
   count(t.volumes) == 0
   msg := "Recipe 4: backend Cloud Run template must declare a volumes block with cloud_sql_instance for the built-in connector."
+}
+
+deny contains msg if {
+  some attrs in cloud_run_attrs
+  attrs.name == "agent-frontend"
+  some t in attrs.template
+  count(t.volumes) == 0
+  msg := "Recipe 5 / T R.2: frontend Cloud Run template must declare a volumes block with cloud_sql_instance (engine DATABASE_URL socket)."
 }
 
 # ── startup probe path: /healthz for backend, / for frontend ────────────

@@ -12,10 +12,11 @@
  * (engine policy, translators, eventually a React provider) receive port
  * instances only — they never import a concrete adapter (Rule C1/C2).
  *
- * Substrate: no `DATABASE_URL` → `InMemoryEngineDb` (dev / tests / CI / the
- * on-device-before-DB path). With `DATABASE_URL` → the live Postgres seam
- * (`pgEngineDb`). The on-device SQLite seam is wired here too once the Capacitor
- * SQLite driver lands (it is the same `EngineDb` contract).
+ * Substrate (coach-v3 FR-A3): `DATABASE_URL` → live Postgres (`pgEngineDb`);
+ * unset URL → typed `EngineRepoError` (no silent in-memory fallback). Tests
+ * inject `engineDb: new InMemoryEngineDb()` explicitly. The on-device SQLite
+ * seam is wired here too once the Capacitor SQLite driver lands (same
+ * `EngineDb` contract).
  */
 
 import type { SkillTaxonomy } from "./ports/engine/skill_taxonomy";
@@ -34,8 +35,8 @@ import type { ProgressRepo } from "./ports/engine/progress_repo";
 import type { QuizSubmitNotifier } from "./ports/quiz_submit_notifier";
 
 import type { EngineDb } from "./adapters/engine/db/engine_db";
-import { InMemoryEngineDb } from "./adapters/engine/db/in_memory_engine_db";
 import { pgEngineDb } from "./adapters/engine/db/drizzle_engine_db";
+import { EngineRepoError } from "./ports/engine/errors";
 import { DrizzleSkillTaxonomy } from "./adapters/engine/repos/drizzle_skill_taxonomy";
 import { DrizzleQuestionRepo } from "./adapters/engine/repos/drizzle_question_repo";
 import { DrizzleAttemptRepo } from "./adapters/engine/repos/drizzle_attempt_repo";
@@ -95,9 +96,11 @@ export interface EnginePortBag {
 }
 
 /**
- * Select the EngineDb seam. Pure given its env argument (the pg seam constructs
- * lazily — no connection until a query runs), so the choice is unit-testable
- * without `server-only`. Mirrors `selectThreadRepo`.
+ * Select the EngineDb seam for durable BFF / server use (coach-v3 FR-A3).
+ * Pure given its env argument (the pg seam constructs lazily — no connection
+ * until a query runs). **Diverges from** `selectCoachMarkerRepo` /
+ * `selectThreadRepo` on the else-branch: unset `DATABASE_URL` throws a typed
+ * `EngineRepoError` — never a silent `InMemoryEngineDb` fallback.
  */
 export function selectEngineDb(
   env: Readonly<Record<string, string | undefined>>,
@@ -106,7 +109,9 @@ export function selectEngineDb(
   if (url && url.trim()) {
     return pgEngineDb(url);
   }
-  return new InMemoryEngineDb();
+  throw new EngineRepoError(
+    "engine DATABASE_URL is required (no InMemoryEngineDb fallback)",
+  );
 }
 
 export function buildEngineAdapters(

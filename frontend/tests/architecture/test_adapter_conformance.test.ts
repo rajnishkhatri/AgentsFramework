@@ -313,6 +313,12 @@ describe("Adapter conformance suite [FD6.PORT adapter side / A3 / A4]", () => {
       "lib/adapters/auth/ios_deep_link_auth.ts", // pure helpers (no SDK/port) — P6 Step 2 iOS deep-link auth (TS analogue of src-tauri/src/auth.rs)
       "lib/adapters/auth/workos_desktop_auth.ts", // server-only seam (P5 Step 2), like workos_server_sdk.ts — not a port-adapter PAIR
       "lib/adapters/auth/workos_server_sdk.ts", // server-only seam (D-V3-S3.7.1-RouteHandler)
+      // Pure URL-normalization utility (T R.2 Cloud SQL connector): maps historical
+      // `postgresql+asyncpg://…` and `/cloudsql/` socket DSNs to the Node `pg` shape.
+      // No lib/ports/ interface — a stateless helper, not an adapter class. Behavior is
+      // unit-tested in node_pg_url.test.ts; consumed by migrate_engine.mjs + the BFF seam.
+      "lib/adapters/db/node_pg_url.ts",
+      "lib/adapters/engine/engine_client.ts", // FR-A6 coarse HTTP loader facade; it is not an EngineDb implementation, and its one-fetch contracts are covered by engine_client.test.ts
       "lib/adapters/native/capacitor_native_feel.ts", // Capacitor SDK seam (P6 Step 3) — wires @capacitor/{status-bar,keyboard}+safe-area into the pure helper; not a lib/ports/ PAIR
       "lib/adapters/native/ios_native_feel.ts", // pure helpers (no SDK/port) — P6 Step 3 status-bar/keyboard decision logic
       // pgDrizzleDb is a DrizzleLike *factory* (option B, Cloud SQL), the same

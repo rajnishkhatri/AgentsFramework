@@ -17,7 +17,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { buildBrowserRuntimeClient } from "@/lib/composition_browser";
 import { QuizView, QuizFrameChrome } from "@/components/quiz/QuizView";
 import { QuizProgress } from "@/components/quiz/QuizProgress";
-import { QuizDoneBanner } from "@/components/quiz/QuizDoneBanner";
 import { FeedbackView } from "@/components/feedback/FeedbackView";
 import { CoachDrawer } from "@/components/coach/CoachDrawer";
 import { CoachPanel } from "@/components/coach/CoachPanel";
@@ -36,9 +35,20 @@ import {
   RAIL_COLLAPSED,
   useSurface,
 } from "@/components/shell/use_surface";
-import { useQuiz, type QuizItemResult } from "@/components/quiz/use_quiz";
+import {
+  isNoContentError,
+  isPoolExhaustedError,
+  isResumeExhaustedError,
+  useQuiz,
+  type QuizItemResult,
+} from "@/components/quiz/use_quiz";
+import { durableEngineEnabled } from "@/lib/adapters/engine/engine_client";
 import { resolveQuizOpenMode } from "@/components/quiz/resolve_focus_mode";
 import { toQuizCoachPin } from "@/components/quiz/quiz_coach_pin";
+import {
+  QuizNoContentState,
+  QuizPersistErrorBanner,
+} from "@/components/quiz/QuizDurableStates";
 import { buildFeedback } from "@/components/feedback/use_feedback";
 import {
   initialQuizScreen,
@@ -88,12 +98,14 @@ export default function QuizPage(): React.JSX.Element {
     openSession,
     openItem,
     resumeSession,
+    planAnswer,
     submit,
     escape,
     closeSession,
     listSkillIds,
     listSkills,
     loadLadder,
+    recordPointer,
   } = useQuiz();
   const commitFirstCoach = React.useMemo(() => readCommitFirstCoachFlag(), []);
   const router = useRouter();
@@ -150,15 +162,78 @@ export default function QuizPage(): React.JSX.Element {
   // The open session (+ its id, the Summary handoff key) for the page's life.
   const [session, setSession] = React.useState<QuizSession | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  /** FR-G3: empty content tables → dedicated empty state (not a crash alert). */
+  const [noContent, setNoContent] = React.useState(false);
+  /**
+   * FR-A8: write failed after optimistic verdict — hold UI, block advance.
+   * Cleared on successful retry or next item.
+   */
+  const [persistError, setPersistError] = React.useState<string | null>(null);
+  const [persistPending, setPersistPending] = React.useState(false);
+  const closingSessionRef = React.useRef<string | null>(null);
+  /**
+   * FR-A9.1 / FR-A8: one answer-action payload above the retry boundary.
+   * Retry resends the same idempotency key + the original first/coached flags
+   * (re-deriving from post-optimistic state would flip isFirstGradedAttempt).
+   */
+  const pendingAnswerRef = React.useRef<{
+    idempotencyKey: string;
+    letter: string;
+    question: QuizItemResult["question"];
+    usedHint: boolean;
+    elapsedMs: number;
+    isFirstGradedAttempt: boolean;
+    hadPriorWrongAttempts: boolean;
+  } | null>(null);
   // D1 Q-7: full Skill rows for the chip join (name + accent_var).
   const [skillsById, setSkillsById] = React.useState<
     ReadonlyMap<string, Skill>
   >(new Map());
 
-  // Effect 1: resume an in-tab active pointer (FLAG-4) OR open a fresh session.
-  // Resume skips openSession so Coach ← Back restores the left item (FR-3).
-  // Stale pointer → clear + fresh open (FR-4). Snapshot stash only on fresh open
-  // (resume reuses the snapshot already keyed by sessionId).
+  const progressVm = toQuizProgressVM(
+    state.score.total,
+    state.phase,
+    session?.target_count ?? null,
+  );
+
+  const closeAndRouteToSummary = React.useCallback(() => {
+    if (session == null || closingSessionRef.current === session.id) return;
+    closingSessionRef.current = session.id;
+    dispatch({ type: "finish" });
+    closeSession({
+      sessionId: session.id,
+      scoreCorrect: state.score.correct,
+      scoreTotal: state.score.total,
+    })
+      .then(() => {
+        clearActiveQuiz();
+        router.push(`${screen("summary").route}?session=${session.id}`);
+      })
+      .catch((err: unknown) => {
+        closingSessionRef.current = null;
+        setError(
+          err instanceof Error ? err.message : "Failed to close the session",
+        );
+      });
+  }, [session, state.score, closeSession, router]);
+
+  // FR-C1/C1a/C2: completion is keyed to the resolution tally, then waits for
+  // the optimistic attempt write to land before server-tally close + summary.
+  // A wrong first grade on Q30 does not increment total, so coaching stays open.
+  React.useEffect(() => {
+    if (!progressVm.complete || persistPending || persistError != null) return;
+    closeAndRouteToSummary();
+  }, [
+    progressVm.complete,
+    persistPending,
+    persistError,
+    closeAndRouteToSummary,
+  ]);
+
+  // Effect 1: resume OR open a fresh session.
+  // Durable (FR-B1/B3/B6): GET /session/active — ignore RAM for position; deep
+  // links (?mode=review / ?focus=) always open fresh. Flag-off keeps FLAG-4 RAM
+  // resume. Stale/missing → clear + fresh (FR-B5 / FR-4).
   // D1: listSkills warms the Q-7 chip join (resume + fresh paths).
   React.useEffect(() => {
     let cancelled = false;
@@ -170,39 +245,91 @@ export default function QuizPage(): React.JSX.Element {
         }
       });
 
-      const pointer = readActiveQuiz();
-      if (pointer != null && !wantsFreshSession) {
-        const resumed = await resumeSession({
-          sessionId: pointer.sessionId,
-          questionId: pointer.questionId,
-        });
-        if (cancelled) return;
-        if (resumed != null) {
-          setSession(resumed.session);
-          const feedback =
-            pointer.phase === "feedback" &&
-            pointer.verdict != null &&
-            pointer.answeredLetter != null
-              ? {
-                  verdict: pointer.verdict,
-                  answeredLetter: pointer.answeredLetter,
-                  usedHint: pointer.usedHint ?? false,
-                }
-              : undefined;
-          // exactOptionalPropertyTypes: omit `feedback` entirely when absent
-          // rather than passing it as `undefined` (an optional prop may be
-          // missing, not explicitly undefined).
-          dispatch({
-            type: "resume_item",
-            item: resumed.item,
-            score: { correct: pointer.correct, total: pointer.total },
-            presentedAt: performance.now(),
-            ...(feedback != null ? { feedback } : {}),
-          });
-          return;
+      if (!wantsFreshSession) {
+        if (durableEngineEnabled()) {
+          try {
+            const resumed = await resumeSession({ subject: DEFAULT_SUBJECT });
+            if (cancelled) return;
+            if (resumed != null) {
+              setSession(resumed.session);
+              dispatch({
+                type: "resume_item",
+                item: resumed.item,
+                // FR-B10: server commit-first tally — never re-count client-side.
+                score: resumed.score ?? { correct: 0, total: 0 },
+                presentedAt: performance.now(),
+              });
+              return;
+            }
+          } catch (err: unknown) {
+            if (cancelled) return;
+            if (isNoContentError(err)) {
+              setNoContent(true);
+              return;
+            }
+            if (isResumeExhaustedError(err)) {
+              // FR-C5 / T R.3 at mount: open session at target or pool gone →
+              // close to summary. Set the closing ref BEFORE setSession so
+              // Effect 2 cannot race a /next serve for Q(target+1).
+              closingSessionRef.current = err.session.id;
+              setSession(err.session);
+              dispatch({ type: "finish" });
+              closeSession({
+                sessionId: err.session.id,
+                scoreCorrect: err.score.correct,
+                scoreTotal: err.score.total,
+              })
+                .then(() => {
+                  clearActiveQuiz();
+                  router.push(
+                    `${screen("summary").route}?session=${err.session.id}`,
+                  );
+                })
+                .catch((closeErr: unknown) => {
+                  closingSessionRef.current = null;
+                  setError(
+                    closeErr instanceof Error
+                      ? closeErr.message
+                      : "Failed to close the session",
+                  );
+                });
+              return;
+            }
+            throw err;
+          }
+        } else {
+          const pointer = readActiveQuiz();
+          if (pointer != null) {
+            const resumed = await resumeSession({
+              sessionId: pointer.sessionId,
+              questionId: pointer.questionId,
+            });
+            if (cancelled) return;
+            if (resumed != null) {
+              setSession(resumed.session);
+              const feedback =
+                pointer.phase === "feedback" &&
+                pointer.verdict != null &&
+                pointer.answeredLetter != null
+                  ? {
+                      verdict: pointer.verdict,
+                      answeredLetter: pointer.answeredLetter,
+                      usedHint: pointer.usedHint ?? false,
+                    }
+                  : undefined;
+              dispatch({
+                type: "resume_item",
+                item: resumed.item,
+                score: { correct: pointer.correct, total: pointer.total },
+                presentedAt: performance.now(),
+                ...(feedback != null ? { feedback } : {}),
+              });
+              return;
+            }
+            // FR-4: session/question gone — honest recovery, never fabricate.
+            clearActiveQuiz();
+          }
         }
-        // FR-4: session/question gone — honest recovery, never fabricate progress.
-        clearActiveQuiz();
       }
       if (wantsFreshSession) {
         clearActiveQuiz();
@@ -237,19 +364,27 @@ export default function QuizPage(): React.JSX.Element {
   }, [
     openSession,
     resumeSession,
+    closeSession,
     listSkillIds,
     listSkills,
     focusParam,
     modeParam,
     wantsFreshSession,
     learnerId,
+    router,
   ]);
 
   // Effect 2: whenever we enter `loading` (initial + after Next) and a session
   // exists, fetch the next scheduled item and fold it into the phase machine.
   // Skipped on FLAG-4 resume (resume_item lands in answering, not loading).
+  // T R.3 page guard: if local tally already meets target, or a close is in
+  // flight, never call /next (blocks Q31 after failed-close / reload races).
   React.useEffect(() => {
     if (session == null || state.phase !== "loading") return;
+    if (closingSessionRef.current === session.id || progressVm.complete) {
+      if (progressVm.complete) closeAndRouteToSummary();
+      return;
+    }
     let cancelled = false;
     // S3: pass the session id so openItem derives this session's served-ids and
     // never re-serves a question already answered this session (FR-9/FR-13).
@@ -257,15 +392,31 @@ export default function QuizPage(): React.JSX.Element {
       .then((item) => {
         // D0 elapsed timing: stamp the monotonic clock the moment the item is
         // presented (clock start); onSubmit stops it to record a real elapsed_ms.
-        if (!cancelled)
+        if (!cancelled) {
+          pendingAnswerRef.current = null;
+          setPersistError(null);
+          setPersistPending(false);
+          setNoContent(false);
           dispatch({
             type: "item_loaded",
             item,
             presentedAt: performance.now(),
           });
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) {
+          // FR-G3: empty bank → dedicated empty state, not a broken quiz.
+          if (isNoContentError(err)) {
+            setNoContent(true);
+            return;
+          }
+          // G9: this catches the specific finite-pool exhaustion signal. Closing
+          // is correct because no further item can resolve in this session.
+          if (isPoolExhaustedError(err)) {
+            closeAndRouteToSummary();
+            return;
+          }
           setError(
             err instanceof Error
               ? err.message
@@ -276,11 +427,20 @@ export default function QuizPage(): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [session, state.phase, openItem]);
+  }, [
+    session,
+    state.phase,
+    progressVm.complete,
+    openItem,
+    learnerId,
+    closeAndRouteToSummary,
+  ]);
 
   // Effect 3: keep the in-tab active pointer current while Quiz is live (FR-1).
   // Retained across unmount so Coach ← Back can resume; cleared only on Finish.
   // Feedback stash includes verdict + letter so remount restores reviewing (same N).
+  // FR-B3a: on entering answering, also fire-and-forget POST /session/current
+  // (failure must not block the serve — FR-B3a-nonblock).
   React.useEffect(() => {
     if (session == null) return;
     if (state.phase !== "answering" && state.phase !== "reviewing") return;
@@ -311,7 +471,8 @@ export default function QuizPage(): React.JSX.Element {
       total: state.score.total,
       phase: "answering",
     });
-  }, [session, state]);
+    recordPointer(session.id, state.item.question.id);
+  }, [session, state, recordPointer]);
 
   // Effect 4: iPhone has no CoachPanel — keep coach_thread_store pin aligned
   // with the live item so sidebar "Coach" matches Ask-the-coach (not cold/stale Q1).
@@ -419,8 +580,57 @@ export default function QuizPage(): React.JSX.Element {
     state.phase,
   ]);
 
+  const persistAnswer = React.useCallback(
+    (args: {
+      letter: string;
+      idempotencyKey: string;
+      question: QuizItemResult["question"];
+      usedHint: boolean;
+      elapsedMs: number;
+      isFirstGradedAttempt: boolean;
+      hadPriorWrongAttempts: boolean;
+    }) => {
+      if (session == null) return;
+      setPersistPending(true);
+      setPersistError(null);
+      submit({
+        session,
+        question: args.question,
+        learnerId,
+        letter: args.letter,
+        elapsedMs: args.elapsedMs,
+        usedHint: args.usedHint,
+        idempotencyKey: args.idempotencyKey,
+        ...(commitFirstCoach
+          ? {
+              commitFirstCoach: true,
+              isFirstGradedAttempt: args.isFirstGradedAttempt,
+              hadPriorWrongAttempts: args.hadPriorWrongAttempts,
+            }
+          : {}),
+      })
+        .then(() => {
+          // FR-A5 complete: durable write landed. Clear retry payload.
+          pendingAnswerRef.current = null;
+          setPersistPending(false);
+          setPersistError(null);
+        })
+        .catch((err: unknown) => {
+          // FR-A8: keep optimistic verdict; block advance; offer retry.
+          setPersistPending(false);
+          setPersistError(
+            err instanceof Error
+              ? err.message
+              : "Failed to save your answer",
+          );
+        });
+    },
+    [session, submit, commitFirstCoach, learnerId],
+  );
+
   const onSubmit = React.useCallback(() => {
     if (state.phase !== "answering" || session == null) return;
+    if (persistPending) return;
     const letter = state.selectedLetter;
     // FR-7: same-letter resubmit is inert — skip record before it reaches the repo.
     if (
@@ -431,40 +641,56 @@ export default function QuizPage(): React.JSX.Element {
       return;
     }
     const { question } = state.item;
+    // FR-A7: grade sync first so the verdict can paint before the write.
+    // FR-A9.1: mint the key once above the retry boundary (reuse on FR-A8 retry).
+    const plan = planAnswer({
+      question,
+      letter,
+      ...(pendingAnswerRef.current != null
+        ? { idempotencyKey: pendingAnswerRef.current.idempotencyKey }
+        : {}),
+    });
+    if (plan == null) return;
+
     const usedHint = state.usedHint || state.coachedLoop != null;
     const elapsedMs = elapsedMsFrom(state.presentedAt, performance.now());
     const isFirstGradedAttempt = state.coachedLoop == null;
     const hadPriorWrongAttempts =
       state.coachedLoop != null && state.coachedLoop.wrongLetters.length > 0;
-    submit({
-      session,
+
+    pendingAnswerRef.current = {
+      idempotencyKey: plan.idempotencyKey,
+      letter: plan.letter,
       question,
-      learnerId,
-      letter,
-      elapsedMs,
       usedHint,
-      ...(commitFirstCoach
-        ? {
-            commitFirstCoach: true,
-            isFirstGradedAttempt,
-            hadPriorWrongAttempts,
-          }
-        : {}),
-    })
-      .then((result) => {
-        dispatch({
-          type: "submitted",
-          verdict: result.verdict,
-          letter,
-          ...(commitFirstCoach ? { commitFirstCoach: true } : {}),
-        });
-      })
-      .catch((err: unknown) => {
-        setError(
-          err instanceof Error ? err.message : "Failed to grade your answer",
-        );
-      });
-  }, [state, session, submit, commitFirstCoach, learnerId]);
+      elapsedMs,
+      isFirstGradedAttempt,
+      hadPriorWrongAttempts,
+    };
+
+    // Optimistic: show verdict immediately (FR-A7), then persist (FR-A5).
+    dispatch({
+      type: "submitted",
+      verdict: plan.verdict,
+      letter: plan.letter,
+      ...(commitFirstCoach ? { commitFirstCoach: true } : {}),
+    });
+    persistAnswer(pendingAnswerRef.current);
+  }, [
+    state,
+    session,
+    planAnswer,
+    persistAnswer,
+    persistPending,
+    commitFirstCoach,
+  ]);
+
+  const onRetryPersist = React.useCallback(() => {
+    if (session == null || persistPending) return;
+    const pending = pendingAnswerRef.current;
+    if (pending == null) return;
+    persistAnswer(pending);
+  }, [session, persistPending, persistAnswer]);
 
   const onNudge = React.useCallback(() => {
     dispatch({ type: "nudge_requested" });
@@ -505,31 +731,8 @@ export default function QuizPage(): React.JSX.Element {
   }, [state, session, escape, learnerId]);
 
   const onFinish = React.useCallback(() => {
-    if (session == null) return;
-    dispatch({ type: "finish" });
-    // Close the session with the running tally BEFORE navigating so the stored
-    // score is durably written when the Summary reads it (FR-D3/G1 — Summary
-    // never re-tallies). Awaiting avoids a race where the route change reads the
-    // session before the close lands. `close` is idempotent. The reducer carried
-    // the tally across the whole walk; read it here.
-    const { correct, total } = state.score;
-    closeSession({
-      sessionId: session.id,
-      scoreCorrect: correct,
-      scoreTotal: total,
-    })
-      .then(() => {
-        // FR-2: Finish clears the resume pointer; mastery snapshot stays for Summary.
-        clearActiveQuiz();
-        // The snapshot is already in the store, so the delta renders live (not "—").
-        router.push(`${screen("summary").route}?session=${session.id}`);
-      })
-      .catch((err: unknown) => {
-        setError(
-          err instanceof Error ? err.message : "Failed to close the session",
-        );
-      });
-  }, [session, state.score, closeSession, router]);
+    closeAndRouteToSummary();
+  }, [closeAndRouteToSummary]);
 
   // D1 Q-8: End session — same close-with-tally as Finish. G2 (SUM-1
   // reachability): under commit-first with ≥1 resolved item, route to the
@@ -568,6 +771,10 @@ export default function QuizPage(): React.JSX.Element {
     );
   }
 
+  if (noContent) {
+    return <QuizNoContentState />;
+  }
+
   if (state.phase === "loading" || state.phase === "done") {
     return (
       <p role="status" className="text-muted">
@@ -576,58 +783,62 @@ export default function QuizPage(): React.JSX.Element {
     );
   }
 
-  // S4/S5: the progress VM (position + "reached the target?") derived from the
-  // reducer tally + the open session's target_count. Computed BEFORE the phase
-  // branch so the reviewing branch can read `progressVm.complete` for the S5
-  // milestone banner (the threshold math stays in the translator — F-R1). Read-
-  // only, no engine call (FR-9). `session` is non-null here (loading/done returned
-  // above); `state.score`/`session` are not mutated between here and the render.
-  const progressVm = toQuizProgressVM(
-    state.score.total,
-    state.phase,
-    session?.target_count ?? null,
-  );
+  // FR-A5/A8: Next/Finish stay disabled until the optimistic write lands (or
+  // the learner retries successfully). Verdict remains visible (no rollback).
+  const advanceBlocked = persistPending || persistError != null;
 
   const endSessionEnabled =
     session != null &&
+    !progressVm.complete &&
     (state.phase === "answering" || state.phase === "reviewing");
   const startedAtIso = session?.started_at ?? null;
 
-  // S5 (FR-6/FR-7): the two advance actions keep their ORIGINAL labels
-  // ("Next question" / "Finish & see summary") for every pre-target review, and
-  // FLIP to "Keep practising" / "See summary" only once the target is reached
-  // (gated on `progressVm.complete`, in lock-step with the milestone banner).
-  // Label text is the ONLY thing that changes — testids + handlers are unchanged
-  // (FR-10). "Next question"/"Keep practising" both dispatch `next`; the finish
-  // control closes + routes either way (Summary never re-tallies).
-  // Review sessions (FR-A6): once complete the miss pool is finite — hide "Keep
-  // practising" (no over-run) so the learner sees only "See summary".
+  // FR-C2/C3: pre-target controls retain their behavior, but completion is a
+  // hard stop. The auto-close Effect owns the target boundary, so no Q31 action
+  // or "Keep practising" continuation is rendered.
   // V29 (v3-prototype parity): the SAME controls render in the coached-solve
   // confirm state on the item column, so a coached correct is never a dead end.
   const advanceControls = (
-    <div className="flex items-center justify-between gap-3">
-      {!(session?.mode === "review" && progressVm.complete) ? (
-        <button
-          type="button"
-          data-testid="quiz-next"
-          onClick={() => dispatch({ type: "next" })}
-          className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
-        >
-          {progressVm.complete ? "Keep practising" : "Next question →"}
-        </button>
+    <div className="flex flex-col gap-3">
+      {persistError != null ? (
+        <QuizPersistErrorBanner
+          message={persistError}
+          onRetry={onRetryPersist}
+          retrying={persistPending}
+        />
       ) : null}
-      <button
-        type="button"
-        data-testid="quiz-finish"
-        onClick={onFinish}
-        className={
-          session?.mode === "review" && progressVm.complete
-            ? "rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
-            : "rounded-full border border-border px-6 py-3 font-medium hover:bg-selected"
-        }
-      >
-        {progressVm.complete ? "See summary" : "Finish & see summary"}
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        {!progressVm.complete ? (
+          <button
+            type="button"
+            data-testid="quiz-next"
+            disabled={advanceBlocked}
+            onClick={() => {
+              if (advanceBlocked) return;
+              pendingAnswerRef.current = null;
+              setPersistError(null);
+              dispatch({ type: "next" });
+            }}
+            className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent disabled:opacity-50"
+          >
+            Next question →
+          </button>
+        ) : null}
+        {!progressVm.complete ? (
+          <button
+            type="button"
+            data-testid="quiz-finish"
+            disabled={advanceBlocked}
+            onClick={() => {
+              if (advanceBlocked) return;
+              onFinish();
+            }}
+            className="rounded-full border border-border px-6 py-3 font-medium hover:bg-selected disabled:opacity-50"
+          >
+            Finish & see summary
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 
@@ -657,7 +868,7 @@ export default function QuizPage(): React.JSX.Element {
             socraticHint(state.item.question.stem)
           }
           onToggleHint={() => dispatch({ type: "toggle_hint" })}
-          endSessionEnabled={endSessionEnabled}
+          endSessionEnabled={endSessionEnabled && !advanceBlocked}
           onEndSession={onEndSession}
           startedAtIso={startedAtIso}
           commitFirstCoach={commitFirstCoach}
@@ -674,6 +885,14 @@ export default function QuizPage(): React.JSX.Element {
           whyItemPosition={progressVm.position}
           whyItemTotal={progressVm.total}
         />
+        {/* FR-A8: wrong-path coached loop has no Next yet — still surface retry. */}
+        {persistError != null && state.coachedConfirm == null ? (
+          <QuizPersistErrorBanner
+            message={persistError}
+            onRetry={onRetryPersist}
+            retrying={persistPending}
+          />
+        ) : null}
         {state.coachedConfirm != null ? advanceControls : null}
       </div>
     );
@@ -740,17 +959,10 @@ export default function QuizPage(): React.JSX.Element {
           key={state.item.question.id}
           skillName={itemVm.skillName}
           accentVar={itemVm.accentVar}
-          endSessionEnabled={endSessionEnabled}
+          endSessionEnabled={endSessionEnabled && !advanceBlocked}
           onEndSession={onEndSession}
           startedAtIso={startedAtIso}
         />
-        {/* S5 done-state (FR-4/FR-5): once the graded tally reaches the target,
-            the milestone shows ABOVE the item's feedback (which stays visible —
-            the learner still sees #30's answer). `complete` is the translator's
-            call; endless/over-run handled there. */}
-        {progressVm.complete ? (
-          <QuizDoneBanner targetCount={session?.target_count ?? 0} />
-        ) : null}
         {feedback.present ? (
           <FeedbackView
             vm={feedback.vm}

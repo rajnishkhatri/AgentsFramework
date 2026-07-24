@@ -190,6 +190,7 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
       correct: true,
       elapsed_ms: 1200,
       used_hint: true, // hinted...
+      idempotency_key: "test-idem-1",
     });
     expect(saved.id).toBe("a1");
     expect(saved.created_at).toBe("2026-06-30T00:00:00.000Z");
@@ -225,6 +226,7 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
       elapsed_ms: 100,
       used_hint: false,
       resolution: "walked_through",
+      idempotency_key: "test-idem-2",
     });
     expect(withRes.resolution).toBe("walked_through");
     const misses = await repo.misses("act-english", "alice");
@@ -242,6 +244,7 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
       correct: true,
       elapsed_ms: 50,
       used_hint: false,
+      idempotency_key: "test-idem-legacy",
     });
     expect(legacy.resolution == null).toBe(true);
   });
@@ -344,8 +347,11 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
       created_at: tie,
     });
     const misses = await repo.misses("act-english", "alice");
-    // Newest-inserted (q-new) first, regardless of id ordering.
-    expect(misses.map((m) => m.question_id)).toEqual(["q-new", "q-old"]);
+    // §6 order: greatest `created_at`, ties broken by greatest `id`. Both rows
+    // share `tie` created_at, so the larger-id row ("zzz-old" → q-old) sorts
+    // first — NOT newest-inserted. (T R.11 corrected the prior insertion-order
+    // tie-break, which contradicted §6 on the concurrent-device same-ms case.)
+    expect(misses.map((m) => m.question_id)).toEqual(["q-old", "q-new"]);
   });
 
   it("record keeps created_at strictly increasing within a tick so ties never reach misses (FR-D4)", async () => {
@@ -380,6 +386,7 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
       correct: false,
       elapsed_ms: 1,
       used_hint: false,
+      idempotency_key: "test-idem-3",
     });
     const second = await repo.record({
       subject: "act-english",
@@ -389,6 +396,7 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
       correct: false,
       elapsed_ms: 1,
       used_hint: false,
+      idempotency_key: "test-idem-4",
     });
     // First stamp equals the frozen clock; second is bumped +1ms (strictly newer).
     expect(first.created_at).toBe("2026-06-30T00:00:00.000Z");

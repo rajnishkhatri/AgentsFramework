@@ -46,17 +46,21 @@ import { SignJWT } from "jose";
 import { STORAGE_STATE_PATH } from "./fixtures/auth.fixture";
 import { E2E_BROWSER_CONTEXT } from "./fixtures/browser-context";
 
-/** Load repo-root `.env` when E2E vars are not already exported (no dotenv dep). */
-function loadRootEnvFile(): void {
-  const envPath = path.join(process.cwd(), "..", ".env");
+/** Snapshot of env keys present before file loads (operator exports). */
+const PREEXISTING_ENV = new Set(Object.keys(process.env));
+
+function applyEnvFile(envPath: string, opts: { overwriteKeys?: Set<string> }): void {
   if (!fs.existsSync(envPath)) return;
+  const overwrite = opts.overwriteKeys ?? new Set();
   for (const rawLine of fs.readFileSync(envPath, "utf8").split("\n")) {
     const line = rawLine.trim();
     if (!line || line.startsWith("#")) continue;
     const eq = line.indexOf("=");
     if (eq <= 0) continue;
     const key = line.slice(0, eq).trim();
-    if (process.env[key] !== undefined) continue;
+    // Never clobber an operator-exported value.
+    if (PREEXISTING_ENV.has(key)) continue;
+    if (process.env[key] !== undefined && !overwrite.has(key)) continue;
     let value = line.slice(eq + 1).trim().replace(/\r$/, "");
     if (
       (value.startsWith('"') && value.endsWith('"')) ||
@@ -68,7 +72,28 @@ function loadRootEnvFile(): void {
   }
 }
 
+/** Load repo-root `.env` when E2E vars are not already exported (no dotenv dep). */
+function loadRootEnvFile(): void {
+  applyEnvFile(path.join(process.cwd(), "..", ".env"), {});
+}
+
+/**
+ * Prefer frontend/.env.local WorkOS cookie secrets so E2E_FAKE_SESSION seals
+ * with the same password `next dev` reads (T R.6). Never overrides operator exports.
+ */
+function loadFrontendEnvLocal(): void {
+  applyEnvFile(path.join(process.cwd(), ".env.local"), {
+    overwriteKeys: new Set([
+      "WORKOS_COOKIE_PASSWORD",
+      "WORKOS_COOKIE_NAME",
+      "WORKOS_CLIENT_ID",
+      "WORKOS_API_KEY",
+    ]),
+  });
+}
+
 loadRootEnvFile();
+loadFrontendEnvLocal();
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 const COOKIE_NAME = process.env.WORKOS_COOKIE_NAME ?? "wos-session";

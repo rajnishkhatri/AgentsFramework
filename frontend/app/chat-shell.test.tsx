@@ -105,8 +105,9 @@ describe("ChatShell — header rendering", () => {
 
   it("includes a sign-out link", () => {
     const d = render();
-    const signOutLink = d.querySelector('a[href="/api/auth/sign-out"]');
+    const signOutLink = d.querySelector('[data-testid="sign-out"]');
     expect(signOutLink).toBeTruthy();
+    expect(signOutLink?.getAttribute("href")).toContain("/api/auth/sign-out");
     expect(signOutLink?.textContent).toContain("Sign out");
   });
 

@@ -25,6 +25,7 @@ import { StreamingMarkdown } from "@/components/chat/StreamingMarkdown";
 import { TaskList } from "@/components/chat/TaskList";
 import { TaskUnderstandingCard } from "@/components/chat/TaskUnderstandingCard";
 import { ThemeToggle } from "@/components/chat/ThemeToggle";
+import { SignOutLink } from "@/components/shell/SignOutLink";
 import { ToolCard } from "@/components/tools/ToolCard";
 import { useAgentRun, type ChatTurn } from "@/components/chat/use_agent_run";
 import { useAvailableModels } from "@/components/chat/use_available_models";
@@ -559,15 +560,9 @@ export function ChatShell(props: {
           >
             Open Coach
           </Link>
-          {/* §4c/HIG: the visible text is unchanged, but the hit area is padded
-             to a 44pt-tall tap target (min-h-11 + horizontal padding). */}
-          <Link
-            href="/api/auth/sign-out"
-            prefetch={false}
-            className="inline-flex min-h-11 items-center px-2 text-sm text-muted hover:text-fg no-underline"
-          >
-            Sign out
-          </Link>
+          {/* Plain <a> (not next/link): soft-nav to the API route skips the
+             Set-Cookie clear + WorkOS logout redirect. */}
+          <SignOutLink />
         </div>
       </header>
       {/* Etched groove under the header (design .separator-etched), flush. */}

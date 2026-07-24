@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import {
   countSessionOutcomes,
+  projectSessionInsights,
   toSessionSummaryVM,
 } from "./session_summary_vm";
 import type { QuizSession, RecommendedNext, Skill } from "../wire/engine_entities";
@@ -240,24 +241,28 @@ describe("countSessionOutcomes — commit-first FR-11", () => {
   it("counts first_try / coached / walked_through from resolving rows", () => {
     const counts = countSessionOutcomes([
       {
+        id: "att-1",
         question_id: "q1",
         correct: true,
         resolution: "first_try",
         created_at: "2026-07-19T00:00:01Z",
       },
       {
+        id: "att-2",
         question_id: "q2",
         correct: false,
         resolution: null,
         created_at: "2026-07-19T00:00:02Z",
       },
       {
+        id: "att-3",
         question_id: "q2",
         correct: true,
         resolution: "coached",
         created_at: "2026-07-19T00:00:03Z",
       },
       {
+        id: "att-4",
         question_id: "q3",
         correct: false,
         resolution: "walked_through",
@@ -271,6 +276,7 @@ describe("countSessionOutcomes — commit-first FR-11", () => {
     expect(countSessionOutcomes([])).toBeNull();
     const legacy = countSessionOutcomes([
       {
+        id: "att-5",
         question_id: "q1",
         correct: true,
         resolution: null,
@@ -278,5 +284,170 @@ describe("countSessionOutcomes — commit-first FR-11", () => {
       },
     ]);
     expect(legacy).toEqual({ firstTry: 1, coached: 0, walkedThrough: 0 });
+  });
+});
+
+describe("projectSessionInsights — Phase D misses (FR-D1/D1a)", () => {
+  it("lists this session's resolving incorrect and walked-through questions", () => {
+    const insights = projectSessionInsights(
+      [
+        {
+        id: "att-6",
+          question_id: "q-coached",
+          correct: false,
+          resolution: null,
+          created_at: "2026-07-19T00:00:01Z",
+        },
+        {
+        id: "att-7",
+          question_id: "q-coached",
+          correct: true,
+          resolution: "coached",
+          created_at: "2026-07-19T00:00:02Z",
+        },
+        {
+        id: "att-8",
+          question_id: "q-walked",
+          correct: false,
+          resolution: "walked_through",
+          created_at: "2026-07-19T00:00:03Z",
+        },
+        {
+        id: "att-9",
+          question_id: "q-wrong",
+          correct: false,
+          resolution: null,
+          created_at: "2026-07-19T00:00:04Z",
+        },
+      ],
+      [
+        { id: "q-coached", skill_id: "s1", stem: "Coached stem" },
+        { id: "q-walked", skill_id: "s1", stem: "Walked stem" },
+        { id: "q-wrong", skill_id: "s2", stem: "Wrong stem" },
+      ],
+      [
+        { id: "s1", name: "Punctuation" },
+        { id: "s2", name: "Grammar" },
+      ],
+    );
+
+    expect(insights.misses).toEqual([
+      {
+        questionId: "q-walked",
+        stem: "Walked stem",
+        skillId: "s1",
+        skillName: "Punctuation",
+        resolution: "walked_through",
+      },
+      {
+        questionId: "q-wrong",
+        stem: "Wrong stem",
+        skillId: "s2",
+        skillName: "Grammar",
+        resolution: null,
+      },
+    ]);
+  });
+});
+
+describe("projectSessionInsights — this-session skill panel (FR-D2/D3)", () => {
+  it("groups resolving rows by question skill without changing the stored headline", () => {
+    const insights = projectSessionInsights(
+      [
+        {
+        id: "att-10",
+          question_id: "q1",
+          correct: true,
+          resolution: "first_try",
+          created_at: "2026-07-19T00:00:01Z",
+        },
+        {
+        id: "att-11",
+          question_id: "q2",
+          correct: false,
+          resolution: null,
+          created_at: "2026-07-19T00:00:02Z",
+        },
+        {
+        id: "att-12",
+          question_id: "q2",
+          correct: true,
+          resolution: "coached",
+          created_at: "2026-07-19T00:00:03Z",
+        },
+        {
+        id: "att-13",
+          question_id: "q3",
+          correct: false,
+          resolution: "walked_through",
+          created_at: "2026-07-19T00:00:04Z",
+        },
+      ],
+      [
+        { id: "q1", skill_id: "s1", stem: "One" },
+        { id: "q2", skill_id: "s1", stem: "Two" },
+        { id: "q3", skill_id: "s2", stem: "Three" },
+      ],
+      [
+        { id: "s1", name: "Punctuation" },
+        { id: "s2", name: "Grammar" },
+      ],
+    );
+
+    expect(insights.skillPerformance).toEqual([
+      {
+        skillId: "s1",
+        skillName: "Punctuation",
+        correct: 2,
+        total: 2,
+        accuracyPct: 100,
+        strength: "strong",
+      },
+      {
+        skillId: "s2",
+        skillName: "Grammar",
+        correct: 0,
+        total: 1,
+        accuracyPct: 0,
+        strength: "weak",
+      },
+    ]);
+
+    const vm = toSessionSummaryVM(
+      session({ score_correct: 1, score_total: 3 }),
+      rec,
+      skill(),
+      0,
+      null,
+      false,
+      false,
+    );
+    expect(vm.scoreTile).toBe("1/3");
+  });
+
+  it("omits taxonomy skills with no on-skill attempts (FR-D5)", () => {
+    const insights = projectSessionInsights(
+      [
+        {
+        id: "att-14",
+          question_id: "q1",
+          correct: true,
+          resolution: "first_try",
+          created_at: "2026-07-19T00:00:01Z",
+        },
+      ],
+      [{ id: "q1", skill_id: "s1", stem: "One" }],
+      [
+        { id: "s1", name: "Punctuation" },
+        { id: "s-never-served", name: "Rhetoric" },
+      ],
+    );
+
+    expect(insights.skillPerformance.map((row) => row.skillName)).toEqual([
+      "Punctuation",
+    ]);
+    expect(insights.skillPerformance).not.toContainEqual(
+      expect.objectContaining({ skillName: "Rhetoric", accuracyPct: 0 }),
+    );
   });
 });

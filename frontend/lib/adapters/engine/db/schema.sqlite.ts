@@ -78,9 +78,8 @@ export const hint = sqliteTable(
   {
     id: text("id").primaryKey(),
     subject: text("subject").notNull().default(DEFAULT_SUBJECT),
-    question_id: text("question_id")
-      .notNull()
-      .references(() => question.id, { onDelete: "cascade" }),
+    // No FK → question.id: may store question OR test_item ids (pg baseline).
+    question_id: text("question_id").notNull(),
     choice_letter: text("choice_letter"), // null | A–D (ADR-0035)
     rung: integer("rung").notNull(), // 1..3; assertion rung unrepresentable at the wire
     body_md: text("body_md").notNull(),
@@ -159,29 +158,40 @@ export const quizSession = sqliteTable("quiz_session", {
   // Bounded-session length (S3) — parity twin of schema.pg.ts. Nullable, no
   // default: NULL = endless; a pre-S3 row reads NULL → `target_count: null`.
   target_count: integer("target_count"),
+  // Durable served-pointer (coach-v3 FR-B3a). text — id-row rule (not uuid).
+  current_question_id: text("current_question_id"),
 });
 
 /** attempt — append-only; `used_hint` never changes correctness. */
-export const attempt = sqliteTable("attempt", {
-  id: text("id").primaryKey(),
-  subject: text("subject").notNull().default(DEFAULT_SUBJECT),
-  session_id: text("session_id")
-    .notNull()
-    .references(() => quizSession.id, { onDelete: "cascade" }),
-  question_id: text("question_id")
-    .notNull()
-    .references(() => question.id, { onDelete: "cascade" }),
-  chosen_letter: text("chosen_letter").notNull(),
-  correct: integer("correct", { mode: "boolean" }).notNull(),
-  elapsed_ms: integer("elapsed_ms").notNull().default(0),
-  used_hint: integer("used_hint", { mode: "boolean" }).notNull().default(false),
-  created_at: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`),
-  // Commit-first FR-10: set only on the resolving attempt. Null = legacy /
-  // non-resolving row (no backfill). Values: first_try | coached | walked_through.
-  resolution: text("resolution"),
-});
+export const attempt = sqliteTable(
+  "attempt",
+  {
+    id: text("id").primaryKey(),
+    subject: text("subject").notNull().default(DEFAULT_SUBJECT),
+    session_id: text("session_id")
+      .notNull()
+      .references(() => quizSession.id, { onDelete: "cascade" }),
+    // No FK → question.id: practice stores test_item ids (pg baseline).
+    question_id: text("question_id").notNull(),
+    chosen_letter: text("chosen_letter").notNull(),
+    correct: integer("correct", { mode: "boolean" }).notNull(),
+    elapsed_ms: integer("elapsed_ms").notNull().default(0),
+    used_hint: integer("used_hint", { mode: "boolean" }).notNull().default(false),
+    created_at: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    // Commit-first FR-10: set only on the resolving attempt. Null = legacy /
+    // non-resolving row (no backfill). Values: first_try | coached | walked_through.
+    resolution: text("resolution"),
+    // Client-stamped idempotency key (coach-v3 FR-A9.1). text — id-row rule.
+    idempotency_key: text("idempotency_key"),
+  },
+  (t) => [
+    uniqueIndex("attempt_idempotency_uq")
+      .on(t.session_id, t.question_id, t.idempotency_key)
+      .where(sql`${t.idempotency_key} is not null`),
+  ],
+);
 
 /** skill_state — adaptivity source of truth; FSRS is the only writer. */
 export const skillState = sqliteTable(

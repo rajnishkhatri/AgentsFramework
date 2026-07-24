@@ -12,7 +12,9 @@ export type FeatureFlagName =
   | "voice_mode"
   | "per_tool_authorization"
   | "json_run_export"
-  | "commit_first_coach";
+  | "commit_first_coach"
+  /** Coach-v3 durable engine seam (HttpEngineDb → BFF). Default OFF (shadow→canary). */
+  | "durable_engine";
 
 /**
  * Vendor-neutral feature flag port.
@@ -27,9 +29,10 @@ export type FeatureFlagName =
  *     throw -- so adding a new flag without an adapter update is safe.
  *   - `pyramid_panel`, `voice_mode`, `per_tool_authorization`, and
  *     `json_run_export` are off by default in V3.
- *   - `commit_first_coach` defaults ON in dev (`NODE_ENV=development`) or when
- *     `E2E_BYPASS_AUTH=1`; OFF otherwise (prod staged rollout). Explicit
- *     `NEXT_PUBLIC_FF_COMMIT_FIRST_COACH` overrides the default.
+ *   - `commit_first_coach` defaults ON in every environment (soak complete);
+ *     explicit falsy `NEXT_PUBLIC_FF_COMMIT_FIRST_COACH` is the kill switch.
+ *   - `durable_engine` defaults OFF; explicit truthy
+ *     `NEXT_PUBLIC_FF_DURABLE_ENGINE` enables the HttpEngineDb atomic swap.
  */
 export interface FeatureFlagProvider {
   /**

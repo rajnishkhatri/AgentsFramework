@@ -32,6 +32,17 @@
  * column that keeps the schema open for Math/Science without making it abstract
  * (engine spec FR-H1). A new subject is new rows + a new Grader adapter + a new
  * renderer-registry entry; this schema does not change.
+ *
+ * DEPLOY TRUTH vs this file: `frontend/drizzle/0000_frontend_baseline.sql` is
+ * what migrate_engine applies. Baseline uses TEXT ids (opaque bank keys like
+ * `s-punc` / `ti-gen-*` are not UUID-shaped) and deliberately omits FKs from
+ * `hint.question_id` / `attempt.question_id` → `question.id` because practice
+ * stores `test_item` ids there. This file now MATCHES that: every PK / skill-FK
+ * / `session_id` / `skill_focus` is `text()` (id-supplying: the app writes the
+ * id, so no `.defaultRandom()`), and the two content-id columns are TEXT + no
+ * FK. The sole `uuid()` column is `attempt.idempotency_key` — the client stamps
+ * a real UUID and `0004` declares it `uuid` (§4 / FR-A9.1); the SQLite twin uses
+ * `text` there (no uuid type), the standing dual-dialect id-column rule.
  */
 
 import { sql } from "drizzle-orm";
@@ -57,7 +68,7 @@ const DEFAULT_SUBJECT = "act-english";
  * is read-only; mastery is the Scheduler's concern).
  */
 export const skill = pgTable("skill", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   subject: text("subject").notNull().default(DEFAULT_SUBJECT),
   // Stable key used by content + code: 'punctuation', 'rhetoric', ...
   key: text("key").notNull(),
@@ -78,9 +89,9 @@ export const skill = pgTable("skill", {
  * client-side renderer registry, not a `switch(subject)` (FR-H2).
  */
 export const question = pgTable("question", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   subject: text("subject").notNull().default(DEFAULT_SUBJECT),
-  skill_id: uuid("skill_id")
+  skill_id: text("skill_id")
     .notNull()
     .references(() => skill.id, { onDelete: "cascade" }),
   difficulty: integer("difficulty").notNull().default(3), // 1..5
@@ -115,11 +126,10 @@ export const question = pgTable("question", {
 export const hint = pgTable(
   "hint",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey(),
     subject: text("subject").notNull().default(DEFAULT_SUBJECT),
-    question_id: uuid("question_id")
-      .notNull()
-      .references(() => question.id, { onDelete: "cascade" }),
+    // TEXT, no FK → question.id: may store question OR test_item ids (baseline).
+    question_id: text("question_id").notNull(),
     choice_letter: text("choice_letter"), // null | A–D (ADR-0035)
     rung: integer("rung").notNull(), // 1..3; assertion rung unrepresentable at the wire
     body_md: text("body_md").notNull(),
@@ -145,9 +155,9 @@ export const hint = pgTable(
  * "<model>@<run_id>" on a reviewed row. No FK to `question` (distinct family).
  */
 export const testItem = pgTable("test_item", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   subject: text("subject").notNull().default(DEFAULT_SUBJECT),
-  skill_id: uuid("skill_id")
+  skill_id: text("skill_id")
     .notNull()
     .references(() => skill.id, { onDelete: "cascade" }),
   difficulty: integer("difficulty").notNull().default(3), // 1..5
@@ -176,7 +186,7 @@ export const testItem = pgTable("test_item", {
  * deferred to the ADR-0013 delivery re-open).
  */
 export const testBlueprint = pgTable("test_blueprint", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   subject: text("subject").notNull().default(DEFAULT_SUBJECT),
   skill_mix: jsonb("skill_mix").notNull().default({}),
   difficulty_dist: jsonb("difficulty_dist").notNull().default({}),
@@ -193,13 +203,13 @@ export const testBlueprint = pgTable("test_blueprint", {
  * values, not re-computation (engine spec FR-D3).
  */
 export const quizSession = pgTable("quiz_session", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   subject: text("subject").notNull().default(DEFAULT_SUBJECT),
   learner_id: text("learner_id").notNull(),
   // 'adaptive' | 'drill' | 'review'.
   mode: text("mode").notNull(),
   // Present for drill sessions scoped to one skill (FR-A5); null otherwise.
-  skill_focus: uuid("skill_focus").references(() => skill.id, {
+  skill_focus: text("skill_focus").references(() => skill.id, {
     onDelete: "set null",
   }),
   started_at: timestamp("started_at", { withTimezone: true })
@@ -212,6 +222,9 @@ export const quizSession = pgTable("quiz_session", {
   // pre-S3 row (added before this column) reads NULL → `target_count: null`
   // (FR-2/FR-3). Set once at open, never recomputed on close (FR-7).
   target_count: integer("target_count"),
+  // Durable served-pointer (coach-v3 FR-B3a). Opaque question/test_item id —
+  // TEXT to match the live bank ids (`ti-gen-*`), not uuid().
+  current_question_id: text("current_question_id"),
 });
 
 /**
@@ -219,26 +232,38 @@ export const quizSession = pgTable("quiz_session", {
  * `correct` comes from the Grader Verdict; `used_hint` is auditable but never
  * changes recorded correctness (engine spec FR-D5).
  */
-export const attempt = pgTable("attempt", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  subject: text("subject").notNull().default(DEFAULT_SUBJECT),
-  session_id: uuid("session_id")
-    .notNull()
-    .references(() => quizSession.id, { onDelete: "cascade" }),
-  question_id: uuid("question_id")
-    .notNull()
-    .references(() => question.id, { onDelete: "cascade" }),
-  chosen_letter: text("chosen_letter").notNull(),
-  correct: boolean("correct").notNull(),
-  elapsed_ms: integer("elapsed_ms").notNull().default(0),
-  used_hint: boolean("used_hint").notNull().default(false),
-  created_at: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  // Commit-first FR-10: set only on the resolving attempt. Null = legacy /
-  // non-resolving row (no backfill). Values: first_try | coached | walked_through.
-  resolution: text("resolution"),
-});
+export const attempt = pgTable(
+  "attempt",
+  {
+    id: text("id").primaryKey(),
+    subject: text("subject").notNull().default(DEFAULT_SUBJECT),
+    session_id: text("session_id")
+      .notNull()
+      .references(() => quizSession.id, { onDelete: "cascade" }),
+    // TEXT, no FK → question.id: practice stores test_item ids here (baseline).
+    // Soft-retire (not hard-DELETE) of content remains policy so history is not
+    // orphaned for misses/eligibility — there is no cascade FK to lean on.
+    question_id: text("question_id").notNull(),
+    chosen_letter: text("chosen_letter").notNull(),
+    correct: boolean("correct").notNull(),
+    elapsed_ms: integer("elapsed_ms").notNull().default(0),
+    used_hint: boolean("used_hint").notNull().default(false),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    // Commit-first FR-10: set only on the resolving attempt. Null = legacy /
+    // non-resolving row (no backfill). Values: first_try | coached | walked_through.
+    resolution: text("resolution"),
+    // Client-stamped idempotency key (coach-v3 FR-A9.1). UUID from the browser;
+    // NULL = legacy row. Partial unique index below lets legacy coexist.
+    idempotency_key: uuid("idempotency_key"),
+  },
+  (t) => [
+    uniqueIndex("attempt_idempotency_uq")
+      .on(t.session_id, t.question_id, t.idempotency_key)
+      .where(sql`${t.idempotency_key} is not null`),
+  ],
+);
 
 /**
  * skill_state — the adaptivity source of truth (engine spec FR-A2).
@@ -249,7 +274,7 @@ export const skillState = pgTable(
   "skill_state",
   {
     subject: text("subject").notNull().default(DEFAULT_SUBJECT),
-    skill_id: uuid("skill_id")
+    skill_id: text("skill_id")
       .notNull()
       .references(() => skill.id, { onDelete: "cascade" }),
     learner_id: text("learner_id").notNull(),
@@ -277,9 +302,9 @@ export const skillState = pgTable(
  * adaptive lesson surface; block order/zone/role are NOT persisted (D5).
  */
 export const tutorial = pgTable("tutorial", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   subject: text("subject").notNull().default(DEFAULT_SUBJECT),
-  skill_id: uuid("skill_id")
+  skill_id: text("skill_id")
     .notNull()
     .references(() => skill.id, { onDelete: "cascade" }),
   body_md: text("body_md").notNull().default(""),
@@ -321,7 +346,7 @@ export const contentString = pgTable(
  * Can be derived from attempts; stored here for a stable, cheap read.
  */
 export const progressPoint = pgTable("progress_point", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(),
   subject: text("subject").notNull().default(DEFAULT_SUBJECT),
   learner_id: text("learner_id").notNull(),
   at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),

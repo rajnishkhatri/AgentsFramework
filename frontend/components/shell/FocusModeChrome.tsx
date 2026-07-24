@@ -15,6 +15,7 @@ import * as React from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import { ThemeToggle } from "@/components/chat/ThemeToggle";
+import { SignOutLink } from "@/components/shell/SignOutLink";
 import { screenTitle, COACH_BASE, type ScreenId } from "./nav_model";
 
 export function FocusModeChrome(props: {
@@ -30,8 +31,9 @@ export function FocusModeChrome(props: {
       <header className="flex items-center justify-between border-b border-border px-4 py-3">
         <h1 className="text-base font-semibold">{title}</h1>
         <div className="flex items-center gap-1">
-          {/* Focus screens hide all other chrome, so the theme control must
-              ride this header or dark mode is unreachable mid-drill (FR-K1). */}
+          {/* Focus screens hide all other chrome, so theme + sign-out must
+              ride this header (FR-K1 + cross-session resume). */}
+          <SignOutLink />
           <ThemeToggle />
           <Link
             href={returnTo}

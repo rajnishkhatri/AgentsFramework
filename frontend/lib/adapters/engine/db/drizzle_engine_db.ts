@@ -41,6 +41,7 @@ import {
 } from "drizzle-orm";
 import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { pgPoolMax, toNodePgConnectionString } from "@/lib/adapters/db/node_pg_url";
 import * as pg from "./schema.pg";
 import { EngineRepoError } from "../../../ports/engine/errors";
 import type {
@@ -56,7 +57,11 @@ import type {
   TestItem,
   Tutorial,
 } from "../../../wire/engine_entities";
-import type { EngineDb, SessionClosePatch } from "./engine_db";
+import type {
+  EngineDb,
+  InsertAttemptResult,
+  SessionClosePatch,
+} from "./engine_db";
 
 // --- row mappers (Drizzle row → wire shape). Timestamps → ISO strings. ---
 
@@ -178,6 +183,8 @@ function toSession(r: Record<string, unknown>): QuizSession {
     // S3 bounded length: a legacy row (added before the column) has no
     // `target_count` → maps to null = endless (FR-3). Otherwise carry the int.
     target_count: r.target_count == null ? null : Number(r.target_count),
+    current_question_id:
+      r.current_question_id == null ? null : String(r.current_question_id),
   };
 }
 
@@ -198,6 +205,8 @@ function toAttempt(r: Record<string, unknown>): Attempt {
     used_hint: Boolean(r.used_hint),
     created_at: isoOf(r.created_at),
     resolution,
+    idempotency_key:
+      r.idempotency_key == null ? null : String(r.idempotency_key),
   };
 }
 
@@ -270,7 +279,13 @@ export function pgEngineDb(databaseUrl: string): EngineDb {
   if (!databaseUrl || !databaseUrl.trim()) {
     throw new EngineRepoError("pgEngineDb requires a non-empty DATABASE_URL");
   }
-  const pool = new Pool({ connectionString: databaseUrl });
+  const pool = new Pool({
+    connectionString: toNodePgConnectionString(databaseUrl),
+    // T R.13 — bounded pool so the engine + threads + marker pools stay
+    // under Cloud SQL max_connections=50. Default 5; override via
+    // ENGINE_PG_POOL_MAX (clamped to [1, 20]).
+    max: pgPoolMax(process.env, 5),
+  });
   const db = drizzlePg(pool);
   return pgEngineDbFrom(db);
 }
@@ -449,6 +464,9 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
             ended_at: sql`coalesce(${pg.quizSession.ended_at}, ${new Date(patch.ended_at)})`,
             score_correct: patch.score_correct,
             score_total: patch.score_total,
+            // T R.12 / FR-B3c: clear the served pointer in the SAME UPDATE so
+            // the close is one atomic statement (no partial apply possible).
+            current_question_id: null,
           })
           .where(eq(pg.quizSession.id, id))
           .returning(),
@@ -475,11 +493,93 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       );
       return rows.map((r) => toSession(r as Record<string, unknown>));
     },
-    async insertAttempt(a) {
+    async setSessionCurrentQuestion(sessionId, questionId) {
       await wrap(
-        "insertAttempt",
-        db.insert(pg.attempt).values({ ...a, created_at: new Date(a.created_at) }),
+        "setSessionCurrentQuestion",
+        db
+          .update(pg.quizSession)
+          .set({ current_question_id: questionId })
+          .where(eq(pg.quizSession.id, sessionId)),
       );
+    },
+    async getNewestOpenSession(subject, learnerId) {
+      const rows = await wrap(
+        "getNewestOpenSession",
+        db
+          .select()
+          .from(pg.quizSession)
+          .where(
+            and(
+              eq(pg.quizSession.subject, subject),
+              eq(pg.quizSession.learner_id, learnerId),
+              isNull(pg.quizSession.ended_at),
+            ),
+          )
+          .orderBy(desc(pg.quizSession.started_at), desc(pg.quizSession.id))
+          .limit(1),
+      );
+      const first = rows[0];
+      return first ? toSession(first as Record<string, unknown>) : null;
+    },
+    async insertAttempt(a): Promise<InsertAttemptResult> {
+      const values = {
+        ...a,
+        created_at: new Date(a.created_at),
+        idempotency_key: a.idempotency_key ?? null,
+      };
+      const inserted = await wrap(
+        "insertAttempt",
+        db
+          .insert(pg.attempt)
+          .values(values)
+          .onConflictDoNothing({
+            // Must match attempt_idempotency_uq's partial predicate — without
+            // `where`, PG rejects "no unique … matching the ON CONFLICT".
+            target: [
+              pg.attempt.session_id,
+              pg.attempt.question_id,
+              pg.attempt.idempotency_key,
+            ],
+            where: sql`${pg.attempt.idempotency_key} is not null`,
+          })
+          .returning(),
+      );
+      if (inserted.length > 0) {
+        return {
+          status: "inserted",
+          attempt: toAttempt(inserted[0] as Record<string, unknown>),
+        };
+      }
+      // Conflict: re-select the stored row (typed already-existed).
+      if (a.idempotency_key == null) {
+        throw new EngineRepoError(
+          "insertAttempt conflict without idempotency_key",
+        );
+      }
+      const existing = await wrap(
+        "insertAttempt.reselect",
+        db
+          .select()
+          .from(pg.attempt)
+          .where(
+            and(
+              eq(pg.attempt.session_id, a.session_id),
+              eq(pg.attempt.question_id, a.question_id),
+              eq(pg.attempt.idempotency_key, a.idempotency_key),
+            ),
+          )
+          .limit(1),
+      );
+      const row = existing[0];
+      if (!row) {
+        throw new EngineRepoError(
+          "insertAttempt conflict but stored row not found",
+        );
+      }
+      return {
+        status: "already-existed",
+        attempt: toAttempt(row as Record<string, unknown>),
+      };
     },
     async listMisses(subject, learnerId) {
       // Outstanding misses (FR-D4): incorrect attempts that are still the
@@ -487,13 +587,11 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       // the item from the review pool. NOT EXISTS is portable across PG+SQLite
       // (unlike DISTINCT ON). Matches InMemoryEngineDb.listMisses.
       //
-      // Ordering: newest-first by `created_at` alone — no secondary key. That is
-      // safe because `DrizzleAttemptRepo.record` stamps `created_at` strictly
-      // increasing per repo instance, so within a session the ordering key is a
-      // total order (no same-tick ties for the summary recap to mis-resolve).
-      // Do NOT add a `desc(id)` tiebreak "for determinism": `id` is a random
-      // UUID, so it would diverge from the in-memory fake's insertion-order
-      // tiebreak instead of agreeing with it.
+      // §6 per-question resolution order: greatest `created_at`, ties broken
+      // by greatest `id` (server-assigned PK, stable across devices — the
+      // concurrent-device same-ms case). The `NOT EXISTS` predicate therefore
+      // excludes a row when a later row has a strictly-greater `created_at`,
+      // OR an equal `created_at` with a greater `id`.
       const rows = await wrap(
         "listMisses",
         db
@@ -518,7 +616,11 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
                   AND later.subject = ${subject}
                   AND later_sess.learner_id = ${learnerId}
                   AND later_sess.subject = ${subject}
-                  AND later.created_at > ${pg.attempt.created_at}
+                  AND (
+                    later.created_at > ${pg.attempt.created_at}
+                    OR (later.created_at = ${pg.attempt.created_at}
+                        AND later.id > ${pg.attempt.id})
+                  )
               )`,
             ),
           )
@@ -526,6 +628,44 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       );
       return rows.map((r) =>
         toAttempt((r as { attempt: Record<string, unknown> }).attempt),
+      );
+    },
+    async listAlreadyCorrectQuestionIds(subject, learnerId) {
+      // FR-E4 — inverse of listMisses: latest attempt per question is correct.
+      // §6 order: greatest `created_at`, ties by greatest `id` (same predicate
+      // shape as listMisses). question_id-only projection; order not significant.
+      const rows = await wrap(
+        "listAlreadyCorrectQuestionIds",
+        db
+          .select({ question_id: pg.attempt.question_id })
+          .from(pg.attempt)
+          .innerJoin(pg.quizSession, eq(pg.attempt.session_id, pg.quizSession.id))
+          .where(
+            and(
+              eq(pg.attempt.subject, subject),
+              eq(pg.attempt.correct, true),
+              eq(pg.quizSession.learner_id, learnerId),
+              eq(pg.quizSession.subject, subject),
+              sql`NOT EXISTS (
+                SELECT 1
+                FROM ${pg.attempt} AS later
+                INNER JOIN ${pg.quizSession} AS later_sess
+                  ON later.session_id = later_sess.id
+                WHERE later.question_id = ${pg.attempt.question_id}
+                  AND later.subject = ${subject}
+                  AND later_sess.learner_id = ${learnerId}
+                  AND later_sess.subject = ${subject}
+                  AND (
+                    later.created_at > ${pg.attempt.created_at}
+                    OR (later.created_at = ${pg.attempt.created_at}
+                        AND later.id > ${pg.attempt.id})
+                  )
+              )`,
+            ),
+          ),
+      );
+      return rows.map((r) =>
+        String((r as { question_id: unknown }).question_id),
       );
     },
     async listSessionQuestionIds(sessionId) {

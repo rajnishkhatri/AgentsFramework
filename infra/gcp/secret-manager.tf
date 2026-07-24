@@ -286,6 +286,16 @@ resource "google_secret_manager_secret_iam_member" "database_url_accessor" {
   member    = local.backend_runtime_member
 }
 
+# Frontend BFF also needs DATABASE_URL (coach-v3 durable engine FR-F1/F3):
+# threads + coach-marker + EngineDb all flip to Pg when the env is set.
+# Accessor is SEPARATE from the backend member so least-privilege stays clear.
+resource "google_secret_manager_secret_iam_member" "database_url_frontend_accessor" {
+  project   = var.gcp_project_id
+  secret_id = google_secret_manager_secret.database_url.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = local.frontend_runtime_member
+}
+
 # ── 8. agent-facts-secret ────────────────────────────────────────────────────
 # HMAC signing key consumed by trust/models.py AgentFacts.sign(). Belongs in
 # trust/ by AGENTS.md §Trust Kernel Rules (shared, stable, dependency-free),

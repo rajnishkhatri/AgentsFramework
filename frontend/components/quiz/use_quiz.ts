@@ -35,6 +35,10 @@ import type {
 } from "@/lib/wire/engine_entities";
 import { EngineNotFoundError } from "@/lib/ports/engine/errors";
 import { uniqueMissQuestionIds } from "@/lib/miss_pool";
+import {
+  browserEngineClient,
+  durableEngineEnabled,
+} from "@/lib/adapters/engine/engine_client";
 
 export { uniqueMissQuestionIds } from "@/lib/miss_pool";
 export interface QuizItemResult {
@@ -179,6 +183,23 @@ export async function openQuizItem(
   ports: EnginePortBag,
   args: { subject: string; learnerId: string; sessionId?: string },
 ): Promise<QuizItemResult> {
+  // T A.11: durable + session → ONE GET /next (scheduler + served-set server-side).
+  if (durableEngineEnabled() && args.sessionId != null) {
+    const payload = await browserEngineClient().nextItem(args.sessionId);
+    if (payload.empty || payload.question == null) {
+      throw new EngineNotFoundError(
+        payload.reason === "no_content"
+          ? "no content available"
+          : "no next item",
+      );
+    }
+    return {
+      skillId: payload.skill_id ?? payload.question.skill_id,
+      question: payload.question,
+      hintLadder: payload.hints,
+    };
+  }
+
   const servedIds =
     args.sessionId != null
       ? await ports.attemptRepo.servedQuestionIds(args.sessionId)
@@ -272,6 +293,46 @@ async function openReviewQuizItem(
   return { skillId: question.skill_id, question, hintLadder };
 }
 
+/**
+ * FR-A7 / FR-A9.1: sync grade + one idempotency key per answer action.
+ * The quiz page shows `verdict` immediately, then persists via `runQuizSubmit`
+ * with the same key (resent verbatim on FR-A8 retry — never mint a second key).
+ */
+export function planAnswerAction(
+  ports: Pick<EnginePortBag, "grader">,
+  args: {
+    readonly question: Question;
+    readonly letter: string | null;
+    /** Reuse on write-fail retry; omit to mint a fresh UUID. */
+    readonly idempotencyKey?: string;
+  },
+): { verdict: Verdict; letter: string; idempotencyKey: string } | null {
+  if (args.letter == null) return null;
+  const verdict = ports.grader.grade(args.question, { letter: args.letter });
+  if (verdict == null) return null;
+  return {
+    verdict,
+    letter: args.letter,
+    idempotencyKey: args.idempotencyKey ?? crypto.randomUUID(),
+  };
+}
+
+/** FR-G3: durable empty bank → honest "no content" UI (not a generic crash). */
+export function isNoContentError(err: unknown): boolean {
+  return (
+    err instanceof EngineNotFoundError &&
+    /no content available/i.test(err.message)
+  );
+}
+
+/**
+ * FR-C5: the bank exists but this session has no servable item left.
+ * This is deliberately distinct from FR-G3's empty-bank state.
+ */
+export function isPoolExhaustedError(err: unknown): boolean {
+  return err instanceof EngineNotFoundError && !isNoContentError(err);
+}
+
 export interface QuizSubmitArgs {
   readonly session: QuizSession;
   readonly question: Question;
@@ -305,6 +366,11 @@ export interface QuizSubmitArgs {
   readonly commitFirstCoach?: boolean;
   /** True when this item already has a recorded wrong (for coached vs first_try). */
   readonly hadPriorWrongAttempts?: boolean;
+  /**
+   * FR-A9.1: one key per answer action. Caller stamps at grade time and resends
+   * verbatim on HTTP retry; omit to mint a new UUID (fresh action).
+   */
+  readonly idempotencyKey?: string;
 }
 
 export interface QuizSubmitResult {
@@ -326,6 +392,8 @@ export interface QuizEscapeArgs {
   readonly usedHint: boolean;
   /** Almost always false — exhaustion requires a prior wrong (FR-12). */
   readonly isFirstGradedAttempt?: boolean;
+  /** FR-A9.1: stable key for escape-action retries. */
+  readonly idempotencyKey?: string;
 }
 
 export interface QuizEscapeResult {
@@ -364,6 +432,8 @@ export async function runQuizSubmit(
     resolution = args.hadPriorWrongAttempts ? "coached" : "first_try";
   }
 
+  // FR-A9.1: one idempotency_key per answer action (stamped at grade time).
+  const idempotency_key = args.idempotencyKey ?? crypto.randomUUID();
   const attempt = await ports.attemptRepo.record({
     subject: args.question.subject,
     session_id: args.session.id,
@@ -372,6 +442,7 @@ export async function runQuizSubmit(
     correct: verdict.correct,
     elapsed_ms: args.elapsedMs,
     used_hint: args.usedHint,
+    idempotency_key,
     ...(resolution != null ? { resolution } : {}),
   });
 
@@ -416,6 +487,7 @@ export async function runQuizEscape(
     elapsed_ms: args.elapsedMs,
     used_hint: args.usedHint,
     resolution: "walked_through",
+    idempotency_key: args.idempotencyKey ?? crypto.randomUUID(),
   });
 
   try {
@@ -445,23 +517,54 @@ export async function closeQuizSession(
   ports: EnginePortBag,
   args: CloseSessionArgs,
 ): Promise<QuizSession> {
+  // FR-C1: durable close goes through the coarse endpoint so the server derives
+  // the authoritative first_try-only tally from stored attempts. The in-memory
+  // fallback retains the local tally while the cutover flag is reversible.
+  if (durableEngineEnabled()) {
+    return browserEngineClient().closeSession(args.sessionId);
+  }
   return ports.sessionRepo.close(args.sessionId, {
     score_correct: args.scoreCorrect,
     score_total: args.scoreTotal,
   });
 }
 
+export interface ResumeQuizArgs {
+  /**
+   * RAM-era resume (flag off): explicit session + question from
+   * `readActiveQuiz()`. Ignored under durable_engine — the server picks the
+   * newest open session (FR-B1/B2).
+   */
+  readonly sessionId?: string;
+  readonly questionId?: string;
+  readonly subject?: string;
+}
+
+export interface ResumeQuizResult {
+  readonly session: QuizSession;
+  readonly item: QuizItemResult;
+  /** Server commit-first tally when durable; omitted on the RAM path. */
+  readonly score?: { readonly correct: number; readonly total: number };
+}
+
 /**
- * Resume a live Quiz session at a stashed question (FLAG-4 / FR-3 / FR-4).
+ * Resume a live Quiz session.
  *
- * Loads the existing session + the specific question (not a fresh scheduler
- * pick). Returns `null` when the session or question is gone — caller MUST
- * clear the active pointer and open a fresh session (honest recovery, FR-4).
+ * Durable (FR-B1/B3/B3b/B5/B8/B10): `GET /session/active` supplies the newest
+ * open session, served pointer, and server running score. Zero-attempt pointer
+ * → re-show; any attempt on the pointer OR a NULL pointer → scoped `/next`
+ * pick (never re-serve answered). Stale/missing question → `null` (FR-B5).
+ *
+ * Flag-off (FLAG-4): loads the caller-supplied sessionId + questionId from RAM.
  */
 export async function resumeQuizSession(
   ports: EnginePortBag,
-  args: { sessionId: string; questionId: string },
-): Promise<{ session: QuizSession; item: QuizItemResult } | null> {
+  args: ResumeQuizArgs = {},
+): Promise<ResumeQuizResult | null> {
+  if (durableEngineEnabled()) {
+    return resumeDurableQuizSession(ports, args.subject ?? "act-english");
+  }
+  if (args.sessionId == null || args.questionId == null) return null;
   const session = await ports.sessionRepo.get(args.sessionId);
   if (session == null) return null;
   const question = await ports.questionRepo.get(args.questionId);
@@ -471,6 +574,104 @@ export async function resumeQuizSession(
     session,
     item: { skillId: question.skill_id, question, hintLadder },
   };
+}
+
+/**
+ * Thrown when durable resume finds an open session whose pool is already
+ * exhausted (FR-C5 at mount). Carries the session so the page can close it.
+ */
+export class QuizResumeExhaustedError extends Error {
+  readonly session: QuizSession;
+  readonly score: { readonly correct: number; readonly total: number };
+
+  constructor(
+    session: QuizSession,
+    score: { correct: number; total: number },
+  ) {
+    super("no next item");
+    this.name = "QuizResumeExhaustedError";
+    this.session = session;
+    this.score = score;
+  }
+}
+
+export function isResumeExhaustedError(
+  err: unknown,
+): err is QuizResumeExhaustedError {
+  return err instanceof QuizResumeExhaustedError;
+}
+
+async function resumeDurableQuizSession(
+  ports: EnginePortBag,
+  subject: string,
+): Promise<ResumeQuizResult | null> {
+  const client = browserEngineClient();
+  const active = await client.getActiveSession(subject);
+  if (active.session == null) return null;
+
+  const session = active.session;
+  const score = {
+    correct: active.running_score?.score_correct ?? 0,
+    total: active.running_score?.score_total ?? 0,
+  };
+
+  // FR-C2 / T R.3: at-target open session → close to summary, never Q31.
+  if (
+    active.complete ||
+    (session.target_count != null && score.total >= session.target_count)
+  ) {
+    throw new QuizResumeExhaustedError(session, score);
+  }
+
+  const pointerId = session.current_question_id ?? null;
+
+  // FR-B8 (NULL) + FR-B3-feedback (any attempt, incl. non-resolving): advance.
+  if (pointerId == null || active.pointer_attempted) {
+    const next = await client.nextItem(session.id);
+    if (next.empty || next.question == null) {
+      if (next.reason === "no_content") {
+        throw new EngineNotFoundError("no content available");
+      }
+      // exhausted | session_complete → same close-to-summary path.
+      throw new QuizResumeExhaustedError(session, score);
+    }
+    return {
+      session,
+      item: {
+        skillId: next.skill_id ?? next.question.skill_id,
+        question: next.question,
+        hintLadder: next.hints,
+      },
+      score,
+    };
+  }
+
+  // Zero-attempt pointer → re-show the stored question (FR-B3b).
+  const question = await ports.questionRepo.get(pointerId);
+  if (question == null) return null; // FR-B5: stale id → fresh session
+  const hintLadder = await loadHintLadder(ports, session.subject, question.id);
+  return {
+    session,
+    item: { skillId: question.skill_id, question, hintLadder },
+    score,
+  };
+}
+
+/**
+ * FR-B3a / B3a-nonblock: durably record the served question. Fire-and-forget —
+ * failure must never block the serve (degrades to FR-B8 NULL-pointer resume).
+ */
+export function recordServedPointer(
+  sessionId: string,
+  questionId: string,
+): void {
+  if (!durableEngineEnabled()) return;
+  void browserEngineClient()
+    .setSessionCurrent(sessionId, questionId)
+    .catch(() => {
+      // G9: pointer-write failure is intentionally swallowed. Worst case is a
+      // stale/NULL resume position, never a broken serve (FR-B3a-nonblock).
+    });
 }
 
 /**
@@ -487,10 +688,15 @@ export function useQuiz(): {
     learnerId: string;
     sessionId?: string;
   }) => Promise<QuizItemResult>;
-  resumeSession: (args: {
-    sessionId: string;
-    questionId: string;
-  }) => Promise<{ session: QuizSession; item: QuizItemResult } | null>;
+  resumeSession: (
+    args?: ResumeQuizArgs,
+  ) => Promise<ResumeQuizResult | null>;
+  /** FR-A7: sync grade + mint/reuse idempotency key (before persist). */
+  planAnswer: (args: {
+    question: Question;
+    letter: string | null;
+    idempotencyKey?: string;
+  }) => { verdict: Verdict; letter: string; idempotencyKey: string } | null;
   submit: (args: QuizSubmitArgs) => Promise<QuizSubmitResult>;
   escape: (args: QuizEscapeArgs) => Promise<QuizEscapeResult>;
   closeSession: (args: CloseSessionArgs) => Promise<QuizSession>;
@@ -502,6 +708,8 @@ export function useQuiz(): {
     questionId: string,
     choiceLetter?: string | null,
   ) => Promise<readonly Hint[]>;
+  /** FR-B3a: fire-and-forget served-pointer write. */
+  recordPointer: (sessionId: string, questionId: string) => void;
 } {
   const ports = useEngine();
   return React.useMemo(
@@ -509,8 +717,12 @@ export function useQuiz(): {
       openSession: (args: OpenSessionArgs) => openQuizSession(ports, args),
       openItem: (args: { subject: string; learnerId: string; sessionId?: string }) =>
         openQuizItem(ports, args),
-      resumeSession: (args: { sessionId: string; questionId: string }) =>
-        resumeQuizSession(ports, args),
+      resumeSession: (args?: ResumeQuizArgs) => resumeQuizSession(ports, args),
+      planAnswer: (args: {
+        question: Question;
+        letter: string | null;
+        idempotencyKey?: string;
+      }) => planAnswerAction(ports, args),
       submit: (args: QuizSubmitArgs) => runQuizSubmit(ports, args),
       escape: (args: QuizEscapeArgs) => runQuizEscape(ports, args),
       closeSession: (args: CloseSessionArgs) => closeQuizSession(ports, args),
@@ -521,6 +733,8 @@ export function useQuiz(): {
         questionId: string,
         choiceLetter?: string | null,
       ) => loadHintLadder(ports, subject, questionId, choiceLetter),
+      recordPointer: (sessionId: string, questionId: string) =>
+        recordServedPointer(sessionId, questionId),
     }),
     [ports],
   );

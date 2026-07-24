@@ -71,4 +71,15 @@ describe("FocusModeChrome — FR-B2 close affordance", () => {
     );
     expect(toggle, "focus header must render the theme toggle").not.toBeUndefined();
   });
+
+  it("keeps Sign out reachable in the focus header (cross-session resume)", () => {
+    const doc = dom(
+      <FocusModeChrome screenId="quiz">
+        <p>item</p>
+      </FocusModeChrome>,
+    );
+    const signOut = doc.querySelector('[data-testid="sign-out"]');
+    expect(signOut, "focus header must render Sign out").not.toBeNull();
+    expect(signOut!.getAttribute("href")).toContain("/api/auth/sign-out");
+  });
 });

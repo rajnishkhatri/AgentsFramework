@@ -20,10 +20,12 @@
 import type {
   Attempt,
   AttemptResolution,
+  Question,
   QuizSession,
   RecommendedNext,
   Skill,
 } from "../wire/engine_entities";
+import { resolvingAttemptForQuestion } from "./resolving_attempt";
 
 /** Score ratio at which the Summary title flips to framed "Nice work" copy. */
 export const SUMMARY_FRAMED_TITLE_RATIO = 0.6;
@@ -43,6 +45,33 @@ export interface OutcomeCountsVM {
   readonly walkedThrough: number;
 }
 
+type SessionAttemptProjection = Pick<
+  Attempt,
+  "id" | "question_id" | "correct" | "resolution" | "created_at"
+>;
+
+export interface SessionMissVM {
+  readonly questionId: string;
+  readonly stem: string;
+  readonly skillId: string;
+  readonly skillName: string;
+  readonly resolution: AttemptResolution | null;
+}
+
+export interface SessionSkillPerformanceVM {
+  readonly skillId: string;
+  readonly skillName: string;
+  readonly correct: number;
+  readonly total: number;
+  readonly accuracyPct: number;
+  readonly strength: "strong" | "weak";
+}
+
+export interface SessionInsightsVM {
+  readonly misses: readonly SessionMissVM[];
+  readonly skillPerformance: readonly SessionSkillPerformanceVM[];
+}
+
 export interface SessionSummaryVM {
   readonly scoreCorrect: number;
   readonly scoreTotal: number;
@@ -60,41 +89,89 @@ export interface SessionSummaryVM {
    * exists (legacy session with only null resolutions → hide the row, AP-6).
    */
   readonly outcomeCounts: OutcomeCountsVM | null;
+  readonly misses: readonly SessionMissVM[];
+  readonly skillPerformance: readonly SessionSkillPerformanceVM[];
+}
+
+/**
+ * Phase D projections from rows supplied by the coarse Summary response.
+ * This reshapes session attempts; it never recomputes the authoritative score.
+ */
+export function projectSessionInsights(
+  attempts: ReadonlyArray<SessionAttemptProjection>,
+  questions: ReadonlyArray<Pick<Question, "id" | "skill_id" | "stem">>,
+  skills: ReadonlyArray<Pick<Skill, "id" | "name">>,
+): SessionInsightsVM {
+  const questionsById = new Map(questions.map((question) => [question.id, question]));
+  const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
+  const misses: SessionMissVM[] = [];
+  const tallies = new Map<string, { correct: number; total: number }>();
+
+  for (const attempt of resolvingAttemptForQuestion(attempts).values()) {
+    const question = questionsById.get(attempt.question_id);
+    // G9 / AP-6: an attempt without its content row cannot be identified or
+    // assigned to a skill honestly, so omit it instead of fabricating labels.
+    if (question == null) continue;
+    const skill = skillsById.get(question.skill_id);
+    if (skill == null) continue;
+
+    const tally = tallies.get(skill.id) ?? { correct: 0, total: 0 };
+    tally.total += 1;
+    if (attempt.correct) tally.correct += 1;
+    tallies.set(skill.id, tally);
+
+    if (!attempt.correct || attempt.resolution === "walked_through") {
+      misses.push({
+        questionId: question.id,
+        stem: question.stem,
+        skillId: skill.id,
+        skillName: skill.name,
+        resolution: attempt.resolution ?? null,
+      });
+    }
+  }
+
+  const skillPerformance: SessionSkillPerformanceVM[] = [];
+  for (const [skillId, tally] of tallies) {
+    const skill = skillsById.get(skillId);
+    if (skill == null) continue;
+    const accuracy = tally.correct / tally.total;
+    skillPerformance.push({
+      skillId,
+      skillName: skill.name,
+      correct: tally.correct,
+      total: tally.total,
+      accuracyPct: Math.round(accuracy * 100),
+      // Reuse the Summary's existing positive-performance threshold; Phase D
+      // adds no second, competing definition of "strong".
+      strength:
+        accuracy >= SUMMARY_FRAMED_TITLE_RATIO ? "strong" : "weak",
+    });
+  }
+
+  return { misses, skillPerformance };
 }
 
 /**
  * Derive per-item outcomes from session attempts (FR-11 / AP-6).
- * Uses the resolving attempt per question_id (last row with a resolution, else
- * legacy single-attempt rule: correct ⇒ first_try). Non-resolving retries ignored.
+ * Uses the §6 resolving attempt per question_id (greatest `created_at`, ties by
+ * greatest `id`); legacy single-attempt rule: correct ⇒ first_try when
+ * resolution is null. Non-resolving retries ignored when the winner has no resolution
+ * and is incorrect.
  */
 export function countSessionOutcomes(
   attempts: ReadonlyArray<
-    Pick<Attempt, "question_id" | "correct" | "resolution" | "created_at">
+    Pick<Attempt, "id" | "question_id" | "correct" | "resolution" | "created_at">
   >,
 ): OutcomeCountsVM | null {
   if (attempts.length === 0) return null;
-
-  const byQuestion = new Map<string, (typeof attempts)[number]>();
-  for (const a of attempts) {
-    const prev = byQuestion.get(a.question_id);
-    if (prev == null) {
-      byQuestion.set(a.question_id, a);
-      continue;
-    }
-    // Prefer a row that carries resolution; else keep newest.
-    if (a.resolution != null) {
-      byQuestion.set(a.question_id, a);
-    } else if (prev.resolution == null && a.created_at >= prev.created_at) {
-      byQuestion.set(a.question_id, a);
-    }
-  }
 
   let firstTry = 0;
   let coached = 0;
   let walkedThrough = 0;
   let anyResolution = false;
 
-  for (const a of byQuestion.values()) {
+  for (const a of resolvingAttemptForQuestion(attempts).values()) {
     const res: AttemptResolution | null | undefined = a.resolution;
     if (res == null) {
       // Legacy: one attempt per item; correct ⇒ first_try (AP-6 — no fabricate).
@@ -176,14 +253,23 @@ export function toSessionSummaryVM(
   selfCorrected: boolean,
   scoreRatioMet: boolean,
   sessionAttempts: ReadonlyArray<
-    Pick<Attempt, "question_id" | "correct" | "resolution" | "created_at">
+    Pick<Attempt, "id" | "question_id" | "correct" | "resolution" | "created_at">
   > = [],
+  sessionQuestions: ReadonlyArray<
+    Pick<Question, "id" | "skill_id" | "stem">
+  > = [],
+  insightSkills: ReadonlyArray<Pick<Skill, "id" | "name">> = [],
 ): SessionSummaryVM {
   const { title, body } = titleAndBody(
     nextSkill.name,
     misconception,
     selfCorrected,
     scoreRatioMet,
+  );
+  const insights = projectSessionInsights(
+    sessionAttempts,
+    sessionQuestions,
+    insightSkills,
   );
   return {
     scoreCorrect: session.score_correct,
@@ -206,5 +292,7 @@ export function toSessionSummaryVM(
     selfCorrected,
     showFramedTitle: scoreRatioMet,
     outcomeCounts: countSessionOutcomes(sessionAttempts),
+    misses: insights.misses,
+    skillPerformance: insights.skillPerformance,
   };
 }

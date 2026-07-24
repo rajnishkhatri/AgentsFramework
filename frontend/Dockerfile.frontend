@@ -28,6 +28,12 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# T R.5 / FR-A4 §6: NEXT_PUBLIC_* is inlined at `next build`. Default OFF keeps
+# shadow→canary (InMemoryEngineDb). Pass --build-arg NEXT_PUBLIC_FF_DURABLE_ENGINE=1
+# (deploy_gcp.sh maps enable_durable_engine from tfvars) for a flag-on image.
+ARG NEXT_PUBLIC_FF_DURABLE_ENGINE=0
+ENV NEXT_PUBLIC_FF_DURABLE_ENGINE=$NEXT_PUBLIC_FF_DURABLE_ENGINE
+
 RUN pnpm build
 
 # ─── Stage 3: production runtime ───────────────────────────────────
@@ -39,6 +45,16 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+
+# T R.14 (a) / FR-A4 §6: the runner stage is a fresh FROM, so ARGs from the
+# builder do NOT cross over. Re-declare the durable-engine flag here and bake
+# it into a final-image LABEL so the pinned @sha256 digest is self-describing —
+# `docker inspect` returns what the image was built with, which the
+# deploy_gcp.sh flag↔var guard reads to catch a stale pin (operator flips
+# enable_durable_engine without rebuilding). NEXT_PUBLIC_* is already inlined
+# into the bundle at build time; this LABEL is the deploy-time witness.
+ARG NEXT_PUBLIC_FF_DURABLE_ENGINE=0
+LABEL org.agentsframework.ff_durable_engine=$NEXT_PUBLIC_FF_DURABLE_ENGINE
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs

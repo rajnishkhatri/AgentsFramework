@@ -1,0 +1,62 @@
+[
+  {
+    "id": "s-punc",
+    "subject": "act-english",
+    "key": "punctuation",
+    "name": "Punctuation",
+    "share_of_test_pct": 15,
+    "accent_var": "--color-bucket-punctuation",
+    "description": "Commas, semicolons, colons, dashes, and apostrophes.",
+    "order": 1
+  },
+  {
+    "id": "s-gram",
+    "subject": "act-english",
+    "key": "grammar",
+    "name": "Usage",
+    "share_of_test_pct": 20,
+    "accent_var": "--color-bucket-usage",
+    "description": "Subject–verb agreement, pronouns, verb tense, idioms.",
+    "order": 2
+  },
+  {
+    "id": "s-sent",
+    "subject": "act-english",
+    "key": "sentence",
+    "name": "Sentence Structure",
+    "share_of_test_pct": 20,
+    "accent_var": "--color-bucket-sentence-structure",
+    "description": "Fragments, run-ons, modifiers, and parallelism.",
+    "order": 3
+  },
+  {
+    "id": "s-rhet",
+    "subject": "act-english",
+    "key": "rhetoric",
+    "name": "Rhetoric",
+    "share_of_test_pct": 20,
+    "accent_var": "--color-bucket-rhetoric",
+    "description": "Word choice, tone, and conciseness in context.",
+    "order": 4
+  },
+  {
+    "id": "s-org",
+    "subject": "act-english",
+    "key": "organization",
+    "name": "Organization",
+    "share_of_test_pct": 15,
+    "accent_var": "--color-bucket-organization",
+    "description": "Transitions, sentence order, and opening/closing sentences.",
+    "order": 5
+  },
+  {
+    "id": "s-style",
+    "subject": "act-english",
+    "key": "style",
+    "name": "Conciseness",
+    "share_of_test_pct": 10,
+    "accent_var": "--color-bucket-conciseness",
+    "description": "Redundancy, wordiness, and consistent register.",
+    "order": 6
+  }
+]

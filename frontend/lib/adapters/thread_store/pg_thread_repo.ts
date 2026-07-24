@@ -25,6 +25,7 @@
 import { and, desc, eq, isNull, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { pgPoolMax, toNodePgConnectionString } from "@/lib/adapters/db/node_pg_url";
 import { ThreadStoreError } from "./neon_free_thread_store";
 import type { DrizzleLike } from "./neon_thread_repo";
 import { threads } from "./db/schema";
@@ -70,7 +71,11 @@ const _pools = new Map<string, Pool>();
 function poolFor(databaseUrl: string): Pool {
   let pool = _pools.get(databaseUrl);
   if (!pool) {
-    pool = new Pool({ connectionString: databaseUrl });
+    pool = new Pool({
+      connectionString: toNodePgConnectionString(databaseUrl),
+      // T R.13 — bounded pool (shared Cloud SQL budget). Default 5.
+      max: pgPoolMax(process.env, 5),
+    });
     _pools.set(databaseUrl, pool);
   }
   return pool;

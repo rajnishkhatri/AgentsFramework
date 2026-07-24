@@ -23,6 +23,7 @@ const FLAG_TO_ENV: Record<FeatureFlagName, string> = {
   per_tool_authorization: "NEXT_PUBLIC_FF_PER_TOOL_AUTHORIZATION",
   json_run_export: "NEXT_PUBLIC_FF_JSON_RUN_EXPORT",
   commit_first_coach: "NEXT_PUBLIC_FF_COMMIT_FIRST_COACH",
+  durable_engine: "NEXT_PUBLIC_FF_DURABLE_ENGINE",
 };
 
 const TRUTHY = new Set(["1", "true", "on", "yes"]);
@@ -75,6 +76,7 @@ export class EnvVarFlagsAdapter implements FeatureFlagProvider {
       per_tool_authorization: false,
       json_run_export: false,
       commit_first_coach: false,
+      durable_engine: false,
     };
     for (const [flag, key] of Object.entries(FLAG_TO_ENV) as Array<
       [FeatureFlagName, string]
@@ -93,6 +95,7 @@ export class EnvVarFlagsAdapter implements FeatureFlagProvider {
       per_tool_authorization: snap.per_tool_authorization,
       json_run_export: snap.json_run_export,
       commit_first_coach: snap.commit_first_coach,
+      durable_engine: snap.durable_engine,
     });
   }
 

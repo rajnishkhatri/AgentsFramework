@@ -11,6 +11,7 @@ import { EngineProvider } from "@/app/engine-provider";
 import { ThemeToggle } from "@/components/chat/ThemeToggle";
 import { AppNav } from "@/components/shell/AppNav";
 import { FocusModeChrome } from "@/components/shell/FocusModeChrome";
+import { SignOutLink } from "@/components/shell/SignOutLink";
 import {
   getShellLayoutSnapshot,
   subscribeShellLayout,
@@ -149,7 +150,8 @@ function CoachShell(props: {
   if (surface === "iphone") {
     return (
       <div className="flex min-h-dvh flex-col">
-        <header className="flex items-center justify-end border-b border-border px-2 py-1">
+        <header className="flex items-center justify-end gap-1 border-b border-border px-2 py-1">
+          <SignOutLink />
           <ThemeToggle />
         </header>
         <main className="flex-1 overflow-y-auto">{children}</main>
@@ -203,6 +205,7 @@ function CoachShell(props: {
             pathname={pathname}
             collapsed={collapsed}
             showThemeToggle
+            showSignOut
           />
         </div>
       </aside>

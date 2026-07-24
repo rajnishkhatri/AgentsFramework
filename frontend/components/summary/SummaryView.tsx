@@ -120,6 +120,58 @@ export function SummaryView(props: { vm: SummaryVM }): React.JSX.Element {
       ) : null}
 
       <section
+        aria-labelledby="summary-misses-heading"
+        data-testid="summary-misses"
+        className="flex flex-col gap-3 rounded-[13px] border border-border p-5"
+      >
+        <h2 id="summary-misses-heading" className="text-base font-semibold">
+          Questions to revisit
+        </h2>
+        {summary.misses.length === 0 ? (
+          <p className="text-sm text-muted">
+            Clean sweep — no missed or walked-through questions this session.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {summary.misses.map((miss) => (
+              <li key={miss.questionId} className="flex flex-col gap-1">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  {miss.skillName}
+                </span>
+                <span className="text-sm">{miss.stem}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {summary.skillPerformance.length > 0 ? (
+        <section
+          aria-labelledby="summary-skills-heading"
+          data-testid="summary-skill-performance"
+          className="flex flex-col gap-3 rounded-[13px] border border-border p-5"
+        >
+          <h2 id="summary-skills-heading" className="text-base font-semibold">
+            Strong and weak areas
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {summary.skillPerformance.map((row) => (
+              <li
+                key={row.skillId}
+                className="flex items-center justify-between gap-3 text-sm"
+              >
+                <span className="font-medium">{row.skillName}</span>
+                <span className="text-muted">
+                  {row.accuracyPct}% ·{" "}
+                  {row.strength === "strong" ? "Strong" : "Needs practice"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section
         aria-label="Recommended next"
         data-testid="summary-recommended"
         style={{ ["--accent" as string]: `var(${summary.recommended.accentVar})` }}

@@ -61,7 +61,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   if (action === "sign-out") {
-    return await signOut();
+    // Absolute returnTo so WorkOS Logout URI allowlist can match. Defaults to
+    // the request origin ("/") — without this, a missing/mismatched dashboard
+    // Logout URI leaves sign-out appearing broken (no cookie clear redirect).
+    const requested = request.nextUrl.searchParams.get("returnTo");
+    const path =
+      requested && requested.startsWith("/") && !requested.startsWith("//")
+        ? requested
+        : "/";
+    const returnTo = new URL(path, request.nextUrl.origin).toString();
+    return await signOut({ returnTo });
   }
 
   const res = await callbackHandler(request);

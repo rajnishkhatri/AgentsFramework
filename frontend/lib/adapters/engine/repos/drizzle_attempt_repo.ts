@@ -62,13 +62,16 @@ export class DrizzleAttemptRepo implements AttemptRepo {
       ...attempt,
       id: this.newId(),
       created_at: new Date(createdAtMs).toISOString(),
+      idempotency_key: attempt.idempotency_key,
     };
     try {
-      await this.db.insertAttempt(row);
+      // FR-A9.1: adapter returns typed inserted | already-existed; pass the
+      // key straight through (orthogonal to the monotonic created_at).
+      const result = await this.db.insertAttempt(row);
+      return result.attempt;
     } catch (err) {
       throw translate("record", err);
     }
-    return row;
   }
 
   async misses(subject: string, learnerId: string): Promise<Attempt[]> {

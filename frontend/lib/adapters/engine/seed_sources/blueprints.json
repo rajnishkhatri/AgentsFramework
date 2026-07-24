@@ -1,0 +1,39 @@
+[
+  {
+    "id": "bp-act-english-default",
+    "subject": "act-english",
+    "skill_mix": {
+      "s-punc": 0.15,
+      "s-gram": 0.2,
+      "s-sent": 0.2,
+      "s-rhet": 0.2,
+      "s-org": 0.15,
+      "s-style": 0.1
+    },
+    "difficulty_dist": {
+      "2": 0.2,
+      "3": 0.5,
+      "4": 0.3
+    },
+    "count": 30,
+    "minutes": 35,
+    "scale_band_table": [
+      {
+        "raw_min": 0,
+        "raw_max": 10,
+        "scale": 10
+      },
+      {
+        "raw_min": 11,
+        "raw_max": 20,
+        "scale": 20
+      },
+      {
+        "raw_min": 21,
+        "raw_max": 30,
+        "scale": 30
+      }
+    ],
+    "seed": 1
+  }
+]

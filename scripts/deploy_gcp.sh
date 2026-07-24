@@ -19,6 +19,9 @@
 #   BASE_REF=origin/main Base ref for change detection (preview phase)
 #   DEPLOY_VERSION=      CalVer version (default: YYYY.0M.0); used in image tags + DEPLOY_ID
 #   ENV=prod             Environment name embedded in DEPLOY_ID
+#   NEXT_PUBLIC_FF_DURABLE_ENGINE=0|1
+#                        Override durable-engine build-arg for phase_images (T R.5).
+#                        Else reads enable_durable_engine from terraform.tfvars (default 0).
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -45,6 +48,25 @@ info() { echo -e "${GREEN}INFO${NC}: $*"; }
 pass() { echo -e "${GREEN}PASS${NC}: $*"; }
 warn() { echo -e "${YELLOW}WARN${NC}: $*"; }
 fail() { echo -e "${RED}FAIL${NC}: $*"; exit 1; }
+
+# T R.2: Node pg rejects SQLAlchemy dialect markers (postgresql+asyncpg://).
+# Keep the sed in sync with frontend/lib/adapters/db/node_pg_url.ts.
+to_node_pg_url() {
+  printf '%s' "$1" | sed -E 's|^(postgres(ql)?)\+[A-Za-z0-9_]+://|\1://|'
+}
+
+# Rewrite a Cloud SQL unix-socket DSN to TCP against a local cloud-sql-proxy.
+# Preserves user/password/dbname; swaps host=/cloudsql/… for host:port.
+rewrite_cloudsql_url_to_tcp() {
+  local url="$1"
+  local host="$2"
+  local port="$3"
+  local auth dbname
+  auth="${url#*://}"
+  auth="${auth%%@*}"
+  dbname="$(printf '%s' "${url}" | sed -E 's|^[^/]+//[^/]+/([^?]+).*|\1|')"
+  printf 'postgresql://%s@%s:%s/%s' "${auth}" "${host}" "${port}" "${dbname}"
+}
 
 usage() {
   cat <<'EOF'
@@ -114,6 +136,83 @@ tfvars_value() {
   grep -E "^[[:space:]]*${key}[[:space:]]*=" "${TFVARS}" 2>/dev/null \
     | sed -E 's/^[^=]*=[[:space:]]*"([^"]*)".*/\1/' \
     | head -1
+}
+
+# T R.5: bool tfvars (unquoted true/false) — tfvars_value only strips quoted strings.
+tfvars_bool() {
+  local key="$1"
+  local raw
+  raw="$(
+    grep -E "^[[:space:]]*${key}[[:space:]]*=" "${TFVARS}" 2>/dev/null \
+      | head -1 \
+      | sed -E 's/^[^=]*=[[:space:]]*//; s/[[:space:]]*#.*//; s/"//g; s/[[:space:]]+$//'
+  )"
+  case "${raw}" in
+    true|TRUE|1|yes|on|ON) echo 1 ;;
+    *) echo 0 ;;
+  esac
+}
+
+# Resolve NEXT_PUBLIC_FF_DURABLE_ENGINE for the frontend image build (0|1).
+# Precedence: explicit env override → enable_durable_engine in tfvars → 0.
+durable_engine_build_arg() {
+  local override="${NEXT_PUBLIC_FF_DURABLE_ENGINE:-${FF_DURABLE_ENGINE:-}}"
+  if [[ -n "${override}" ]]; then
+    case "${override}" in
+      1|true|TRUE|yes|on|ON) echo 1 ;;
+      *) echo 0 ;;
+    esac
+    return 0
+  fi
+  if [[ -f "${TFVARS}" ]]; then
+    tfvars_bool enable_durable_engine
+    return 0
+  fi
+  echo 0
+}
+
+# T R.14 (b) / FR-A4 §6: deploy-time flag↔var guard. NEXT_PUBLIC_FF_DURABLE_ENGINE
+# is build-time-inlined into the bundle; Cloud Run runtime env cannot flip it.
+# A stale pin — operator flips enable_durable_engine in tfvars WITHOUT
+# rebuilding + repinning frontend_image — would deploy a revision whose bundle
+# contradicts the var (shadow→canary quietly becoming canary, or vice versa).
+# This guard reads the PINNED frontend_image digest from tfvars, inspects its
+# self-describing LABEL (baked by Dockerfile.frontend's runner stage), and
+# fails the deploy BEFORE tofu apply routes traffic to the mismatched revision.
+# Running it only in phase_images would miss a later stale-pin flip, so it lives
+# in phase_frontend (the apply step).
+assert_frontend_image_flag_matches_tfvars() {
+  local pinned expected label
+  pinned="$(tfvars_value frontend_image)"
+  [[ -n "${pinned}" ]] || fail "T R.14: frontend_image not set in ${TFVARS} — cannot guard flag↔var."
+  expected="$(tfvars_bool enable_durable_engine)"
+  info "T R.14 guard: frontend_image=${pinned} ; enable_durable_engine=${expected}"
+
+  if [[ -n "${DRY_RUN}" ]]; then
+    warn "[dry-run] would: docker inspect label org.agentsframework.ff_durable_engine on ${pinned} ; fail if != ${expected}"
+    return 0
+  fi
+
+  require_cmds docker
+  # Try the local image first (cheap — image is local right after phase_images
+  # in the `all` pipeline). Fall back to a pull for a standalone phase_frontend
+  # run where the pinned digest isn't present locally.
+  label="$(docker inspect \
+    --format '{{ index .Config.Labels "org.agentsframework.ff_durable_engine" }}' \
+    "${pinned}" 2>/dev/null || true)"
+  if [[ -z "${label}" ]]; then
+    info "T R.14: pinned image not local; pulling to inspect its label..."
+    docker pull "${pinned}" >/dev/null \
+      || fail "T R.14: could not pull pinned frontend_image ${pinned} to inspect its flag label."
+    label="$(docker inspect \
+      --format '{{ index .Config.Labels "org.agentsframework.ff_durable_engine" }}' \
+      "${pinned}" 2>/dev/null || true)"
+  fi
+  [[ -n "${label}" ]] || fail "T R.14: pinned frontend_image has no org.agentsframework.ff_durable_engine label — image was built before T R.14 (rebuild with the current Dockerfile.frontend)."
+  if [[ "${label}" != "${expected}" ]]; then
+    fail "T R.14 flag↔var mismatch: enable_durable_engine=${expected} but pinned frontend_image was built with NEXT_PUBLIC_FF_DURABLE_ENGINE=${label}. Rebuild + repin the frontend image (NEXT_PUBLIC_* is build-time-inlined; runtime env cannot flip it)."
+  fi
+  pass "T R.14: pinned frontend_image flag (${label}) matches enable_durable_engine (${expected})."
 }
 
 require_paths() {
@@ -286,12 +385,12 @@ phase_data() {
   warn "STOP GATE: Manual database-url secret update and Postgres checkpointer migration required."
   echo "Next commands (after setting your Cloud SQL password):"
   echo "  CONNECTION_NAME=\"${connection_name:-PROJECT:REGION:INSTANCE}\""
-  echo "  echo -n \"postgresql+asyncpg://agent_runtime:<PASSWORD>@/agent?host=/cloudsql/\${CONNECTION_NAME}\" \\"
+  echo "  echo -n \"postgresql://agent_runtime:<PASSWORD>@/agent?host=/cloudsql/\${CONNECTION_NAME}\" \\"
   echo "    | gcloud secrets versions add database-url --project=\"${PROJECT}\" --data-file=-"
   echo
   echo "  cloud-sql-proxy \"\${CONNECTION_NAME}\" &"
   echo "  PROXY_PID=\$!"
-  echo "  DATABASE_URL=\"postgresql+asyncpg://agent_runtime:<PASSWORD>@localhost:5432/agent\" python3 -c \""
+  echo "  DATABASE_URL=\"postgresql://agent_runtime:<PASSWORD>@localhost:5432/agent\" python3 -c \""
   echo "import asyncio"
   echo "from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver"
   echo "async def main():"
@@ -403,10 +502,13 @@ phase_images() {
 
   local fver_tag="agent-frontend:${DEPLOY_VERSION}"
   local fsha_tag="agent-frontend:sha-${SHORT_SHA}"
+  local durable_flag
+  durable_flag="$(durable_engine_build_arg)"
+  info "Frontend durable-engine build-arg NEXT_PUBLIC_FF_DURABLE_ENGINE=${durable_flag} (T R.5; rebuild required to flip)"
 
-  echo "+ (cd \"${REPO_ROOT}\" && docker build --platform linux/amd64 -f frontend/Dockerfile.frontend -t \"${fver_tag}\" -t \"${fsha_tag}\" ./frontend)"
+  echo "+ (cd \"${REPO_ROOT}\" && docker build --platform linux/amd64 -f frontend/Dockerfile.frontend --build-arg NEXT_PUBLIC_FF_DURABLE_ENGINE=${durable_flag} -t \"${fver_tag}\" -t \"${fsha_tag}\" ./frontend)"
   if [[ -z "${DRY_RUN}" ]]; then
-    (cd "${REPO_ROOT}" && docker build --platform linux/amd64 -f frontend/Dockerfile.frontend -t "${fver_tag}" -t "${fsha_tag}" ./frontend)
+    (cd "${REPO_ROOT}" && docker build --platform linux/amd64 -f frontend/Dockerfile.frontend --build-arg NEXT_PUBLIC_FF_DURABLE_ENGINE="${durable_flag}" -t "${fver_tag}" -t "${fsha_tag}" ./frontend)
   fi
   run_cmd docker tag "${fver_tag}" "${ar_url}/${fver_tag}"
   run_cmd docker tag "${fsha_tag}" "${ar_url}/${fsha_tag}"
@@ -475,6 +577,78 @@ phase_backend() {
 
 phase_frontend() {
   require_cmds tofu conftest terraform-compliance curl
+
+  # FR-F3 / ADR-0034 / T R.2: migrate_engine.mjs BEFORE tofu apply. Cloud Run
+  # traffic is TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST 100% on apply — running
+  # migrate after apply is not pre-traffic. Schema+seed must be ready before
+  # the new revision takes traffic.
+  #
+  # Connectivity (T R.2): the shared database-url secret is a /cloudsql/ Unix
+  # socket DSN. The deploy host has no that socket — start cloud-sql-proxy and
+  # rewrite to localhost TCP. Also strip postgresql+asyncpg:// → postgresql://
+  # so Node pg accepts the same secret the Python checkpointer uses.
+  # Bind↔runner pairing: cloud-run-frontend.tf env DATABASE_URL + this step.
+  # Never at Cloud Run boot (cold starts must not race a migration).
+  load_env_from_tfvars
+  if [[ -n "${DRY_RUN}" ]]; then
+    info "[dry-run] would run: gcloud secrets versions access database-url → to_node_pg_url → cloud-sql-proxy (if /cloudsql/) → DATABASE_URL=… node frontend/scripts/migrate_engine.mjs (before tofu apply / traffic)"
+  else
+    require_cmds gcloud node
+    info "Pre-apply: applying frontend engine migrations (migrate_engine.mjs)"
+    local db_url
+    db_url="$(gcloud secrets versions access latest --secret=database-url --project="${PROJECT}")" \
+      || fail "Could not read database-url secret for pre-apply migrate."
+    db_url="$(to_node_pg_url "${db_url}")"
+
+    local proxy_pid=""
+    local proxy_port="${CLOUDSQL_PROXY_PORT:-5432}"
+    cleanup_frontend_migrate_proxy() {
+      if [[ -n "${proxy_pid}" ]]; then
+        kill "${proxy_pid}" 2>/dev/null || true
+        wait "${proxy_pid}" 2>/dev/null || true
+        proxy_pid=""
+      fi
+    }
+    trap cleanup_frontend_migrate_proxy EXIT
+
+    case "${db_url}" in
+      *"/cloudsql/"*)
+        require_cmds cloud-sql-proxy
+        local instance
+        instance="$(printf '%s' "${db_url}" | sed -E 's|.*host=/cloudsql/([^&?]+).*|\1|')"
+        [[ -n "${instance}" ]] || fail "Could not parse Cloud SQL instance from database-url (host=/cloudsql/…)."
+        info "Starting cloud-sql-proxy for ${instance} on 127.0.0.1:${proxy_port}"
+        cloud-sql-proxy --address 127.0.0.1 --port "${proxy_port}" "${instance}" &
+        proxy_pid=$!
+        # Brief readiness wait — proxy prints "ready" but we only need the port.
+        local waited=0
+        while ! (echo >/dev/tcp/127.0.0.1/"${proxy_port}") 2>/dev/null; do
+          if ! kill -0 "${proxy_pid}" 2>/dev/null; then
+            fail "cloud-sql-proxy exited before becoming ready (pid=${proxy_pid})."
+          fi
+          waited=$((waited + 1))
+          if [[ "${waited}" -ge 30 ]]; then
+            fail "cloud-sql-proxy did not accept connections on 127.0.0.1:${proxy_port} within 30s."
+          fi
+          sleep 1
+        done
+        db_url="$(rewrite_cloudsql_url_to_tcp "${db_url}" "127.0.0.1" "${proxy_port}")"
+        ;;
+    esac
+
+    (
+      cd "${REPO_ROOT}/frontend"
+      DATABASE_URL="${db_url}" node scripts/migrate_engine.mjs
+    ) || fail "frontend migrate_engine.mjs failed — aborting before frontend apply/traffic."
+    cleanup_frontend_migrate_proxy
+    trap - EXIT
+  fi
+
+  # T R.14 (b): flag↔var guard BEFORE tofu_gate. Traffic is
+  # TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST 100% on apply — a flag↔var mismatch
+  # must abort here, before the apply routes traffic to the bad revision.
+  assert_frontend_image_flag_matches_tfvars
+
   tofu_gate
 
   if [[ -n "${DRY_RUN}" ]]; then

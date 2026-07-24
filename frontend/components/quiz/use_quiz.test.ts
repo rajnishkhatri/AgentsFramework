@@ -16,14 +16,18 @@ import { buildBrowserEngineAdapters } from "@/lib/composition_engine_browser";
 import type { EnginePortBag } from "@/lib/composition_engine";
 import {
   closeQuizSession,
+  isNoContentError,
+  isPoolExhaustedError,
   listQuizSkills,
   loadHintLadder,
   openQuizItem,
   openQuizSession,
+  planAnswerAction,
   resumeQuizSession,
   runQuizEscape,
   runQuizSubmit,
 } from "./use_quiz";
+import { EngineNotFoundError, EngineRepoError } from "@/lib/ports/engine/errors";
 import {
   clearActiveQuiz,
   readActiveQuiz,
@@ -411,6 +415,51 @@ describe("closeQuizSession — stores the tally the Summary reads (FR-D3/G1)", (
     });
     expect(again.score_correct).toBe(2);
     expect(again.score_total).toBe(2);
+  });
+
+  it("a new practice after close opens a fresh Q1 session (FR-C4)", async () => {
+    const completed = await ports.sessionRepo.open(
+      SUBJECT,
+      LEARNER,
+      "adaptive",
+    );
+    await closeQuizSession(ports, {
+      sessionId: completed.id,
+      scoreCorrect: 1,
+      scoreTotal: 1,
+    });
+
+    const fresh = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "adaptive",
+    });
+
+    expect(fresh.session.id).not.toBe(completed.id);
+    expect(fresh.session.score_total).toBe(0);
+    expect(fresh.session.ended_at).toBeNull();
+  });
+});
+
+describe("isPoolExhaustedError — FR-C5", () => {
+  it("matches a finite pool with no next item", () => {
+    expect(isPoolExhaustedError(new EngineNotFoundError("no next item"))).toBe(
+      true,
+    );
+    expect(
+      isPoolExhaustedError(
+        new EngineNotFoundError("no unserved missed questions"),
+      ),
+    ).toBe(true);
+  });
+
+  it("does not misclassify an empty bank or generic failure", () => {
+    expect(
+      isPoolExhaustedError(
+        new EngineNotFoundError("no content available"),
+      ),
+    ).toBe(false);
+    expect(isPoolExhaustedError(new Error("network failed"))).toBe(false);
   });
 });
 
@@ -828,6 +877,7 @@ describe("openQuizSession / openQuizItem — review misses (FR-A6 / FR-C5)", () 
         correct: false,
         elapsed_ms: 1000,
         used_hint: false,
+        idempotency_key: "test-idem-1",
       });
     }
     const opened = await openQuizSession(ports, {
@@ -921,6 +971,7 @@ describe("openQuizSession / openQuizItem — review misses (FR-A6 / FR-C5)", () 
       correct: false,
       elapsed_ms: 1000,
       used_hint: false,
+      idempotency_key: "test-idem-2",
     });
     const review = await openQuizSession(ports, {
       subject: SUBJECT,
@@ -1123,5 +1174,82 @@ describe("runQuizSubmit/runQuizEscape — commit-first sequences (FR-6/12)", () 
     expect(result.attempt?.resolution).toBe("first_try");
     expect(reviewCalls).toHaveLength(1);
     expect(notifyCalls).toEqual([q.id]);
+  });
+});
+
+describe("planAnswerAction — FR-A7 / FR-A9.1 (optimistic + idempotency)", () => {
+  it("null letter yields no plan (FR-D2a — edge first)", () => {
+    const plan = planAnswerAction(ports, {
+      question: question(),
+      letter: null,
+    });
+    expect(plan).toBeNull();
+  });
+
+  it("grades synchronously and mints one idempotency key (FR-A7)", () => {
+    const plan = planAnswerAction(ports, {
+      question: question({ answer_letter: "B" }),
+      letter: "B",
+    });
+    expect(plan).not.toBeNull();
+    expect(plan!.verdict.correct).toBe(true);
+    expect(plan!.letter).toBe("B");
+    expect(plan!.idempotencyKey).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
+  });
+
+  it("reuses a caller-stamped key on FR-A8 retry (no second mint)", () => {
+    const plan = planAnswerAction(ports, {
+      question: question({ answer_letter: "B" }),
+      letter: "A",
+      idempotencyKey: "stable-answer-action-key",
+    });
+    expect(plan?.idempotencyKey).toBe("stable-answer-action-key");
+    expect(plan?.verdict.correct).toBe(false);
+  });
+
+  it("runQuizSubmit with the planned key persists one attempt row (FR-A5/A9.1)", async () => {
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    const q = question({ answer_letter: "B" });
+    const plan = planAnswerAction(ports, { question: q, letter: "B" });
+    expect(plan).not.toBeNull();
+    const first = await runQuizSubmit(ports, {
+      session,
+      question: q,
+      learnerId: LEARNER,
+      letter: plan!.letter,
+      elapsedMs: 50,
+      usedHint: false,
+      idempotencyKey: plan!.idempotencyKey,
+    });
+    const second = await runQuizSubmit(ports, {
+      session,
+      question: q,
+      learnerId: LEARNER,
+      letter: plan!.letter,
+      elapsedMs: 50,
+      usedHint: false,
+      idempotencyKey: plan!.idempotencyKey,
+    });
+    expect(first.attempt?.id).toBe(second.attempt?.id);
+    const attempts = await ports.attemptRepo.listForSession(session.id);
+    expect(attempts).toHaveLength(1);
+  });
+});
+
+describe("isNoContentError — FR-G3", () => {
+  it("matches EngineNotFoundError('no content available')", () => {
+    expect(
+      isNoContentError(new EngineNotFoundError("no content available")),
+    ).toBe(true);
+  });
+
+  it("rejects other engine / generic errors", () => {
+    expect(isNoContentError(new EngineNotFoundError("no next item"))).toBe(
+      false,
+    );
+    expect(isNoContentError(new EngineRepoError("boom"))).toBe(false);
+    expect(isNoContentError(new Error("no content available"))).toBe(false);
   });
 });
