@@ -48,6 +48,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -354,6 +355,81 @@ export const progressPoint = pgTable("progress_point", {
   items_reviewed: integer("items_reviewed").notNull().default(0),
 });
 
+/**
+ * exam_run — one official-rules sitting (ADR-0040 / spec §4.2).
+ * Separate from quiz_session so exam results cannot leak into practice
+ * mastery (FR-1). Timestamps follow quiz_session helpers.
+ */
+export const examRun = pgTable(
+  "exam_run",
+  {
+    id: text("id").primaryKey(),
+    learner_id: text("learner_id").notNull(),
+    form_id: text("form_id").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    composite: real("composite"),
+  },
+  (t) => [index("exam_run_learner_form_idx").on(t.learner_id, t.form_id)],
+);
+
+/**
+ * exam_section_attempt — one timed section inside a run (spec §4.2).
+ * Composite PK (run_id, section_code); run_id cascades with the parent run.
+ */
+export const examSectionAttempt = pgTable(
+  "exam_section_attempt",
+  {
+    run_id: text("run_id")
+      .notNull()
+      .references(() => examRun.id, { onDelete: "cascade" }),
+    section_code: text("section_code").notNull(),
+    status: text("status").notNull(),
+    started_at: timestamp("started_at", { withTimezone: true }),
+    finished_at: timestamp("finished_at", { withTimezone: true }),
+    deadline_at: timestamp("deadline_at", { withTimezone: true }),
+    raw_correct: integer("raw_correct"),
+    raw_scored_total: integer("raw_scored_total"),
+    scale_score: real("scale_score"),
+    time_remaining_ms_at_submit: integer("time_remaining_ms_at_submit"),
+  },
+  (t) => [primaryKey({ columns: [t.run_id, t.section_code] })],
+);
+
+/**
+ * exam_run_item — one question row inside a section (spec §4.2).
+ * Composite PK (run_id, section_code, question_id). Counters/flags default
+ * to the unanswered-new-item zeros; answer fields stay nullable.
+ */
+export const examRunItem = pgTable(
+  "exam_run_item",
+  {
+    run_id: text("run_id")
+      .notNull()
+      .references(() => examRun.id, { onDelete: "cascade" }),
+    section_code: text("section_code").notNull(),
+    question_id: text("question_id").notNull(),
+    ordinal: integer("ordinal").notNull(),
+    chosen_letter: text("chosen_letter"),
+    correct: boolean("correct"),
+    dwell_ms: integer("dwell_ms").notNull().default(0),
+    visits: integer("visits").notNull().default(0),
+    answer_changes: integer("answer_changes").notNull().default(0),
+    first_answered_at: timestamp("first_answered_at", { withTimezone: true }),
+    dwell_at_first_answer_ms: integer("dwell_at_first_answer_ms"),
+    flagged_in_section: boolean("flagged_in_section").notNull().default(false),
+    bookmarked: boolean("bookmarked").notNull().default(false),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.run_id, t.section_code, t.question_id] }),
+    index("exam_run_item_run_section_idx").on(t.run_id, t.section_code),
+  ],
+);
+
 // Row types — the adapters convert these to wire/view-model shapes; the UI
 // never imports these directly (engine spec §4 / F-R1).
 export type SkillRowPg = typeof skill.$inferSelect;
@@ -376,6 +452,12 @@ export type TestItemRowPg = typeof testItem.$inferSelect;
 export type TestItemInsertPg = typeof testItem.$inferInsert;
 export type TestBlueprintRowPg = typeof testBlueprint.$inferSelect;
 export type TestBlueprintInsertPg = typeof testBlueprint.$inferInsert;
+export type ExamRunRowPg = typeof examRun.$inferSelect;
+export type ExamRunInsertPg = typeof examRun.$inferInsert;
+export type ExamSectionAttemptRowPg = typeof examSectionAttempt.$inferSelect;
+export type ExamSectionAttemptInsertPg = typeof examSectionAttempt.$inferInsert;
+export type ExamRunItemRowPg = typeof examRunItem.$inferSelect;
+export type ExamRunItemInsertPg = typeof examRunItem.$inferInsert;
 
 // The engine-table whitelist for the IR-NEON-5 `tablesFilter` (see README.md).
 // Exported so drizzle.config can reference one source of truth.
@@ -391,6 +473,9 @@ export const ENGINE_TABLE_NAMES = [
   "tutorial",
   "content_string",
   "progress_point",
+  "exam_run",
+  "exam_section_attempt",
+  "exam_run_item",
 ] as const;
 
 // Suppress unused-import lint until a CHECK constraint or default uses `sql`.

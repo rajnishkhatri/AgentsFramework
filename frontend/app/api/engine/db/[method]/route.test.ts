@@ -18,6 +18,7 @@ const {
   listSessionAttempts,
   listSessionSkillIds,
   upsertSkillState,
+  insertExamRun,
   engineDb,
 } = vi.hoisted(() => {
   const listSkills = vi.fn();
@@ -31,6 +32,7 @@ const {
   const listSessionAttempts = vi.fn();
   const listSessionSkillIds = vi.fn();
   const upsertSkillState = vi.fn();
+  const insertExamRun = vi.fn();
   return {
     getAuthSession: vi.fn(),
     getDbSession,
@@ -44,6 +46,7 @@ const {
     listSessionAttempts,
     listSessionSkillIds,
     upsertSkillState,
+    insertExamRun,
     engineDb: vi.fn(() => ({
       listSkills,
       insertQuestion,
@@ -56,6 +59,7 @@ const {
       listSessionAttempts,
       listSessionSkillIds,
       upsertSkillState,
+      insertExamRun,
     })),
   };
 });
@@ -198,5 +202,24 @@ describe("POST /api/engine/db/[method]", () => {
       ...supplied,
       learner_id: "learner-A",
     });
+  });
+
+  it("forces insertExamRun arg0 learnerId from the authenticated claim (W1-3)", async () => {
+    getAuthSession.mockResolvedValue({ sub: "learner-A" });
+    insertExamRun.mockResolvedValue(undefined);
+    const run = {
+      id: "run-1",
+      learner_id: "learner-B",
+      form_id: "test01",
+      created_at: "2026-09-02T00:00:00.000Z",
+      composite: null,
+    };
+
+    const res = await POST(req("insertExamRun", ["learner-B", run]), {
+      params: Promise.resolve({ method: "insertExamRun" }),
+    });
+
+    expect(res.status).toBe(204);
+    expect(insertExamRun).toHaveBeenCalledWith("learner-A", run);
   });
 });

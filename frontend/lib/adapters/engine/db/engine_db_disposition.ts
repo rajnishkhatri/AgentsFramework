@@ -12,7 +12,7 @@
 
 export type EngineDbMethodDisposition = "fine" | "server-only";
 
-/** The 32 EngineDb methods + disposition. Order matches plan §2 (+ FR-E4). */
+/** The 41 EngineDb methods + disposition. Order matches plan §2 (+ FR-E4 + exam). */
 export const ENGINE_DB_DISPOSITION = {
   listSkillState: "fine",
   listSkills: "fine",
@@ -47,6 +47,16 @@ export const ENGINE_DB_DISPOSITION = {
   listContentStrings: "fine",
   getTutorial: "fine",
   listProgressPoints: "fine",
+  // ADR-0040 / W1-2 — all exam methods are fine-grained and learner-scoped.
+  insertExamRun: "fine",
+  listExamRunsByLearner: "fine",
+  getExamRun: "fine",
+  beginExamSection: "fine",
+  upsertExamRunItems: "fine",
+  finishExamSection: "fine",
+  setExamRunComposite: "fine",
+  setExamBookmark: "fine",
+  listExamRunItemsByLearner: "fine",
 } as const satisfies Record<string, EngineDbMethodDisposition>;
 
 export type EngineDbMethodName = keyof typeof ENGINE_DB_DISPOSITION;
