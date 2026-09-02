@@ -97,6 +97,7 @@ describe("InMemoryEngineDb exam store (W1-4 / FR-4/27/37)", () => {
     await db.upsertExamRunItems("claim-learner", "run-1", "english", [stored]);
     await db.upsertExamRunItems("claim-learner", "run-1", "english", [incoming]);
     const [merged] = await db.listExamRunItemsByLearner("claim-learner");
+    if (!merged) throw new Error("expected a merged exam-run item");
     expect(merged).toEqual(mergeExamDwell(stored, incoming));
     expect(merged.dwell_ms).toBe(250);
     expect(merged.visits).toBe(3);
