@@ -12,6 +12,13 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-09-02 — **D1/D2 remain human gates (no invented thresholds).** ADR-0040 stays **Proposed** — acceptance (D1) is a human act (LLM-humility / RATIFICATION §B). D2's cost/cross-team/security routing floors are **UNSET**; they are not in the spec/plan/ADR and must not be filled by an agent. Path + empty table: [approval-criteria.md](common/approval-criteria.md). Rejected: flipping ADR-0040 to Accepted without the human, or copying FR-32/FR-33 analytics floors into the approval-criteria table.
+- 2026-09-02 — **Exam module — four small decisions from the arch-lifecycle sweep (no new ADR).**
+  Surfaced by the arch-* 1→6 audit over [exam-module-official-rules.spec.md](../plan/exam-module-official-rules.spec.md)/plan/[ADR-0040](0040-exam-module-durable-runs-analytics.md) and ratified 2026-09-02; the big calls live in ADR-0040, the R1 isolation arch-test, and the separate R3 answer-key ADR.
+  (1) **Learner scoping = connascence of NAME, not position** — new `EngineDb` exam methods should take a named `{learnerId}` (or a test asserts arg0==learnerId for every `LEARNER_ARG` entry), plus a completeness test that every exam method appears in the dispatcher map with default = **deny** (risk R4). Rejected: rely on the "positional, learnerId-first" convention alone (silent leak if a signature reorders).
+  (2) **One shared dwell-merge rule** — the `monotonic-max` merge is extracted to a single pure fn (or a fixture replayed through both the client reducer and the server upsert) so the client/server connascence-of-algorithm cannot drift (risk R6). Rejected: two independent implementations pinned only by prose.
+  (3) **Exam route runs warm** — Cloud Run `min-instances ≥ 1` for the exam route + a Cloud SQL pool cap, because `beginSection` is a hard sync durability point a scale-to-zero cold start would fail (risk R5, intersection #2). Rejected: rely on default scale-to-zero.
+  (4) **Internal shape = microkernel/registry** — the section-agnostic model + form registry is the core-plus-plugins landing zone for future official forms (framing only; the durable-runs/analytics decision is ADR-0040).
 - 2026-07-23 — **T R.10c: final convergence gate green (no new ADR).** Ran the full gate: `make
   check` 5376 passed/50 skipped; `pytest tests/architecture/ -q` 254 passed/2 skipped; `pnpm vitest
   run` bulk 2164 passed + architecture 189 passed (the 8 prior timeouts were parallelism-induced at

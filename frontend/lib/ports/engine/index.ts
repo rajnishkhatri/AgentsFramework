@@ -1,7 +1,7 @@
 /**
  * Barrel re-export for the Subject-Coach engine ports (7 ADR-0006 +
  * LearnerReadRepo ADR-0011 + HintRepo ADR-0014 + TestBlueprint/TestItem
- * ADR-0015 + TutorialRepo/ProgressRepo ADR-0028).
+ * ADR-0015 + TutorialRepo/ProgressRepo ADR-0028 + ExamRunRepo ADR-0040).
  *
  * Grouped under `ports/engine/` (not flat in `ports/`) so the engine bounded
  * context stays distinct from the eight V3 chat ports, and the chat
@@ -25,6 +25,7 @@ export type { TestBlueprintRepo } from "./test_blueprint_repo";
 export type { TestItemRepo } from "./test_item_repo";
 export type { TutorialRepo } from "./tutorial_repo";
 export type { ProgressRepo } from "./progress_repo";
+export type { ExamRunRepo } from "./exam_run_repo";
 
 export {
   EngineError,

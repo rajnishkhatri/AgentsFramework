@@ -1,0 +1,72 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ExamForm / ExamRun / ExamRunItem / ExamAnalytics — round-trip + snapshot > parses a well-formed form and snapshots the wire shape 1`] = `
+{
+  "blueprint": "test01",
+  "composite_sections": [
+    "english",
+  ],
+  "id": "test01",
+  "sections": [
+    {
+      "choice_count": 4,
+      "code": "english",
+      "composite": true,
+      "directions": "Begin when you are told.",
+      "minutes": 18,
+      "questions": [
+        {
+          "answer_letter": "B",
+          "choices": [
+            {
+              "is_no_change": true,
+              "label": "NO CHANGE",
+              "letter": "A",
+            },
+            {
+              "is_no_change": false,
+              "label": "was",
+              "letter": "B",
+            },
+            {
+              "is_no_change": false,
+              "label": "have been",
+              "letter": "C",
+            },
+            {
+              "is_no_change": false,
+              "label": "being",
+              "letter": "D",
+            },
+          ],
+          "context_html": "<p>The committee <u>were</u> unanimous.</p>",
+          "difficulty": 3,
+          "generated_by": "test@run1",
+          "id": "q-1",
+          "item_type": "underlined-span-mc",
+          "misconception": null,
+          "passage": null,
+          "per_choice_rationale": {
+            "A": "a",
+            "B": "b",
+            "C": "c",
+            "D": "d",
+          },
+          "reporting_category": "conventions-of-standard-english",
+          "reviewed": true,
+          "rule_md": "collective nouns",
+          "scored": true,
+          "skill_id": "s-gram",
+          "stem": "Which choice best fixes the underlined portion?",
+          "subject": "act-english",
+          "why_correct_md": "singular",
+          "why_tempted_md": "plural people",
+        },
+      ],
+      "scale_table": null,
+      "title": "English",
+    },
+  ],
+  "title": "Test 01",
+}
+`;

@@ -28,9 +28,9 @@ const ENGINE_PORTS_DIR = path.join(FRONTEND_ROOT, "lib", "ports", "engine");
 // Non-interface helper modules under ports/engine/ — skipped by interface checks.
 const NON_PORT_FILES = new Set(["errors.ts", "index.ts"]);
 
-// The thirteen engine ports (7 ADR-0006 + LearnerReadRepo ADR-0011 + HintRepo
-// ADR-0014 + TestBlueprint/TestItem ADR-0015 + Tutorial/Progress ADR-0028).
-// Adding a port without a row here is a P7 violation (port -> conformance pairing).
+// The fourteen engine ports (7 ADR-0006 + LearnerReadRepo ADR-0011 + HintRepo
+// ADR-0014 + TestBlueprint/TestItem ADR-0015 + Tutorial/Progress ADR-0028 +
+// ExamRunRepo ADR-0040). Adding a port without a row here is a P7 violation.
 const REQUIRED_PORTS: ReadonlyArray<{
   file: string;
   interfaceName: string;
@@ -61,6 +61,8 @@ const REQUIRED_PORTS: ReadonlyArray<{
   { file: "tutorial_repo.ts", interfaceName: "TutorialRepo" },
   // ADR-0028: read-only progress seam (13th, E1a FR-17).
   { file: "progress_repo.ts", interfaceName: "ProgressRepo" },
+  // ADR-0040: exam-run seam (14th). Phase-0 stub; adapter lands in WT-1.
+  { file: "exam_run_repo.ts", interfaceName: "ExamRunRepo" },
 ];
 
 // Vendor acronyms a port name must never contain (P2).
@@ -89,7 +91,7 @@ function findInterface(sf: SourceFile, name: string) {
 }
 
 describe("Engine port conformance suite [ADR-0006 / P7]", () => {
-  it("ports/engine/ contains exactly the thirteen engine ports (+ helper modules)", () => {
+  it("ports/engine/ contains exactly the fourteen engine ports (+ helper modules)", () => {
     expect(fs.existsSync(ENGINE_PORTS_DIR), `${ENGINE_PORTS_DIR} must exist`).toBe(true);
     const interfaceFiles = fs
       .readdirSync(ENGINE_PORTS_DIR)
