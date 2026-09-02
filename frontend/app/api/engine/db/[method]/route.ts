@@ -17,6 +17,10 @@ import {
   requireOwnedSession,
 } from "@/lib/bff/engine_guard";
 import {
+  EXAM_LEARNER_ARG,
+  resolveExamLearnerArg,
+} from "@/lib/adapters/engine/db/dispatcher_learner_arg";
+import {
   ENGINE_DB_DISPOSITION,
   type EngineDbMethodName,
 } from "@/lib/adapters/engine/db/engine_db_disposition";
@@ -33,6 +37,7 @@ const LEARNER_ARG: Partial<Record<EngineDbMethodName, number>> = {
   accuracyRowsBySkill: 1,
   getSkillState: 2,
   listProgressPoints: 1,
+  ...EXAM_LEARNER_ARG,
 };
 
 /** Methods whose object arg embeds a learner id the client must not choose. */
@@ -86,7 +91,10 @@ export async function POST(
     return badRequest();
   }
 
-  const learnerIdx = LEARNER_ARG[raw];
+  const examLearner = resolveExamLearnerArg(raw);
+  if (examLearner === "deny") return notFound();
+
+  const learnerIdx = examLearner ?? LEARNER_ARG[raw];
   if (learnerIdx !== undefined) {
     args = [...args];
     args[learnerIdx] = learnerId;

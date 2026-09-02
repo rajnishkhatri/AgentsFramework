@@ -30,6 +30,13 @@ import type {
   TestItem,
   Tutorial,
 } from "../../../wire/engine_entities";
+import type {
+  ExamRun,
+  ExamRunItem,
+  ExamSectionAttempt,
+  ExamSectionAttemptStatus,
+  ExamSectionCode,
+} from "../../../wire/exam_entities";
 
 /** The score+close patch SessionRepo applies (FR-D3). */
 export type SessionClosePatch = {
@@ -47,6 +54,31 @@ export type SessionClosePatch = {
 export type InsertAttemptResult =
   | { status: "inserted"; attempt: Attempt }
   | { status: "already-existed"; attempt: Attempt };
+
+/** One run plus its section-attempt rows (`listExamRunsByLearner`). */
+export type ExamRunListEntry = {
+  run: ExamRun;
+  attempts: ExamSectionAttempt[];
+};
+
+/** One owned run plus attempts and items (`getExamRun`); `null` if not owned. */
+export type ExamRunDetail = {
+  run: ExamRun;
+  attempts: ExamSectionAttempt[];
+  items: ExamRunItem[];
+};
+
+/** Scores written by `finishExamSection`. */
+export type ExamSectionGrades = {
+  raw_correct: number;
+  raw_scored_total: number;
+  scale_score: number | null;
+};
+
+export type ExamSectionFinishStatus = Extract<
+  ExamSectionAttemptStatus,
+  "submitted" | "expired"
+>;
 
 /**
  * ReadableEngineDb — the read-only projection of the `skill_state` seam the
@@ -221,4 +253,48 @@ export interface EngineDb extends ReadableEngineDb {
   // --- tutorial / progress_point (read paths used by translators/UI) ---
   getTutorial(subject: string, skillId: string): Promise<Tutorial | null>;
   listProgressPoints(subject: string, learnerId: string): Promise<ProgressPoint[]>;
+
+  // --- exam_run / exam_section_attempt / exam_run_item (ADR-0040 / W1-2) ---
+  // Every method is learnerId-first so the dispatcher LEARNER_ARG override
+  // (W1-3) can enforce FR-3. Disposition is `"fine"` for all nine.
+  insertExamRun(learnerId: string, run: ExamRun): Promise<void>;
+  listExamRunsByLearner(
+    learnerId: string,
+    formId?: string,
+  ): Promise<ExamRunListEntry[]>;
+  getExamRun(learnerId: string, runId: string): Promise<ExamRunDetail | null>;
+  beginExamSection(
+    learnerId: string,
+    runId: string,
+    section: ExamSectionCode,
+    startedAt: string,
+    deadlineAt: string,
+  ): Promise<ExamSectionAttempt>;
+  upsertExamRunItems(
+    learnerId: string,
+    runId: string,
+    section: ExamSectionCode,
+    items: readonly ExamRunItem[],
+  ): Promise<void>;
+  finishExamSection(
+    learnerId: string,
+    runId: string,
+    section: ExamSectionCode,
+    status: ExamSectionFinishStatus,
+    grades: ExamSectionGrades,
+    remainingMs: number | null,
+  ): Promise<ExamSectionAttempt>;
+  setExamRunComposite(
+    learnerId: string,
+    runId: string,
+    composite: number | null,
+  ): Promise<void>;
+  setExamBookmark(
+    learnerId: string,
+    runId: string,
+    section: ExamSectionCode,
+    questionId: string,
+    bookmarked: boolean,
+  ): Promise<void>;
+  listExamRunItemsByLearner(learnerId: string): Promise<ExamRunItem[]>;
 }

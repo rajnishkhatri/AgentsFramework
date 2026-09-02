@@ -17,14 +17,8 @@
  * SQLite construction lives behind a separate factory (the driver differs); both
  * funnel into the same row-mapping logic.
  *
- * NOTE ON VERIFICATION: this seam cannot be exercised in CI without a live
- * Postgres/SQLite database (there is none on the deterministic gate). Its
- * CORRECTNESS contract is proven indirectly: (a) `tsc` checks the query builder
- * usage against the real schemas, and (b) the repos + Scheduler are fully tested
- * against `InMemoryEngineDb`, which implements the SAME `EngineDb` behavior this
- * seam must reproduce. A live integration test is the documented follow-up
- * (engine spec §8.2 coverage gap), gated behind a DATABASE_URL, not the CI hot
- * path.
+ * Exam methods (W1-5) are exercised on L2 sqlite (`node:sqlite`) in CI. Real
+ * Postgres two-device concurrency is env-gated behind DATABASE_URL (FR-40 / R8).
  */
 
 import {
@@ -42,8 +36,12 @@ import {
 import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { pgPoolMax, toNodePgConnectionString } from "@/lib/adapters/db/node_pg_url";
-import * as pg from "./schema.pg";
-import { EngineRepoError } from "../../../ports/engine/errors";
+import { mergeExamDwell } from "../../../../components/exam/exam_dwell_merge";
+import {
+  EngineError,
+  EngineNotFoundError,
+  EngineRepoError,
+} from "../../../ports/engine/errors";
 import type {
   Attempt,
   Hint,
@@ -58,10 +56,54 @@ import type {
   Tutorial,
 } from "../../../wire/engine_entities";
 import type {
+  ExamRun,
+  ExamRunItem,
+  ExamSectionAttempt,
+  ExamSectionCode,
+} from "../../../wire/exam_entities";
+import type {
   EngineDb,
+  ExamRunDetail,
+  ExamRunListEntry,
+  ExamSectionFinishStatus,
+  ExamSectionGrades,
   InsertAttemptResult,
   SessionClosePatch,
 } from "./engine_db";
+import * as pg from "./schema.pg";
+import * as sqliteSchema from "./schema.sqlite";
+
+/** The nine exam methods W1-5 lands on both dialects. */
+export type ExamEngineDb = Pick<
+  EngineDb,
+  | "insertExamRun"
+  | "listExamRunsByLearner"
+  | "getExamRun"
+  | "beginExamSection"
+  | "upsertExamRunItems"
+  | "finishExamSection"
+  | "setExamRunComposite"
+  | "setExamBookmark"
+  | "listExamRunItemsByLearner"
+>;
+
+type ExamTables = {
+  examRun: typeof pg.examRun | typeof sqliteSchema.examRun;
+  examSectionAttempt:
+    | typeof pg.examSectionAttempt
+    | typeof sqliteSchema.examSectionAttempt;
+  examRunItem: typeof pg.examRunItem | typeof sqliteSchema.examRunItem;
+};
+
+type ExamDialect = "pg" | "sqlite";
+
+/**
+ * SQLite twin of the exam store (ADR-0005 / W1-5). The driver is supplied by
+ * the caller so this file does not import `node:sqlite`.
+ */
+export function sqliteExamEngineDbFrom(db: unknown): ExamEngineDb {
+  return createExamMethods(db, sqliteSchema, "sqlite");
+}
 
 // --- row mappers (Drizzle row → wire shape). Timestamps → ISO strings. ---
 
@@ -265,6 +307,585 @@ function toProgressPoint(r: Record<string, unknown>): ProgressPoint {
     at: isoOf(r.at),
     projected_score: Number(r.projected_score ?? 0),
     items_reviewed: Number(r.items_reviewed ?? 0),
+  };
+}
+
+function examIsoOf(value: unknown): string {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string") return value;
+  if (typeof value === "number") {
+    // sqlite `unixepoch()` / timestamp-mode integers are seconds.
+    const ms = value < 1e12 ? value * 1000 : value;
+    return new Date(ms).toISOString();
+  }
+  throw new EngineRepoError(`exam timestamp unreadable: ${typeof value}`);
+}
+
+function examIsoOrNull(value: unknown): string | null {
+  return value == null ? null : examIsoOf(value);
+}
+
+function examBoolOf(value: unknown): boolean {
+  return value === true || value === 1 || value === "1";
+}
+
+function examBoolOrNull(value: unknown): boolean | null {
+  return value == null ? null : examBoolOf(value);
+}
+
+function toExamRun(r: Record<string, unknown>): ExamRun {
+  return {
+    id: String(r.id),
+    learner_id: String(r.learner_id),
+    form_id: String(r.form_id),
+    created_at: examIsoOf(r.created_at),
+    composite: r.composite == null ? null : Number(r.composite),
+  };
+}
+
+function toExamSectionAttempt(r: Record<string, unknown>): ExamSectionAttempt {
+  return {
+    run_id: String(r.run_id),
+    section_code: r.section_code as ExamSectionCode,
+    status: r.status as ExamSectionAttempt["status"],
+    started_at: examIsoOrNull(r.started_at),
+    finished_at: examIsoOrNull(r.finished_at),
+    deadline_at: examIsoOrNull(r.deadline_at),
+    raw_correct: r.raw_correct == null ? null : Number(r.raw_correct),
+    raw_scored_total:
+      r.raw_scored_total == null ? null : Number(r.raw_scored_total),
+    scale_score: r.scale_score == null ? null : Number(r.scale_score),
+    time_remaining_ms_at_submit:
+      r.time_remaining_ms_at_submit == null
+        ? null
+        : Number(r.time_remaining_ms_at_submit),
+  };
+}
+
+function toExamRunItem(r: Record<string, unknown>): ExamRunItem {
+  return {
+    run_id: String(r.run_id),
+    section_code: r.section_code as ExamSectionCode,
+    question_id: String(r.question_id),
+    ordinal: Number(r.ordinal),
+    chosen_letter: r.chosen_letter == null ? null : String(r.chosen_letter),
+    correct: examBoolOrNull(r.correct),
+    dwell_ms: Number(r.dwell_ms ?? 0),
+    visits: Number(r.visits ?? 0),
+    answer_changes: Number(r.answer_changes ?? 0),
+    first_answered_at: examIsoOrNull(r.first_answered_at),
+    dwell_at_first_answer_ms:
+      r.dwell_at_first_answer_ms == null
+        ? null
+        : Number(r.dwell_at_first_answer_ms),
+    flagged_in_section: examBoolOf(r.flagged_in_section),
+    bookmarked: examBoolOf(r.bookmarked),
+    updated_at: examIsoOf(r.updated_at),
+  };
+}
+
+function examDateOrNull(iso: string | null): Date | null {
+  return iso == null ? null : new Date(iso);
+}
+
+function itemInsertValues(row: ExamRunItem) {
+  return {
+    run_id: row.run_id,
+    section_code: row.section_code,
+    question_id: row.question_id,
+    ordinal: row.ordinal,
+    chosen_letter: row.chosen_letter,
+    correct: row.correct,
+    dwell_ms: row.dwell_ms,
+    visits: row.visits,
+    answer_changes: row.answer_changes,
+    first_answered_at: examDateOrNull(row.first_answered_at),
+    dwell_at_first_answer_ms: row.dwell_at_first_answer_ms,
+    flagged_in_section: row.flagged_in_section,
+    bookmarked: row.bookmarked,
+    updated_at: new Date(row.updated_at),
+  };
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /unique|UNIQUE|23505|PRIMARY KEY/i.test(msg);
+}
+
+/**
+ * Dialect-parameterized exam store (pg + sqlite). Upserts call mergeExamDwell
+ * (do not fork). begin uses onConflictDoNothing (keep-first); item writes use
+ * onConflictDoUpdate. pg locks the run row so two devices serialize (FR-40).
+ */
+function createExamMethods(
+  db: unknown,
+  t: ExamTables,
+  dialect: ExamDialect,
+): ExamEngineDb {
+  const client = db as {
+    select: () => {
+      from: (table: unknown) => unknown;
+    };
+    insert: (table: unknown) => unknown;
+    update: (table: unknown) => unknown;
+    execute: (q: unknown) => Promise<unknown>;
+    transaction: <T>(fn: (tx: unknown) => Promise<T>) => Promise<T>;
+  };
+
+  const wrap = async <T>(op: string, p: Promise<T>): Promise<T> => {
+    try {
+      return await p;
+    } catch (err) {
+      if (err instanceof EngineError) throw err;
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new EngineRepoError(`engine db ${op} failed: ${detail}`);
+    }
+  };
+
+  const q = (tx: unknown = client) => tx as typeof client;
+
+  async function lockExamRun(tx: unknown, runId: string): Promise<void> {
+    if (dialect !== "pg") return;
+    await q(tx).execute(
+      sql`SELECT 1 FROM ${t.examRun} WHERE ${t.examRun.id} = ${runId} FOR UPDATE`,
+    );
+  }
+
+  async function selectOwnedRun(
+    tx: unknown,
+    learnerId: string,
+    runId: string,
+  ): Promise<ExamRun | null> {
+    const rows = (await (
+      q(tx)
+        .select()
+        .from(t.examRun) as {
+        where: (c: unknown) => { limit: (n: number) => Promise<unknown[]> };
+      }
+    )
+      .where(and(eq(t.examRun.id, runId), eq(t.examRun.learner_id, learnerId)))
+      .limit(1)) as Record<string, unknown>[];
+    const first = rows[0];
+    return first ? toExamRun(first) : null;
+  }
+
+  async function requireOwnedRun(
+    tx: unknown,
+    learnerId: string,
+    runId: string,
+  ): Promise<ExamRun> {
+    const run = await selectOwnedRun(tx, learnerId, runId);
+    if (run == null) {
+      throw new EngineNotFoundError(`exam run not found: ${runId}`);
+    }
+    return run;
+  }
+
+  async function selectAttempts(
+    tx: unknown,
+    runId: string,
+  ): Promise<ExamSectionAttempt[]> {
+    const rows = (await (
+      q(tx)
+        .select()
+        .from(t.examSectionAttempt) as {
+        where: (c: unknown) => {
+          orderBy: (...o: unknown[]) => Promise<unknown[]>;
+        };
+      }
+    )
+      .where(eq(t.examSectionAttempt.run_id, runId))
+      .orderBy(asc(t.examSectionAttempt.section_code))) as Record<
+      string,
+      unknown
+    >[];
+    return rows.map((r) => toExamSectionAttempt(r));
+  }
+
+  async function selectAttempt(
+    tx: unknown,
+    runId: string,
+    section: ExamSectionCode,
+  ): Promise<ExamSectionAttempt | null> {
+    const rows = (await (
+      q(tx)
+        .select()
+        .from(t.examSectionAttempt) as {
+        where: (c: unknown) => { limit: (n: number) => Promise<unknown[]> };
+      }
+    )
+      .where(
+        and(
+          eq(t.examSectionAttempt.run_id, runId),
+          eq(t.examSectionAttempt.section_code, section),
+        ),
+      )
+      .limit(1)) as Record<string, unknown>[];
+    const first = rows[0];
+    return first ? toExamSectionAttempt(first) : null;
+  }
+
+  async function selectItems(
+    tx: unknown,
+    runId: string,
+  ): Promise<ExamRunItem[]> {
+    const rows = (await (
+      q(tx)
+        .select()
+        .from(t.examRunItem) as {
+        where: (c: unknown) => {
+          orderBy: (...o: unknown[]) => Promise<unknown[]>;
+        };
+      }
+    )
+      .where(eq(t.examRunItem.run_id, runId))
+      .orderBy(asc(t.examRunItem.ordinal), asc(t.examRunItem.question_id))) as Record<
+      string,
+      unknown
+    >[];
+    return rows.map((r) => toExamRunItem(r));
+  }
+
+  async function selectItem(
+    tx: unknown,
+    runId: string,
+    section: ExamSectionCode,
+    questionId: string,
+  ): Promise<ExamRunItem | null> {
+    const rows = (await (
+      q(tx)
+        .select()
+        .from(t.examRunItem) as {
+        where: (c: unknown) => { limit: (n: number) => Promise<unknown[]> };
+      }
+    )
+      .where(
+        and(
+          eq(t.examRunItem.run_id, runId),
+          eq(t.examRunItem.section_code, section),
+          eq(t.examRunItem.question_id, questionId),
+        ),
+      )
+      .limit(1)) as Record<string, unknown>[];
+    const first = rows[0];
+    return first ? toExamRunItem(first) : null;
+  }
+
+  return {
+    async insertExamRun(learnerId, run) {
+      const stored: ExamRun = { ...run, learner_id: learnerId };
+      try {
+        await wrap(
+          "insertExamRun",
+          (
+            client.insert(t.examRun) as {
+              values: (v: unknown) => Promise<unknown>;
+            }
+          ).values({
+            id: stored.id,
+            learner_id: stored.learner_id,
+            form_id: stored.form_id,
+            created_at: new Date(stored.created_at),
+            composite: stored.composite,
+          }),
+        );
+      } catch (err) {
+        if (isUniqueViolation(err)) {
+          throw new EngineRepoError(`duplicate exam run: ${stored.id}`);
+        }
+        throw err;
+      }
+    },
+
+    async listExamRunsByLearner(learnerId, formId) {
+      const predicates = [eq(t.examRun.learner_id, learnerId)];
+      if (formId != null) predicates.push(eq(t.examRun.form_id, formId));
+      const rows = (await wrap(
+        "listExamRunsByLearner",
+        (
+          client.select().from(t.examRun) as {
+            where: (c: unknown) => {
+              orderBy: (...o: unknown[]) => Promise<unknown[]>;
+            };
+          }
+        )
+          .where(and(...predicates))
+          .orderBy(desc(t.examRun.created_at), asc(t.examRun.id)),
+      )) as Record<string, unknown>[];
+      const entries: ExamRunListEntry[] = [];
+      for (const r of rows) {
+        const mapped = toExamRun(r);
+        entries.push({
+          run: mapped,
+          attempts: await selectAttempts(client, mapped.id),
+        });
+      }
+      return entries;
+    },
+
+    async getExamRun(learnerId, runId) {
+      const run = await selectOwnedRun(client, learnerId, runId);
+      if (run == null) return null;
+      return {
+        run,
+        attempts: await selectAttempts(client, runId),
+        items: await selectItems(client, runId),
+      } satisfies ExamRunDetail;
+    },
+
+    async beginExamSection(learnerId, runId, section, startedAt, deadlineAt) {
+      return client.transaction(async (tx) => {
+        await requireOwnedRun(tx, learnerId, runId);
+        await lockExamRun(tx, runId);
+        const existing = await selectAttempt(tx, runId, section);
+        if (existing?.status === "in_progress") {
+          return existing;
+        }
+        if (existing?.status === "submitted" || existing?.status === "expired") {
+          throw new EngineRepoError(
+            `beginExamSection: attempt already ${existing.status}`,
+          );
+        }
+        const others = await selectAttempts(tx, runId);
+        if (others.some((a) => a.status === "in_progress")) {
+          throw new EngineRepoError(
+            "beginExamSection: another section is in progress",
+          );
+        }
+        await wrap(
+          "beginExamSection",
+          (
+            q(tx).insert(t.examSectionAttempt) as {
+              values: (v: unknown) => {
+                onConflictDoNothing: (c: unknown) => Promise<unknown>;
+              };
+            }
+          )
+            .values({
+              run_id: runId,
+              section_code: section,
+              status: "in_progress",
+              started_at: new Date(startedAt),
+              finished_at: null,
+              deadline_at: new Date(deadlineAt),
+              raw_correct: null,
+              raw_scored_total: null,
+              scale_score: null,
+              time_remaining_ms_at_submit: null,
+            })
+            .onConflictDoNothing({
+              target: [
+                t.examSectionAttempt.run_id,
+                t.examSectionAttempt.section_code,
+              ],
+            }),
+        );
+        const stored = await selectAttempt(tx, runId, section);
+        if (stored == null) {
+          throw new EngineRepoError(
+            `beginExamSection: attempt missing after insert: ${runId}/${section}`,
+          );
+        }
+        if (stored.status === "submitted" || stored.status === "expired") {
+          throw new EngineRepoError(
+            `beginExamSection: attempt already ${stored.status}`,
+          );
+        }
+        return stored;
+      });
+    },
+
+    async upsertExamRunItems(learnerId, runId, section, items) {
+      await client.transaction(async (tx) => {
+        await requireOwnedRun(tx, learnerId, runId);
+        await lockExamRun(tx, runId);
+        const attempt = await selectAttempt(tx, runId, section);
+        if (attempt?.status !== "in_progress") {
+          throw new EngineRepoError(
+            "upsertExamRunItems: attempt not in_progress",
+          );
+        }
+        for (const incoming of items) {
+          const stamped: ExamRunItem = {
+            ...incoming,
+            run_id: runId,
+            section_code: section,
+          };
+          const stored = await selectItem(
+            tx,
+            runId,
+            section,
+            stamped.question_id,
+          );
+          const merged =
+            stored == null ? stamped : mergeExamDwell(stored, stamped);
+          const values = itemInsertValues(merged);
+          await wrap(
+            "upsertExamRunItems",
+            (
+              q(tx).insert(t.examRunItem) as {
+                values: (v: unknown) => {
+                  onConflictDoUpdate: (c: unknown) => Promise<unknown>;
+                };
+              }
+            )
+              .values(values)
+              .onConflictDoUpdate({
+                target: [
+                  t.examRunItem.run_id,
+                  t.examRunItem.section_code,
+                  t.examRunItem.question_id,
+                ],
+                set: {
+                  ordinal: values.ordinal,
+                  chosen_letter: values.chosen_letter,
+                  correct: values.correct,
+                  dwell_ms: values.dwell_ms,
+                  visits: values.visits,
+                  answer_changes: values.answer_changes,
+                  first_answered_at: values.first_answered_at,
+                  dwell_at_first_answer_ms: values.dwell_at_first_answer_ms,
+                  flagged_in_section: values.flagged_in_section,
+                  bookmarked: values.bookmarked,
+                  updated_at: values.updated_at,
+                },
+              }),
+          );
+        }
+      });
+    },
+
+    async finishExamSection(
+      learnerId,
+      runId,
+      section,
+      status: ExamSectionFinishStatus,
+      grades: ExamSectionGrades,
+      remainingMs,
+    ) {
+      return client.transaction(async (tx) => {
+        await requireOwnedRun(tx, learnerId, runId);
+        await lockExamRun(tx, runId);
+        const updated = (await wrap(
+          "finishExamSection",
+          (
+            q(tx).update(t.examSectionAttempt) as {
+              set: (v: unknown) => {
+                where: (c: unknown) => {
+                  returning: () => Promise<unknown[]>;
+                };
+              };
+            }
+          )
+            .set({
+              status,
+              finished_at: new Date(),
+              raw_correct: grades.raw_correct,
+              raw_scored_total: grades.raw_scored_total,
+              scale_score: grades.scale_score,
+              time_remaining_ms_at_submit: remainingMs,
+            })
+            .where(
+              and(
+                eq(t.examSectionAttempt.run_id, runId),
+                eq(t.examSectionAttempt.section_code, section),
+                eq(t.examSectionAttempt.status, "in_progress"),
+              ),
+            )
+            .returning(),
+        )) as Record<string, unknown>[];
+        const first = updated[0];
+        if (first) return toExamSectionAttempt(first);
+        const existing = await selectAttempt(tx, runId, section);
+        if (existing == null) {
+          throw new EngineNotFoundError(
+            `exam section attempt not found: ${runId}/${section}`,
+          );
+        }
+        if (existing.status === "submitted" || existing.status === "expired") {
+          return existing;
+        }
+        throw new EngineRepoError("finishExamSection: attempt not in_progress");
+      });
+    },
+
+    async setExamRunComposite(learnerId, runId, composite) {
+      await requireOwnedRun(client, learnerId, runId);
+      await wrap(
+        "setExamRunComposite",
+        (
+          client.update(t.examRun) as {
+            set: (v: unknown) => { where: (c: unknown) => Promise<unknown> };
+          }
+        )
+          .set({ composite })
+          .where(
+            and(eq(t.examRun.id, runId), eq(t.examRun.learner_id, learnerId)),
+          ),
+      );
+    },
+
+    async setExamBookmark(learnerId, runId, section, questionId, bookmarked) {
+      await requireOwnedRun(client, learnerId, runId);
+      const attempt = await selectAttempt(client, runId, section);
+      if (attempt?.status !== "submitted" && attempt?.status !== "expired") {
+        throw new EngineRepoError("setExamBookmark: attempt not finished");
+      }
+      const stored = await selectItem(client, runId, section, questionId);
+      if (stored == null) {
+        throw new EngineNotFoundError(
+          `exam run item not found: ${runId}/${section}/${questionId}`,
+        );
+      }
+      await wrap(
+        "setExamBookmark",
+        (
+          client.update(t.examRunItem) as {
+            set: (v: unknown) => { where: (c: unknown) => Promise<unknown> };
+          }
+        )
+          .set({ bookmarked })
+          .where(
+            and(
+              eq(t.examRunItem.run_id, runId),
+              eq(t.examRunItem.section_code, section),
+              eq(t.examRunItem.question_id, questionId),
+            ),
+          ),
+      );
+    },
+
+    async listExamRunItemsByLearner(learnerId) {
+      const rows = (await wrap(
+        "listExamRunItemsByLearner",
+        (
+          (
+            client.select().from(t.examRunItem) as {
+              innerJoin: (table: unknown, on: unknown) => {
+                where: (c: unknown) => {
+                  orderBy: (...o: unknown[]) => Promise<unknown[]>;
+                };
+              };
+            }
+          )
+            .innerJoin(t.examRun, eq(t.examRunItem.run_id, t.examRun.id))
+            .where(eq(t.examRun.learner_id, learnerId))
+            .orderBy(
+              asc(t.examRunItem.run_id),
+              asc(t.examRunItem.section_code),
+              asc(t.examRunItem.ordinal),
+              asc(t.examRunItem.question_id),
+            )
+        ),
+      )) as Record<string, unknown>[];
+      return rows.map((r) => {
+        const src =
+          r.exam_run_item != null && typeof r.exam_run_item === "object"
+            ? (r.exam_run_item as Record<string, unknown>)
+            : r;
+        return toExamRunItem(src);
+      });
+    },
   };
 }
 
@@ -894,6 +1515,8 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       );
       return rows.map((r) => toProgressPoint(r as Record<string, unknown>));
     },
+    // --- exam (W1-5). Shared merge + .onConflict; positional learnerId. ---
+    ...createExamMethods(db, pg, "pg"),
   };
 }
 

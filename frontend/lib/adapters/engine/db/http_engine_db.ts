@@ -20,8 +20,22 @@ import type {
   TestItem,
   Tutorial,
 } from "../../../wire/engine_entities";
+import type {
+  ExamRun,
+  ExamRunItem,
+  ExamSectionAttempt,
+  ExamSectionCode,
+} from "../../../wire/exam_entities";
 import { EngineRepoError } from "../../../ports/engine/errors";
-import type { EngineDb, InsertAttemptResult, SessionClosePatch } from "./engine_db";
+import type {
+  EngineDb,
+  ExamRunDetail,
+  ExamRunListEntry,
+  ExamSectionFinishStatus,
+  ExamSectionGrades,
+  InsertAttemptResult,
+  SessionClosePatch,
+} from "./engine_db";
 import {
   ENGINE_DB_DISPOSITION,
   type EngineDbMethodName,
@@ -53,6 +67,12 @@ export class HttpEngineDb implements EngineDb {
     "setSessionCurrentQuestion",
     "insertAttempt",
     "upsertSkillState",
+    "insertExamRun",
+    "beginExamSection",
+    "upsertExamRunItems",
+    "finishExamSection",
+    "setExamRunComposite",
+    "setExamBookmark",
   ]);
 
   private async call<T>(method: EngineDbMethodName, args: unknown[]): Promise<T> {
@@ -270,5 +290,84 @@ export class HttpEngineDb implements EngineDb {
     learnerId: string,
   ): Promise<ProgressPoint[]> {
     return this.call("listProgressPoints", [subject, learnerId]);
+  }
+
+  // --- exam_run (ADR-0040 / W1-2; BFF wiring + foreign-learner is W1-6) ---
+  insertExamRun(learnerId: string, run: ExamRun): Promise<void> {
+    return this.call("insertExamRun", [learnerId, run]);
+  }
+  listExamRunsByLearner(
+    learnerId: string,
+    formId?: string,
+  ): Promise<ExamRunListEntry[]> {
+    return this.call("listExamRunsByLearner", [learnerId, formId]);
+  }
+  getExamRun(learnerId: string, runId: string): Promise<ExamRunDetail | null> {
+    return this.call("getExamRun", [learnerId, runId]);
+  }
+  beginExamSection(
+    learnerId: string,
+    runId: string,
+    section: ExamSectionCode,
+    startedAt: string,
+    deadlineAt: string,
+  ): Promise<ExamSectionAttempt> {
+    return this.call("beginExamSection", [
+      learnerId,
+      runId,
+      section,
+      startedAt,
+      deadlineAt,
+    ]);
+  }
+  upsertExamRunItems(
+    learnerId: string,
+    runId: string,
+    section: ExamSectionCode,
+    items: readonly ExamRunItem[],
+  ): Promise<void> {
+    return this.call("upsertExamRunItems", [learnerId, runId, section, items]);
+  }
+  finishExamSection(
+    learnerId: string,
+    runId: string,
+    section: ExamSectionCode,
+    status: ExamSectionFinishStatus,
+    grades: ExamSectionGrades,
+    remainingMs: number | null,
+  ): Promise<ExamSectionAttempt> {
+    return this.call("finishExamSection", [
+      learnerId,
+      runId,
+      section,
+      status,
+      grades,
+      remainingMs,
+    ]);
+  }
+  setExamRunComposite(
+    learnerId: string,
+    runId: string,
+    composite: number | null,
+  ): Promise<void> {
+    return this.call("setExamRunComposite", [learnerId, runId, composite]);
+  }
+  setExamBookmark(
+    learnerId: string,
+    runId: string,
+    section: ExamSectionCode,
+    questionId: string,
+    bookmarked: boolean,
+  ): Promise<void> {
+    return this.call("setExamBookmark", [
+      learnerId,
+      runId,
+      section,
+      questionId,
+      bookmarked,
+    ]);
+  }
+  listExamRunItemsByLearner(learnerId: string): Promise<ExamRunItem[]> {
+    return this.call("listExamRunItemsByLearner", [learnerId]);
   }
 }

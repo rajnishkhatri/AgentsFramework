@@ -26,6 +26,7 @@
 
 import { sql } from "drizzle-orm";
 import {
+  index,
   integer,
   primaryKey,
   real,
@@ -264,6 +265,74 @@ export const progressPoint = sqliteTable("progress_point", {
   items_reviewed: integer("items_reviewed").notNull().default(0),
 });
 
+/** exam_run — see schema.pg.ts. Timestamps follow quiz_session helpers. */
+export const examRun = sqliteTable(
+  "exam_run",
+  {
+    id: text("id").primaryKey(),
+    learner_id: text("learner_id").notNull(),
+    form_id: text("form_id").notNull(),
+    created_at: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    composite: real("composite"),
+  },
+  (t) => [index("exam_run_learner_form_idx").on(t.learner_id, t.form_id)],
+);
+
+/** exam_section_attempt — see schema.pg.ts. */
+export const examSectionAttempt = sqliteTable(
+  "exam_section_attempt",
+  {
+    run_id: text("run_id")
+      .notNull()
+      .references(() => examRun.id, { onDelete: "cascade" }),
+    section_code: text("section_code").notNull(),
+    status: text("status").notNull(),
+    started_at: integer("started_at", { mode: "timestamp" }),
+    finished_at: integer("finished_at", { mode: "timestamp" }),
+    deadline_at: integer("deadline_at", { mode: "timestamp" }),
+    raw_correct: integer("raw_correct"),
+    raw_scored_total: integer("raw_scored_total"),
+    scale_score: real("scale_score"),
+    time_remaining_ms_at_submit: integer("time_remaining_ms_at_submit"),
+  },
+  (t) => [primaryKey({ columns: [t.run_id, t.section_code] })],
+);
+
+/** exam_run_item — see schema.pg.ts. */
+export const examRunItem = sqliteTable(
+  "exam_run_item",
+  {
+    run_id: text("run_id")
+      .notNull()
+      .references(() => examRun.id, { onDelete: "cascade" }),
+    section_code: text("section_code").notNull(),
+    question_id: text("question_id").notNull(),
+    ordinal: integer("ordinal").notNull(),
+    chosen_letter: text("chosen_letter"),
+    correct: integer("correct", { mode: "boolean" }),
+    dwell_ms: integer("dwell_ms").notNull().default(0),
+    visits: integer("visits").notNull().default(0),
+    answer_changes: integer("answer_changes").notNull().default(0),
+    first_answered_at: integer("first_answered_at", { mode: "timestamp" }),
+    dwell_at_first_answer_ms: integer("dwell_at_first_answer_ms"),
+    flagged_in_section: integer("flagged_in_section", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    bookmarked: integer("bookmarked", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    updated_at: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (t) => [
+    primaryKey({ columns: [t.run_id, t.section_code, t.question_id] }),
+    index("exam_run_item_run_section_idx").on(t.run_id, t.section_code),
+  ],
+);
+
 // Row types (SQLite dialect). Structurally these match the Postgres row types
 // except `Date` vs `Date` (both modes decode to Date) and boolean columns
 // decode to `boolean` in both — so the adapter's wire conversion is identical.
@@ -283,3 +352,10 @@ export type ContentStringRowSqlite = typeof contentString.$inferSelect;
 export type ContentStringInsertSqlite = typeof contentString.$inferInsert;
 export type ProgressPointRowSqlite = typeof progressPoint.$inferSelect;
 export type ProgressPointInsertSqlite = typeof progressPoint.$inferInsert;
+export type ExamRunRowSqlite = typeof examRun.$inferSelect;
+export type ExamRunInsertSqlite = typeof examRun.$inferInsert;
+export type ExamSectionAttemptRowSqlite = typeof examSectionAttempt.$inferSelect;
+export type ExamSectionAttemptInsertSqlite =
+  typeof examSectionAttempt.$inferInsert;
+export type ExamRunItemRowSqlite = typeof examRunItem.$inferSelect;
+export type ExamRunItemInsertSqlite = typeof examRunItem.$inferInsert;
