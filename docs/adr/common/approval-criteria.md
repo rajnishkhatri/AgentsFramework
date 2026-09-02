@@ -50,7 +50,7 @@ flips to Accepted → `docs/adr/index.md` + `log.md` get a newest-first line
 
 ## Related (not this file)
 
-- **D1** (ADR-0040 Proposed → Accepted) is a separate human gate. See
-  [ADR-0040](../0040-exam-module-durable-runs-analytics.md). Not flipped here.
+- **D1** (ADR-0040 Proposed → Accepted) closed **2026-09-02** (human). See
+  [ADR-0040](../0040-exam-module-durable-runs-analytics.md). D2 is independent and still UNSET.
 - Analytics label / quadrant floors live in the spec (FR-32/FR-33) and will
   be restated in `decisions.md` when `exam_analytics` lands (DoD §9) — not here.

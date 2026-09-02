@@ -51,6 +51,7 @@ import { DrizzleTestItemRepo } from "./adapters/engine/repos/drizzle_test_item_r
 import { DrizzleTestBlueprintRepo } from "./adapters/engine/repos/drizzle_test_blueprint_repo";
 import { DrizzleTutorialRepo } from "./adapters/engine/repos/drizzle_tutorial_repo";
 import { DrizzleProgressRepo } from "./adapters/engine/repos/drizzle_progress_repo";
+import { DrizzleExamRunRepo } from "./adapters/engine/repos/drizzle_exam_run_repo";
 import { TestItemQuestionRepo } from "./adapters/engine/repos/test_item_question_repo";
 import { DEFAULT_SUBJECT } from "./wire/engine_entities";
 
@@ -88,9 +89,9 @@ export interface EnginePortBag {
   /** Read-only progress-trend points (ADR-0028, E1a FR-17). */
   readonly progressRepo: ProgressRepo;
   /**
-   * Official-rules exam runs (ADR-0040). Phase-0 stub: undefined until WT-1
-   * fills the Drizzle adapter (W1-7). Optional so the bag stays releasable
-   * and WT-2 can compile against the port type.
+   * Official-rules exam runs (ADR-0040 / W1-7). Optional so legacy test
+   * bags that predate the adapter stay assignable; both composition roots
+   * always fill it.
    */
   readonly examRunRepo?: ExamRunRepo;
   /**
@@ -138,6 +139,7 @@ export function buildEngineAdapters(
   // One ContentRepo instance, shared: it is both the objective-plane port AND
   // the source SessionRepo reads the per-mode target_count default from (FR-5).
   const contentRepo = new DrizzleContentRepo(db);
+  const grader = new ExactLetterGrader();
 
   return {
     skillTaxonomy: new DrizzleSkillTaxonomy(db),
@@ -147,7 +149,7 @@ export function buildEngineAdapters(
     // The Scheduler needs QuestionRepo to resolve a chosen skill → a reviewed
     // question (FR-A1); it is the sole writer of skill_state (FR-A2).
     scheduler: new FsrsScheduler({ db, questions: questionRepo }),
-    grader: new ExactLetterGrader(),
+    grader,
     contentRepo,
     // Read-only skill_state view (ADR-0011): depends on the ReadableEngineDb
     // projection, so it cannot reach upsertSkillState (FR-A2, Scheduler-only).
@@ -161,5 +163,6 @@ export function buildEngineAdapters(
     // Read-only lesson content + progress (ADR-0028): no write surface.
     tutorialRepo: new DrizzleTutorialRepo(db),
     progressRepo: new DrizzleProgressRepo(db),
+    examRunRepo: new DrizzleExamRunRepo({ db, grader }),
   };
 }

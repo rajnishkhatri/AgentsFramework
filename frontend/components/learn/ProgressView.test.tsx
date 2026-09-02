@@ -30,6 +30,7 @@ function vm(over: Partial<ProgressScreenVM> = {}): ProgressScreenVM {
       streak: over.header?.streak ?? { present: false, days: 0 },
     },
     trend: over.trend ?? { points: [], range: "all" },
+    examPerformance: over.examPerformance ?? null,
     buckets: over.buckets ?? [
       bucket({ skillId: "s-rhet", name: "Rhetoric", due: true, masteryPct: 55 }),
       bucket({ skillId: "s-usage", name: "Usage", masteryPct: 40 }),

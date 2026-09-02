@@ -8,6 +8,7 @@
  */
 
 import type { QuizSession } from "../wire/engine_entities";
+import type { ExamAnalytics } from "../wire/exam_entities";
 import type { BucketCardVM } from "./bucket_card_vm";
 import { toStreakVM, type StreakVM } from "./streak_vm";
 
@@ -33,6 +34,8 @@ export interface ProgressScreenVM {
   readonly header: ProgressHeaderVM;
   readonly trend: ProgressTrendVM | null;
   readonly buckets: readonly BucketCardVM[];
+  /** FR-34: distinct exam panel; null when no finished section. */
+  readonly examPerformance: ExamAnalytics | null;
 }
 
 export function toProgressScreenVM(inputs: {
@@ -40,6 +43,7 @@ export function toProgressScreenVM(inputs: {
   readonly buckets: readonly BucketCardVM[];
   readonly range: ProgressRange;
   readonly nowISO: string;
+  readonly examPerformance?: ExamAnalytics | null;
 }): ProgressScreenVM {
   const { closedSessions, buckets, range, nowISO } = inputs;
 
@@ -66,5 +70,6 @@ export function toProgressScreenVM(inputs: {
     // "no trend concept on this surface".
     trend: { points, range },
     buckets,
+    examPerformance: inputs.examPerformance ?? null,
   };
 }

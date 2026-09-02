@@ -22,6 +22,7 @@ import Link from "next/link";
 import {
   BookOpen,
   ChartColumnIncreasing,
+  ClipboardList,
   GraduationCap,
   Home,
   MessagesSquare,
@@ -47,6 +48,7 @@ const RAIL_ICONS: Readonly<Record<ScreenId, LucideIcon>> = {
   test: BookOpen,
   skill: GraduationCap,
   progress: ChartColumnIncreasing,
+  exam: ClipboardList,
 };
 
 /** Locked §2 visual: 38×38 circular glyph; hit target is the full rail row (≥44px). */

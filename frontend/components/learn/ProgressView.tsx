@@ -17,6 +17,7 @@ import type {
 } from "@/lib/translators/progress_screen_vm";
 import type { BucketCardVM } from "@/lib/translators/bucket_card_vm";
 import { TrendChart } from "./TrendChart";
+import { ExamAnalyticsPanel } from "@/components/exam/ExamAnalyticsPanel";
 
 export interface ProgressViewProps {
   readonly vm: ProgressScreenVM;
@@ -183,6 +184,10 @@ export function ProgressView(props: ProgressViewProps): React.JSX.Element {
             <TrendChart points={points} label="Accuracy trend" />
           )}
         </section>
+
+        {vm.examPerformance ? (
+          <ExamAnalyticsPanel analytics={vm.examPerformance} />
+        ) : null}
 
         <section
           data-testid="progress-mastery"

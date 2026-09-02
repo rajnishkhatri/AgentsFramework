@@ -53,6 +53,7 @@ import { DrizzleTestItemRepo } from "./adapters/engine/repos/drizzle_test_item_r
 import { DrizzleTestBlueprintRepo } from "./adapters/engine/repos/drizzle_test_blueprint_repo";
 import { DrizzleTutorialRepo } from "./adapters/engine/repos/drizzle_tutorial_repo";
 import { DrizzleProgressRepo } from "./adapters/engine/repos/drizzle_progress_repo";
+import { DrizzleExamRunRepo } from "./adapters/engine/repos/drizzle_exam_run_repo";
 import { TestItemQuestionRepo } from "./adapters/engine/repos/test_item_question_repo";
 import { FetchQuizSubmitNotifier } from "./adapters/coach_marker/marker_write_client";
 import {
@@ -133,6 +134,7 @@ export function buildBrowserEngineAdapters(
   const sessionRepo = maybeFailOnceSessionRepo(
     new DrizzleSessionRepo({ db, contentRepo }),
   );
+  const grader = new ExactLetterGrader();
 
   return {
     skillTaxonomy: new DrizzleSkillTaxonomy(db),
@@ -142,7 +144,7 @@ export function buildBrowserEngineAdapters(
     // The Scheduler needs QuestionRepo to resolve a chosen skill → a reviewed
     // question (FR-A1); it is the sole writer of skill_state (FR-A2).
     scheduler: new FsrsScheduler({ db, questions: questionRepo }),
-    grader: new ExactLetterGrader(),
+    grader,
     contentRepo,
     // Read-only skill_state view (ADR-0011); ReadableEngineDb → no write reachable.
     learnerRead: new DrizzleLearnerReadRepo(db),
@@ -154,6 +156,7 @@ export function buildBrowserEngineAdapters(
     // Read-only lesson content + progress (ADR-0028): no write surface.
     tutorialRepo: new DrizzleTutorialRepo(db),
     progressRepo: new DrizzleProgressRepo(db),
+    examRunRepo: new DrizzleExamRunRepo({ db, grader }),
     // ADR-0012 Amendment (FR-19): browser→BFF fire-and-forget marker write on
     // quiz submit, flipping the coach's derived mode to post_feedback.
     quizSubmitNotifier: new FetchQuizSubmitNotifier(),

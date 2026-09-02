@@ -2,7 +2,7 @@
 
 **Status:** Draft for Stage-2 plan gate — 2026-09-01
 **Spec:** [exam-module-official-rules.spec.md](exam-module-official-rules.spec.md) (approved 2026-09-01)
-**ADR:** [ADR-0040](../adr/0040-exam-module-durable-runs-analytics.md) (proposed — covers the new repo seam + the analytics read model)
+**ADR:** [ADR-0040](../adr/0040-exam-module-durable-runs-analytics.md) (accepted 2026-09-02 — covers the new repo seam + the analytics read model)
 **Constitution check:** frontend-only; root invariants #1–#8 untouched (no Python, no `trust/`, no graph node, no new dependency). Frontend Ring rules F-R1…F-R9 / A2 / A3 / P1 / B1 apply and are named per track below.
 
 ---

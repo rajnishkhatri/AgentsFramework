@@ -19,6 +19,9 @@ import {
   type ProgressRange,
   type ProgressScreenVM,
 } from "@/lib/translators/progress_screen_vm";
+import { listExamForms } from "@/lib/adapters/engine/exam_forms";
+import { examAnalytics } from "@/components/exam/exam_analytics";
+import type { ExamAnalytics } from "@/lib/wire/exam_entities";
 
 export interface LoadProgressScreenArgs {
   readonly subject: string;
@@ -63,11 +66,34 @@ export async function loadProgressScreen(
     toBucketCardVM(skill, stateBySkill.get(skill.id) ?? null, nowISO),
   );
 
+  let examPerformance: ExamAnalytics | null = null;
+  const examRepo = ports.examRunRepo;
+  if (examRepo != null) {
+    const [examItems, examEntries] = await Promise.all([
+      examRepo.listItemsByLearner({ learnerId }),
+      examRepo.listRunEntries({ learnerId }),
+    ]);
+    const attempts = examEntries.flatMap((e) => e.attempts);
+    const finished = attempts.some(
+      (a) => a.status === "submitted" || a.status === "expired",
+    );
+    if (finished) {
+      examPerformance = examAnalytics({
+        learnerId,
+        runId: null,
+        items: examItems,
+        sections: listExamForms().flatMap((f) => f.sections),
+        attempts,
+      });
+    }
+  }
+
   return toProgressScreenVM({
     closedSessions,
     buckets,
     range,
     nowISO,
+    examPerformance,
   });
 }
 

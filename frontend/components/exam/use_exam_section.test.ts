@@ -151,10 +151,13 @@ function fakeRepo(clock: ExamClock) {
       return current;
     },
     getRun: unused,
+    getRunDetail: unused,
     listRunsByLearner: unused,
+    listRunEntries: unused,
     async listItems() {
       return [...stored.values()];
     },
+    listItemsByLearner: unused,
     setBookmark: unused,
   };
 
