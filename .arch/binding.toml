@@ -1,0 +1,10 @@
+# ARCH workspace-binding — confirmed 2026-09-02
+[binding]
+methodology_source = "<none>"
+constitution       = "AGENTS.md"
+worksheet_home     = ".arch/worksheets/"
+component_home     = ".arch/components/"
+adr_home           = "docs/adr/"
+risk_home          = ".arch/risk/"
+diagram_notation   = "mermaid"
+breadth_read_tool  = "explore subagent"
