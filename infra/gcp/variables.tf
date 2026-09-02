@@ -263,12 +263,12 @@ variable "frontend_image" {
 
 variable "frontend_min_instances" {
   type        = number
-  description = "Cloud Run min instance count for the frontend. Tier A requires 0 (scale-to-zero)."
-  default     = 0
+  description = "Cloud Run min instance count for the frontend (exam route / BFF). R5 requires ≥ 1 so beginSection is not a scale-to-zero cold start."
+  default     = 1
 
   validation {
-    condition     = var.frontend_min_instances == 0
-    error_message = "Tier A cost constraint: frontend_min_instances must be 0 (scale-to-zero)."
+    condition     = var.frontend_min_instances >= 1
+    error_message = "R5 (exam-module): frontend_min_instances must be ≥ 1 (warm exam route)."
   }
 }
 

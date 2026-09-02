@@ -47,6 +47,7 @@ const CONTENT_SCREENS: ReadonlySet<ScreenId> = new Set([
   "coach",
   "skill",
   "test",
+  "exam",
 ]);
 
 export default function CoachLayout(props: {

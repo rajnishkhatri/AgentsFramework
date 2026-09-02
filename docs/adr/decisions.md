@@ -12,6 +12,8 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-09-02 — **Exam UI reuses Test Mode timer siblings.** `ExamRunnerView` imports `CountdownTimer` / `format_clock` from `components/test/` (plan §1). Rejected: a second clock formatter in `components/exam/` (connascence drift). Isolation guard still forbids quiz/scheduler/`skill_state` edges only.
+- 2026-09-02 — **D1 closed: ADR-0040 Accepted.** Human flipped [ADR-0040](0040-exam-module-durable-runs-analytics.md) Proposed → Accepted (index + log). D2 cost/cross-team/security routing floors stay **UNSET** — [approval-criteria.md](common/approval-criteria.md). Rejected: inventing D2 cells from FR-32/FR-33 analytics floors.
 - 2026-09-02 — **D1/D2 remain human gates (no invented thresholds).** ADR-0040 stays **Proposed** — acceptance (D1) is a human act (LLM-humility / RATIFICATION §B). D2's cost/cross-team/security routing floors are **UNSET**; they are not in the spec/plan/ADR and must not be filled by an agent. Path + empty table: [approval-criteria.md](common/approval-criteria.md). Rejected: flipping ADR-0040 to Accepted without the human, or copying FR-32/FR-33 analytics floors into the approval-criteria table.
 - 2026-09-02 — **Exam module — four small decisions from the arch-lifecycle sweep (no new ADR).**
   Surfaced by the arch-* 1→6 audit over [exam-module-official-rules.spec.md](../plan/exam-module-official-rules.spec.md)/plan/[ADR-0040](0040-exam-module-durable-runs-analytics.md) and ratified 2026-09-02; the big calls live in ADR-0040, the R1 isolation arch-test, and the separate R3 answer-key ADR.

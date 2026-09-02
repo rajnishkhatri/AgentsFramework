@@ -1,9 +1,9 @@
 /**
  * ExamRunRepo port (ADR-0040) — durable official-rules runs on the ADR-0038 seam.
  *
- * Phase-0 stub: the interface is declared so WT-2 can compile against the
- * port type. The Drizzle adapter + EngineDb methods land in WT-1 (W1-7).
- * `EnginePortBag.examRunRepo` stays undefined until that adapter is wired.
+ * W1-7 fills the Drizzle adapter and wires `EnginePortBag.examRunRepo`.
+ * Read shapes used by the SERIAL UI (S-D1/S-D3) are declared here so the
+ * port never imports EngineDb types from the adapter ring (P6).
  */
 
 import type {
@@ -12,6 +12,19 @@ import type {
   ExamSectionAttempt,
   ExamSectionCode,
 } from "../../wire/exam_entities";
+
+/** One run plus its section-attempt rows (home status + FR-12). */
+export type ExamRunEntry = {
+  run: ExamRun;
+  attempts: ExamSectionAttempt[];
+};
+
+/** One owned run plus attempts and items; `null` if not owned. */
+export type ExamRunDetail = {
+  run: ExamRun;
+  attempts: ExamSectionAttempt[];
+  items: ExamRunItem[];
+};
 
 /**
  * ExamRunRepo — learner-scoped official-rules run persistence (ADR-0040).
@@ -48,11 +61,20 @@ export interface ExamRunRepo {
     sectionCode: ExamSectionCode;
   }): Promise<ExamSectionAttempt>;
   getRun(args: { learnerId: string; runId: string }): Promise<ExamRun | null>;
+  getRunDetail(args: {
+    learnerId: string;
+    runId: string;
+  }): Promise<ExamRunDetail | null>;
   listRunsByLearner(args: { learnerId: string }): Promise<ExamRun[]>;
+  listRunEntries(args: {
+    learnerId: string;
+    formId?: string;
+  }): Promise<ExamRunEntry[]>;
   listItems(args: {
     learnerId: string;
     runId: string;
   }): Promise<ExamRunItem[]>;
+  listItemsByLearner(args: { learnerId: string }): Promise<ExamRunItem[]>;
   setBookmark(args: {
     learnerId: string;
     runId: string;

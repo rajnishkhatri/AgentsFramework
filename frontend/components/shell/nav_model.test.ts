@@ -158,7 +158,22 @@ describe("FR-B1 surface-appropriate global navigation", () => {
       const labels = navItemsForSurface(surface).map((i) => i.label);
       expect(labels, `${surface} sidebar must include Coach as a peer`).toContain("Coach");
       // Sidebar model: Home / Practice / Coach / Skill / Progress (E1a FR-20).
-      expect(labels).toEqual(["Home", "Practice", "Coach", "Skill", "Progress"]);
+      expect(labels).toEqual(["Home", "Practice", "Coach", "Skill", "Progress", "Exam"]);
+    }
+  });
+
+  it("S-D4: exam screen is live and reachable from desktop/iPad nav", () => {
+    const exam = screen("exam");
+    expect(exam.comingSoon).toBe(false);
+    expect(exam.route).toBe("/learn/exam");
+    expect(exam.isFocusScreen).toBe(true);
+    expect(activeScreenId("/learn/exam")).toBe("exam");
+    expect(activeScreenId("/learn/exam/run-1/english")).toBe("exam");
+    for (const surface of ["desktop", "ipad"] as const) {
+      const item = navItemsForSurface(surface).find((i) => i.screenId === "exam");
+      expect(item, `${surface} must list exam`).toBeDefined();
+      expect(item!.disabled).toBe(false);
+      expect(item!.href).toBe("/learn/exam");
     }
   });
 

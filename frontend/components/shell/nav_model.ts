@@ -29,7 +29,8 @@ export type ScreenId =
   | "summary"
   | "test"
   | "skill"
-  | "progress";
+  | "progress"
+  | "exam";
 
 export interface Screen {
   readonly id: ScreenId;
@@ -75,6 +76,9 @@ export const SCREENS: readonly Screen[] = [
   // Progress is live (Epic F — honest accuracy trend, no projected score).
   { id: "skill", route: `${COACH_BASE}/skill`, navLabel: "Skill", comingSoon: false, isFocusScreen: false },
   { id: "progress", route: `${COACH_BASE}/progress`, navLabel: "Progress", comingSoon: false, isFocusScreen: false },
+  // Official-rules exam (ADR-0040). Last T-D commit — reachability gate;
+  // rollback = remove this entry. Focus screen like Test Mode.
+  { id: "exam", route: `${COACH_BASE}/exam`, navLabel: "Exam", comingSoon: false, isFocusScreen: true },
 ];
 
 const SCREEN_BY_ID: ReadonlyMap<ScreenId, Screen> = new Map(
@@ -106,8 +110,8 @@ export interface NavItem {
 // keep the phone bar to four items. (Restores parity — the earlier Skill-for-
 // Coach swap cited a "§8.1 supersede" that does not exist in any spec.)
 const NAV_MEMBERSHIP: Readonly<Record<Surface, readonly ScreenId[]>> = {
-  desktop: ["dashboard", "quiz", "coach", "skill", "progress"],
-  ipad: ["dashboard", "quiz", "coach", "skill", "progress"],
+  desktop: ["dashboard", "quiz", "coach", "skill", "progress", "exam"],
+  ipad: ["dashboard", "quiz", "coach", "skill", "progress", "exam"],
   iphone: ["dashboard", "quiz", "coach", "progress"],
 };
 
@@ -169,6 +173,7 @@ const SCREEN_TITLES: Readonly<Record<ScreenId, string>> = {
   test: "Timed test",
   skill: "Skill detail",
   progress: "Progress",
+  exam: "Official exam",
 };
 
 export function screenTitle(id: ScreenId): string {
