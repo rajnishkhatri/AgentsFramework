@@ -17,8 +17,8 @@
 
 ## B. Queued gate-resident duties (surfaced, NOT performed)
 
-- [ ] **D1 · Accept ADR-0040** (Proposed→Accepted + index/log per DoD §9) — a human act; not done here.
-- [ ] **D2 · Approval-criteria first-use conversation** — agree the cost/cross-team/security thresholds that route future ADRs to a higher authority; record in `docs/adr/common/approval-criteria.md` (**does not exist**; not created).
+- [ ] **D1 · Accept ADR-0040** (Proposed→Accepted + index/log per DoD §9) — a human act; **not flipped at sdd-implement 2026-09-02** (LLM-humility). Status remains `proposed`.
+- [ ] **D2 · Approval-criteria first-use conversation** — cost/cross-team/security thresholds that route future ADRs to a higher authority. **Path captured 2026-09-02** in [`docs/adr/common/approval-criteria.md`](../../../docs/adr/common/approval-criteria.md); all three values **UNSET** (none exist in spec/plan/ADR — do not invent). Human fills the table to close.
 - [x] **D3 · Record the sync/async communication boundary** — ✅ DONE: *Communication posture* paragraph added to ADR-0040 §Decision (2026-09-02, OKF lint clean).
 - [x] **D4 · Add the explicit business-value line** — ✅ DONE: *Business value* bullet added to ADR-0040 §Rationale (2026-09-02, OKF lint clean).
 - [x] **D5 · (optional)** — ✅ DONE: recorded in `docs/adr/decisions.md` (2026-09-02 sweep entry, item 4).

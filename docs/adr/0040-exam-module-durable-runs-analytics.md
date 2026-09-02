@@ -11,7 +11,7 @@ tags: [decision-record]
 
 # ADR-0040: Exam module — official-rules runs on the ADR-0038 seam + computed analytics read model
 
-**Status:** Proposed (Stage-2 plan gate) — 2026-09-01.
+**Status:** Proposed (Stage-2 plan gate) — 2026-09-01. **Not flipped to Accepted at implement time (D1 is a human gate).** Approval-criteria routing thresholds (D2) are **UNSET** — see [approval-criteria.md](common/approval-criteria.md).
 **Related:** [spec](../plan/exam-module-official-rules.spec.md) · [plan](../plan/exam-module-official-rules.plan.md) · [ADR-0038](0038-durable-engine-seam.md) (the seam this rides) · [quiz-attempt-elapsed-timing.spec.md §2.1](../plan/quiz-attempt-elapsed-timing.spec.md) (the "Test mode persists nothing" consent gate) · [test01-practice-split.spec.md FR-1](../plan/test01-practice-split.spec.md) (test exclusivity)
 **Audience:** anyone touching `components/exam/`, the `exam_*` tables, the `EngineDb` method set, or `/learn/progress`'s exam panel — and anyone tempted to "just persist Test Mode".
 

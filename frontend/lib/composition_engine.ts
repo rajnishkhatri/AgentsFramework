@@ -32,6 +32,7 @@ import type { TestItemRepo } from "./ports/engine/test_item_repo";
 import type { TestBlueprintRepo } from "./ports/engine/test_blueprint_repo";
 import type { TutorialRepo } from "./ports/engine/tutorial_repo";
 import type { ProgressRepo } from "./ports/engine/progress_repo";
+import type { ExamRunRepo } from "./ports/engine/exam_run_repo";
 import type { QuizSubmitNotifier } from "./ports/quiz_submit_notifier";
 
 import type { EngineDb } from "./adapters/engine/db/engine_db";
@@ -86,6 +87,12 @@ export interface EnginePortBag {
   readonly tutorialRepo: TutorialRepo;
   /** Read-only progress-trend points (ADR-0028, E1a FR-17). */
   readonly progressRepo: ProgressRepo;
+  /**
+   * Official-rules exam runs (ADR-0040). Phase-0 stub: undefined until WT-1
+   * fills the Drizzle adapter (W1-7). Optional so the bag stays releasable
+   * and WT-2 can compile against the port type.
+   */
+  readonly examRunRepo?: ExamRunRepo;
   /**
    * Fire-and-forget quiz-submit signal to the coach-session marker store
    * (ADR-0012 Amendment, FR-19). Optional: absent on the server root (the

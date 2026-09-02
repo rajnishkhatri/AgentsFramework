@@ -57,7 +57,7 @@
 | **S-D3** | `/learn/progress` "Exam performance" panel via `use_progress_screen` → `listExamRunItemsByLearner` → `exam_analytics` | S-D2, W1-2 | panel sourced **only** from `ExamAnalytics` → **FR-34** |
 | **S-D4** | nav entry (`nav_model` exam screen + `SCREEN_TITLES`) — **last commit** (reachability gate) | S-D3 | feature reachable; rollback = remove entry |
 | **S-E1** | `e2e/learn/exam.spec.ts` *(new)* — walk; 5-min warning via `?dur=`; auto-submit; reload-resume; flag→review; **Test Mode e2e still green** | S-D4 | chromium smoke → **FR-13–16,23–25** |
-| **S-F1** | ADR-0040 Proposed→Accepted (index/log) **[D1 human]**; `decisions.md` ✓; ADR-0041 ✓ | — | OKF lint 0 failures |
+| **S-F1** | ADR-0040 Proposed→Accepted (index/log) **[D1 human — still Proposed at implement start]**; `decisions.md` ✓; ADR-0041 ✓. D2 path: [approval-criteria.md](../adr/common/approval-criteria.md) (values UNSET) | — | OKF lint 0 failures; D1 remains human |
 | **S-F2** | **R5 infra** — Cloud Run `min-instances ≥ 1` (exam route) + Cloud SQL pool cap | — | infra applied (Terraform/deploy) |
 | **S-F3** | pre-traffic `migrate_engine.mjs` runs `0005`; second-device read-back smoke | S-F2 | prod smoke (plan §3) |
 

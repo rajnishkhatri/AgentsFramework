@@ -54,10 +54,11 @@ is ratified; the ADR's own `Proposed → Accepted` flip stays with the human (D1
 - **D4 · Business-value line — ✅ DONE.** Added a *Business value* bullet to ADR-0040
   §Rationale (2026-09-02). OKF lint: 0 failures.
 - **D1 · Acceptance — ⏳ PENDING (human).** ADR-0040 Proposed → Accepted + index/log per
-  DoD §9. `updated:` bumped to 2026-09-02; status left `proposed`.
+  DoD §9. **sdd-implement 2026-09-02 did not flip it** (LLM-humility). Status left `proposed`.
 - **D2 · Approval-criteria first-use conversation — ⏳ PENDING (needs your thresholds).**
-  The cost / cross-team / security thresholds routing future ADRs to a higher authority,
-  to be recorded in `docs/adr/common/approval-criteria.md` (does not exist; not created).
+  Path captured in [`docs/adr/common/approval-criteria.md`](../../../docs/adr/common/approval-criteria.md);
+  cost / cross-team / security cells are **UNSET** (not present in spec/plan/ADR-0040;
+  FR-32/FR-33 analytics floors are a different kind of number and were not copied).
 - **D5 · (optional) — ⏳ PENDING.** A `decisions.md` line for the microkernel/registry-for-forms framing.
 
 *Audit ratified. ADR-0040 body strengthened (D3/D4); its acceptance (D1) + D2/D5 remain on the checklist.*
