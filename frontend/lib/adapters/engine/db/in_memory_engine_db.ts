@@ -26,7 +26,19 @@ import type {
   Tutorial,
 } from "../../../wire/engine_entities";
 import type {
+  ExamRun,
+  ExamRunItem,
+  ExamSectionAttempt,
+  ExamSectionCode,
+} from "../../../wire/exam_entities";
+import { mergeExamDwell } from "../../../../components/exam/exam_dwell_merge";
+import { EngineNotFoundError, EngineRepoError } from "../../../ports/engine/errors";
+import type {
   EngineDb,
+  ExamRunDetail,
+  ExamRunListEntry,
+  ExamSectionFinishStatus,
+  ExamSectionGrades,
   InsertAttemptResult,
   SessionClosePatch,
 } from "./engine_db";
@@ -43,6 +55,18 @@ function hintKey(h: Pick<Hint, "question_id" | "choice_letter" | "rung">): strin
   return `${h.question_id}\0${h.choice_letter ?? ""}\0${h.rung}`;
 }
 
+function examAttemptKey(runId: string, section: ExamSectionCode): string {
+  return `${runId}\0${section}`;
+}
+
+function examItemKey(
+  runId: string,
+  section: ExamSectionCode,
+  questionId: string,
+): string {
+  return `${runId}\0${section}\0${questionId}`;
+}
+
 export class InMemoryEngineDb implements EngineDb {
   private skills: Skill[] = [];
   private questions = new Map<string, Question>();
@@ -55,6 +79,10 @@ export class InMemoryEngineDb implements EngineDb {
   private content = new Map<string, string>();
   private tutorials = new Map<string, Tutorial>(); // key: subject\0skillId
   private progress: ProgressPoint[] = [];
+  // Exam store (W1-4). learner_id on the run is the positional claim.
+  private examRuns = new Map<string, ExamRun>();
+  private examAttempts = new Map<string, ExamSectionAttempt>();
+  private examItems = new Map<string, ExamRunItem>();
 
   // --- seeding helpers (test/dev only) ---
   seedSkills(skills: Skill[]): void {
@@ -497,5 +525,231 @@ export class InMemoryEngineDb implements EngineDb {
       .filter((p) => p.subject === subject && p.learner_id === learnerId)
       .sort((a, b) => (a.at < b.at ? -1 : 1)) // chronological
       .map((p) => ({ ...p }));
+  }
+
+  // --- exam (W1-4). Ownership is the stored positional learner_id (FR-3). ---
+  private ownedExamRun(learnerId: string, runId: string): ExamRun | null {
+    const run = this.examRuns.get(runId);
+    if (run == null || run.learner_id !== learnerId) return null;
+    return run;
+  }
+
+  private requireOwnedExamRun(learnerId: string, runId: string): ExamRun {
+    const run = this.ownedExamRun(learnerId, runId);
+    // Missing and foreign-learner both look like "not owned" — the BFF
+    // maps this to 403/404 in W1-6. Failure: run id is absent or stored
+    // learner_id ≠ positional claim (FR-3 join).
+    if (run == null) {
+      throw new EngineNotFoundError(`exam run not found: ${runId}`);
+    }
+    return run;
+  }
+
+  private attemptsForRun(runId: string): ExamSectionAttempt[] {
+    return [...this.examAttempts.values()]
+      .filter((a) => a.run_id === runId)
+      .sort((a, b) => a.section_code.localeCompare(b.section_code))
+      .map((a) => ({ ...a }));
+  }
+
+  private itemsForRun(runId: string): ExamRunItem[] {
+    return [...this.examItems.values()]
+      .filter((i) => i.run_id === runId)
+      .sort((a, b) => a.ordinal - b.ordinal || a.question_id.localeCompare(b.question_id))
+      .map((i) => ({ ...i }));
+  }
+
+  async insertExamRun(learnerId: string, run: ExamRun): Promise<void> {
+    // Persist the positional claim, not run.learner_id (W1-3 / FR-38).
+    const stored: ExamRun = { ...run, learner_id: learnerId };
+    if (this.examRuns.has(stored.id)) {
+      throw new EngineRepoError(`duplicate exam run: ${stored.id}`);
+    }
+    this.examRuns.set(stored.id, stored);
+  }
+
+  async listExamRunsByLearner(
+    learnerId: string,
+    formId?: string,
+  ): Promise<ExamRunListEntry[]> {
+    const rows = [...this.examRuns.values()].filter(
+      (r) => r.learner_id === learnerId && (formId == null || r.form_id === formId),
+    );
+    rows.sort((a, b) => {
+      const created = b.created_at.localeCompare(a.created_at);
+      return created !== 0 ? created : a.id.localeCompare(b.id);
+    });
+    return rows.map((r) => ({
+      run: { ...r },
+      attempts: this.attemptsForRun(r.id),
+    }));
+  }
+
+  async getExamRun(
+    learnerId: string,
+    runId: string,
+  ): Promise<ExamRunDetail | null> {
+    const run = this.ownedExamRun(learnerId, runId);
+    if (run == null) return null;
+    return {
+      run: { ...run },
+      attempts: this.attemptsForRun(runId),
+      items: this.itemsForRun(runId),
+    };
+  }
+
+  async beginExamSection(
+    learnerId: string,
+    runId: string,
+    section: ExamSectionCode,
+    startedAt: string,
+    deadlineAt: string,
+  ): Promise<ExamSectionAttempt> {
+    this.requireOwnedExamRun(learnerId, runId);
+    const key = examAttemptKey(runId, section);
+    const existing = this.examAttempts.get(key);
+    // FR-37 keep-first: retry of the same in_progress section returns the
+    // stored started_at / deadline_at (no free time).
+    if (existing?.status === "in_progress") {
+      return { ...existing };
+    }
+    if (existing?.status === "submitted" || existing?.status === "expired") {
+      throw new EngineRepoError(
+        `beginExamSection: attempt already ${existing.status}`,
+      );
+    }
+    for (const a of this.examAttempts.values()) {
+      if (a.run_id === runId && a.status === "in_progress") {
+        throw new EngineRepoError(
+          "beginExamSection: another section is in progress",
+        );
+      }
+    }
+    // Missing row = not yet begun (insertExamRun does not know form sections).
+    const attempt: ExamSectionAttempt = {
+      run_id: runId,
+      section_code: section,
+      status: "in_progress",
+      started_at: startedAt,
+      finished_at: null,
+      deadline_at: deadlineAt,
+      raw_correct: null,
+      raw_scored_total: null,
+      scale_score: null,
+      time_remaining_ms_at_submit: null,
+    };
+    this.examAttempts.set(key, attempt);
+    return { ...attempt };
+  }
+
+  async upsertExamRunItems(
+    learnerId: string,
+    runId: string,
+    section: ExamSectionCode,
+    items: readonly ExamRunItem[],
+  ): Promise<void> {
+    this.requireOwnedExamRun(learnerId, runId);
+    const attempt = this.examAttempts.get(examAttemptKey(runId, section));
+    if (attempt?.status !== "in_progress") {
+      throw new EngineRepoError("upsertExamRunItems: attempt not in_progress");
+    }
+    for (const incoming of items) {
+      const stamped: ExamRunItem = {
+        ...incoming,
+        run_id: runId,
+        section_code: section,
+      };
+      const key = examItemKey(runId, section, stamped.question_id);
+      const stored = this.examItems.get(key);
+      this.examItems.set(
+        key,
+        stored == null ? stamped : mergeExamDwell(stored, stamped),
+      );
+    }
+  }
+
+  async finishExamSection(
+    learnerId: string,
+    runId: string,
+    section: ExamSectionCode,
+    status: ExamSectionFinishStatus,
+    grades: ExamSectionGrades,
+    remainingMs: number | null,
+  ): Promise<ExamSectionAttempt> {
+    this.requireOwnedExamRun(learnerId, runId);
+    const key = examAttemptKey(runId, section);
+    const existing = this.examAttempts.get(key);
+    if (existing == null) {
+      throw new EngineNotFoundError(
+        `exam section attempt not found: ${runId}/${section}`,
+      );
+    }
+    // FR-27 / §7 finish-once: already finished → stored result, ignore args.
+    if (existing.status === "submitted" || existing.status === "expired") {
+      return { ...existing };
+    }
+    if (existing.status !== "in_progress") {
+      throw new EngineRepoError("finishExamSection: attempt not in_progress");
+    }
+    const finished: ExamSectionAttempt = {
+      ...existing,
+      status,
+      finished_at: new Date().toISOString(),
+      raw_correct: grades.raw_correct,
+      raw_scored_total: grades.raw_scored_total,
+      scale_score: grades.scale_score,
+      time_remaining_ms_at_submit: remainingMs,
+    };
+    this.examAttempts.set(key, finished);
+    return { ...finished };
+  }
+
+  async setExamRunComposite(
+    learnerId: string,
+    runId: string,
+    composite: number | null,
+  ): Promise<void> {
+    const run = this.requireOwnedExamRun(learnerId, runId);
+    this.examRuns.set(run.id, { ...run, composite });
+  }
+
+  async setExamBookmark(
+    learnerId: string,
+    runId: string,
+    section: ExamSectionCode,
+    questionId: string,
+    bookmarked: boolean,
+  ): Promise<void> {
+    this.requireOwnedExamRun(learnerId, runId);
+    const attempt = this.examAttempts.get(examAttemptKey(runId, section));
+    if (attempt?.status !== "submitted" && attempt?.status !== "expired") {
+      throw new EngineRepoError("setExamBookmark: attempt not finished");
+    }
+    const key = examItemKey(runId, section, questionId);
+    const stored = this.examItems.get(key);
+    if (stored == null) {
+      throw new EngineNotFoundError(
+        `exam run item not found: ${runId}/${section}/${questionId}`,
+      );
+    }
+    this.examItems.set(key, { ...stored, bookmarked });
+  }
+
+  async listExamRunItemsByLearner(learnerId: string): Promise<ExamRunItem[]> {
+    const ownedIds = new Set(
+      [...this.examRuns.values()]
+        .filter((r) => r.learner_id === learnerId)
+        .map((r) => r.id),
+    );
+    return [...this.examItems.values()]
+      .filter((i) => ownedIds.has(i.run_id))
+      .sort(
+        (a, b) =>
+          a.run_id.localeCompare(b.run_id) ||
+          a.section_code.localeCompare(b.section_code) ||
+          a.ordinal - b.ordinal ||
+          a.question_id.localeCompare(b.question_id),
+      )
+      .map((i) => ({ ...i }));
   }
 }

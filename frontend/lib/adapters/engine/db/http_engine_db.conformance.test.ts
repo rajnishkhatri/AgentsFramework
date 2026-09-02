@@ -29,9 +29,22 @@ function jsonRes(body: unknown, status = 200): Response {
   });
 }
 
+/** Plan §1 / W1-2 — nine learner-scoped exam methods, all `"fine"`. */
+const EXAM_ENGINE_DB_METHODS = [
+  "insertExamRun",
+  "listExamRunsByLearner",
+  "getExamRun",
+  "beginExamSection",
+  "upsertExamRunItems",
+  "finishExamSection",
+  "setExamRunComposite",
+  "setExamBookmark",
+  "listExamRunItemsByLearner",
+] as const satisfies readonly EngineDbMethodName[];
+
 describe("HttpEngineDb — FR-A4 disposition totality", () => {
-  it("disposition table has exactly 32 methods (5 server-only)", () => {
-    expect(Object.keys(ENGINE_DB_DISPOSITION)).toHaveLength(32);
+  it("disposition table has exactly 41 methods (5 server-only)", () => {
+    expect(Object.keys(ENGINE_DB_DISPOSITION)).toHaveLength(41);
     expect(SERVER_ONLY_ENGINE_DB_METHODS).toEqual([
       "insertQuestion",
       "insertHint",
@@ -39,7 +52,13 @@ describe("HttpEngineDb — FR-A4 disposition totality", () => {
       "insertTestBlueprint",
       "listAlreadyCorrectQuestionIds",
     ]);
-    expect(FINE_ENGINE_DB_METHODS).toHaveLength(27);
+    expect(FINE_ENGINE_DB_METHODS).toHaveLength(36);
+  });
+
+  it("exam methods are fine-grained and present (W1-2 / FR-3)", () => {
+    for (const method of EXAM_ENGINE_DB_METHODS) {
+      expect(ENGINE_DB_DISPOSITION[method]).toBe("fine");
+    }
   });
 
   it("the 5 server-only methods throw typed EngineRepoError without fetching", async () => {
@@ -138,6 +157,28 @@ describe("HttpEngineDb — FR-A4 disposition totality", () => {
       ["listContentStrings", ["act-english", "en"]],
       ["getTutorial", ["act-english", "sk1"]],
       ["listProgressPoints", ["act-english", "u1"]],
+      ["insertExamRun", ["u1", { id: "r1" }]],
+      ["listExamRunsByLearner", ["u1"]],
+      ["getExamRun", ["u1", "r1"]],
+      [
+        "beginExamSection",
+        ["u1", "r1", "english", "2026-09-02T00:00:00.000Z", "2026-09-02T00:45:00.000Z"],
+      ],
+      ["upsertExamRunItems", ["u1", "r1", "english", []]],
+      [
+        "finishExamSection",
+        [
+          "u1",
+          "r1",
+          "english",
+          "submitted",
+          { raw_correct: 0, raw_scored_total: 1, scale_score: null },
+          0,
+        ],
+      ],
+      ["setExamRunComposite", ["u1", "r1", null]],
+      ["setExamBookmark", ["u1", "r1", "english", "q1", true]],
+      ["listExamRunItemsByLearner", ["u1"]],
     ];
 
     expect(calls.map(([m]) => m).sort()).toEqual([...FINE_ENGINE_DB_METHODS].sort());
