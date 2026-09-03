@@ -116,6 +116,7 @@ describe("exam_home (FR-10–12)", () => {
       forms,
       formId: "two-section",
       sectionCode: "english",
+      now: NOW,
     });
     expect(started.runId).toBe("run-1");
     await repo.beginSection({
@@ -143,7 +144,52 @@ describe("exam_home (FR-10–12)", () => {
         forms,
         formId: "two-section",
         sectionCode: "math",
+        now: NOW,
       }),
     ).rejects.toBeInstanceOf(EngineRepoError);
+  });
+
+  it("surfaces an in_progress attempt whose deadline has passed as expired (not Resume) and stops it blocking other sections", async () => {
+    const { repo, forms } = harness();
+    const started = await startExamSection(repo, {
+      learnerId: LEARNER,
+      forms,
+      formId: "two-section",
+      sectionCode: "english",
+      now: NOW,
+    });
+    await repo.beginSection({
+      learnerId: LEARNER,
+      runId: started.runId,
+      sectionCode: "english",
+    });
+
+    // english deadline = NOW + 10 min (12:10Z); load the home 11 min later.
+    const AFTER_DEADLINE = new Date("2026-09-02T12:11:00.000Z");
+    const vm = await loadExamHome(repo, {
+      learnerId: LEARNER,
+      forms,
+      now: AFTER_DEADLINE,
+    });
+    const english = vm.forms[0]?.sections.find((s) => s.code === "english");
+    const math = vm.forms[0]?.sections.find((s) => s.code === "math");
+
+    // Was "in_progress · 0 min left · Resume" — a dead end. Now effectively Expired → Review.
+    expect(english?.status).toBe("expired");
+    expect(english?.remainingMs).toBeNull();
+    // An expired section no longer blocks starting another section.
+    expect(english?.startBlocked).toBe(false);
+    expect(math?.startBlocked).toBe(false);
+
+    // …and starting the other section must not throw "another section is in progress".
+    await expect(
+      startExamSection(repo, {
+        learnerId: LEARNER,
+        forms,
+        formId: "two-section",
+        sectionCode: "math",
+        now: AFTER_DEADLINE,
+      }),
+    ).resolves.toMatchObject({ sectionCode: "math" });
   });
 });

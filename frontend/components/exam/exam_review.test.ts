@@ -128,4 +128,42 @@ describe("exam_review (FR-25 / FR-29)", () => {
       "flagged",
     ).items).toHaveLength(1);
   });
+
+  it("derives correct from the answer key when the item is ungraded (correct=null)", () => {
+    // The live client review builds from reducer items, which are NOT graded
+    // (correct stays null). Wrong must still surface an answered-wrong item.
+    const wrongUngraded = toExamReviewItem(
+      question(),
+      item({ chosen_letter: "B", correct: null }),
+    );
+    expect(wrongUngraded.correct).toBe(false);
+
+    const rightUngraded = toExamReviewItem(
+      question(),
+      item({ chosen_letter: "A", correct: null }),
+    );
+    expect(rightUngraded.correct).toBe(true);
+
+    const unanswered = toExamReviewItem(
+      question(),
+      item({ chosen_letter: null, correct: null }),
+    );
+    expect(unanswered.correct).toBeNull();
+
+    const rows = [
+      toExamReviewItem(question({ id: "q-w" }), item({ question_id: "q-w", chosen_letter: "B", correct: null })),
+      toExamReviewItem(question({ id: "q-r" }), item({ question_id: "q-r", chosen_letter: "A", correct: null })),
+      toExamReviewItem(question({ id: "q-u" }), item({ question_id: "q-u", chosen_letter: null, correct: null })),
+    ];
+    expect(filterExamReview(rows, "wrong").map((i) => i.questionId)).toEqual(["q-w"]);
+  });
+
+  it("prefers an authoritative graded correct over the derived value", () => {
+    // A graded verdict (e.g. a future symbolic grader) wins over letter equality.
+    const graded = toExamReviewItem(
+      question(),
+      item({ chosen_letter: "B", correct: true }),
+    );
+    expect(graded.correct).toBe(true);
+  });
 });

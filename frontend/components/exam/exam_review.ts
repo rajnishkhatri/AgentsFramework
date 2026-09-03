@@ -35,6 +35,13 @@ export function toExamReviewItem(
   const chosen = item.chosen_letter;
   const rationale =
     chosen == null ? null : (question.per_choice_rationale[chosen] ?? null);
+  // FR-29: the live client review builds from ungraded reducer items (correct=null),
+  // so derive correctness from the answer key when a stored verdict is absent. An
+  // authoritative graded verdict, when present, still wins (`??` keeps a stored
+  // `false`). Unanswered ⇒ null (never "wrong"), matching the grader (no selection
+  // ⇒ no verdict) — otherwise the Wrong filter is empty even for wrong answers.
+  const correct =
+    item.correct ?? (chosen == null ? null : chosen === question.answer_letter);
   return {
     questionId: question.id,
     ordinal: item.ordinal,
@@ -43,7 +50,7 @@ export function toExamReviewItem(
     choices: question.choices.map((c) => ({ letter: c.letter, label: c.label })),
     chosenLetter: chosen,
     correctLetter: question.answer_letter,
-    correct: item.correct,
+    correct,
     rationale,
     dwellMs: item.dwell_ms,
     visits: item.visits,

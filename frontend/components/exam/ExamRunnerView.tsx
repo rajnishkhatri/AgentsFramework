@@ -127,8 +127,9 @@ export function ExamRunnerView(props: ExamRunnerViewProps): React.JSX.Element {
         </button>
       </div>
 
-      <ExamNavigator cells={props.cells} onJump={props.onJump} />
-
+      {/* Primary question navigation — kept directly under the choices (above the
+          number grid) so Previous/Next is always reachable without scrolling past
+          the 24-cell jump palette on long passages. */}
       <div className="flex items-center justify-between gap-3">
         <button
           type="button"
@@ -159,6 +160,8 @@ export function ExamRunnerView(props: ExamRunnerViewProps): React.JSX.Element {
           </button>
         )}
       </div>
+
+      <ExamNavigator cells={props.cells} onJump={props.onJump} />
       {!atLast ? (
         <button
           type="button"

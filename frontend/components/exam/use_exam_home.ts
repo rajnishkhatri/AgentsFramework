@@ -51,6 +51,8 @@ export type StartExamSectionArgs = {
   readonly forms: readonly ExamForm[];
   readonly formId: string;
   readonly sectionCode: ExamSectionCode;
+  /** Wall clock for the deadline-passed → expired check (injectable for tests). */
+  readonly now: Date;
 };
 
 function statusOf(
@@ -73,6 +75,36 @@ function remainingMsOf(
   if (attempt == null || attempt.status !== "in_progress") return null;
   if (attempt.deadline_at == null) return null;
   return Math.max(0, Date.parse(attempt.deadline_at) - now.getTime());
+}
+
+/**
+ * Effective section status for the home entry point.
+ *
+ * An in_progress attempt whose deadline has already passed is a dead end on the
+ * home: "Resume · 0 min left" only resumes to auto-submit into review. Surface it
+ * as `expired` (→ Review) so the entry point matches the real terminal state and
+ * stops blocking the learner from starting another section. The section reducer
+ * still performs the authoritative deadline→expired transition on navigation;
+ * this is display/guard derivation only, not a write.
+ */
+function effectiveStatusOf(
+  attempts: readonly {
+    section_code: ExamSectionCode;
+    status: ExamSectionAttemptStatus;
+    deadline_at: string | null;
+  }[],
+  code: ExamSectionCode,
+  now: Date,
+): ExamSectionAttemptStatus {
+  const attempt = attempts.find((a) => a.section_code === code);
+  if (
+    attempt?.status === "in_progress" &&
+    attempt.deadline_at != null &&
+    now.getTime() >= Date.parse(attempt.deadline_at)
+  ) {
+    return "expired";
+  }
+  return attempt?.status ?? "not_started";
 }
 
 function pickEntry(
@@ -98,14 +130,20 @@ export async function loadExamHome(
     forms: args.forms.map((form) => {
       const entry = pickEntry(entries, form);
       const inProgress = form.sections.find(
-        (s) => statusOf(entry?.attempts ?? [], s.code) === "in_progress",
+        (s) =>
+          effectiveStatusOf(entry?.attempts ?? [], s.code, args.now) ===
+          "in_progress",
       );
       return {
         formId: form.id,
         title: form.title,
         runId: entry?.run.id ?? null,
         sections: form.sections.map((section, index) => {
-          const status = statusOf(entry?.attempts ?? [], section.code);
+          const status = effectiveStatusOf(
+            entry?.attempts ?? [],
+            section.code,
+            args.now,
+          );
           return {
             code: section.code,
             title: section.title,
@@ -113,7 +151,12 @@ export async function loadExamHome(
             officialOrder: index + 1,
             recommended: index === 0,
             status,
-            remainingMs: remainingMsOf(entry?.attempts ?? [], section.code, args.now),
+            // Only a genuinely-running section has time left; a deadline-passed
+            // (now-expired) attempt reports null, not a misleading "0 min left".
+            remainingMs:
+              status === "in_progress"
+                ? remainingMsOf(entry?.attempts ?? [], section.code, args.now)
+                : null,
             startBlocked: inProgress != null && inProgress.code !== section.code,
             href:
               entry == null ? null : `/learn/exam/${entry.run.id}/${section.code}`,
@@ -138,7 +181,9 @@ export async function startExamSection(
   });
   const entry = pickEntry(entries, form);
   const inProgress = form.sections.find(
-    (s) => statusOf(entry?.attempts ?? [], s.code) === "in_progress",
+    (s) =>
+      effectiveStatusOf(entry?.attempts ?? [], s.code, args.now) ===
+      "in_progress",
   );
   if (inProgress != null && inProgress.code !== args.sectionCode) {
     throw new EngineRepoError(
@@ -201,6 +246,7 @@ export function useExamHome(args: {
         forms: args.forms,
         formId,
         sectionCode,
+        now: new Date(),
       });
     },
     [ports.examRunRepo, args.learnerId, args.forms],

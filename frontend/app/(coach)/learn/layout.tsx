@@ -81,9 +81,16 @@ function useShellLayout() {
   );
 }
 
-/** Screens that keep page-level scroll under the h-dvh shell (Home / Progress). */
+/**
+ * Screens that keep page-level scroll under the h-dvh shell (Home / Progress / Exam).
+ * The exam runner/review are document-flow pages taller than the viewport (long
+ * passage + choices + navigator + submit); without page scroll the shell's
+ * `overflow-hidden` clips everything below the fold (Prev/Next, grid, submit).
+ */
 function needsPageScroll(activeId: ScreenId | null): boolean {
-  return activeId === "dashboard" || activeId === "progress";
+  return (
+    activeId === "dashboard" || activeId === "progress" || activeId === "exam"
+  );
 }
 
 function isContentScreen(activeId: ScreenId | null): boolean {
