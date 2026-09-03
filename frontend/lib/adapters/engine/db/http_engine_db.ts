@@ -21,6 +21,7 @@ import type {
   Tutorial,
 } from "../../../wire/engine_entities";
 import type {
+  ClientExamForm,
   ExamRun,
   ExamRunItem,
   ExamSectionAttempt,
@@ -29,6 +30,7 @@ import type {
 import { EngineRepoError } from "../../../ports/engine/errors";
 import type {
   EngineDb,
+  ExamFormKeyMap,
   ExamRunDetail,
   ExamRunListEntry,
   ExamSectionFinishStatus,
@@ -381,5 +383,24 @@ export class HttpEngineDb implements EngineDb {
   }
   listExamRunItemsByLearner(learnerId: string): Promise<ExamRunItem[]> {
     return this.call("listExamRunItemsByLearner", [learnerId]);
+  }
+
+  async getExamFormForClient(
+    learnerId: string,
+    formId: string,
+  ): Promise<ClientExamForm | null> {
+    try {
+      return await this.call("getExamFormForClient", [learnerId, formId]);
+    } catch (err) {
+      // G9: BFF 404 = unknown / unloadable form — contract is null.
+      if (err instanceof EngineRepoError && /\(404\)$/.test(err.message)) {
+        return null;
+      }
+      throw err;
+    }
+  }
+
+  async getExamFormKeys(_formId: string): Promise<ExamFormKeyMap | null> {
+    this.serverOnly();
   }
 }

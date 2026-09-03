@@ -31,6 +31,7 @@ import type {
   Tutorial,
 } from "../../../wire/engine_entities";
 import type {
+  ClientExamForm,
   ExamRun,
   ExamRunItem,
   ExamSectionAttempt,
@@ -61,11 +62,36 @@ export type ExamRunListEntry = {
   attempts: ExamSectionAttempt[];
 };
 
+/** Post-grade review fields merged from server keys (FR-P2-9). */
+export type ExamReviewReveal = {
+  question_id: string;
+  section_code: ExamSectionCode;
+  answer_letter: string;
+  why_correct_md: string;
+  why_tempted_md: string;
+  per_choice_rationale: Record<string, string>;
+};
+
 /** One owned run plus attempts and items (`getExamRun`); `null` if not owned. */
 export type ExamRunDetail = {
   run: ExamRun;
   attempts: ExamSectionAttempt[];
   items: ExamRunItem[];
+  /** Present only for finished sections; empty while in progress. */
+  review?: ExamReviewReveal[];
+};
+
+/** Server-only answer key map (FR-P2-6/7). Never serialized on a fine route. */
+export type ExamFormKeyEntry = {
+  answer_letter: string;
+  why_correct_md: string;
+  why_tempted_md: string;
+  per_choice_rationale: Record<string, string>;
+};
+
+export type ExamFormKeyMap = {
+  form_id: string;
+  keys: Record<string, ExamFormKeyEntry>;
 };
 
 /** Scores written by `finishExamSection`. */
@@ -255,8 +281,8 @@ export interface EngineDb extends ReadableEngineDb {
   listProgressPoints(subject: string, learnerId: string): Promise<ProgressPoint[]>;
 
   // --- exam_run / exam_section_attempt / exam_run_item (ADR-0040 / W1-2) ---
-  // Every method is learnerId-first so the dispatcher LEARNER_ARG override
-  // (W1-3) can enforce FR-3. Disposition is `"fine"` for all nine.
+  // Learner-scoped exam methods are learnerId-first (W1-3 / FR-3).
+  // getExamFormForClient is `"fine"`; getExamFormKeys is `"server-only"`.
   insertExamRun(learnerId: string, run: ExamRun): Promise<void>;
   listExamRunsByLearner(
     learnerId: string,
@@ -297,4 +323,17 @@ export interface EngineDb extends ReadableEngineDb {
     bookmarked: boolean,
   ): Promise<void>;
   listExamRunItemsByLearner(learnerId: string): Promise<ExamRunItem[]>;
+  /**
+   * Key-stripped form for the authenticated learner (ADR-0042 / FR-P2-7).
+   * `null` when the form is unknown or an asset-served module is absent.
+   */
+  getExamFormForClient(
+    learnerId: string,
+    formId: string,
+  ): Promise<ClientExamForm | null>;
+  /**
+   * Answer-bearing key map. Server-only — the dispatcher 404s this method.
+   * `null` when keys are not loadable (generated artifact absent).
+   */
+  getExamFormKeys(formId: string): Promise<ExamFormKeyMap | null>;
 }

@@ -61,6 +61,11 @@ import type {
   ExamSectionAttempt,
   ExamSectionCode,
 } from "../../../wire/exam_entities";
+import {
+  attachExamReviewReveal,
+  loadExamFormForClient,
+  loadExamFormKeys,
+} from "../exam_form_load";
 import type {
   EngineDb,
   ExamRunDetail,
@@ -626,11 +631,15 @@ function createExamMethods(
     async getExamRun(learnerId, runId) {
       const run = await selectOwnedRun(client, learnerId, runId);
       if (run == null) return null;
-      return {
-        run,
-        attempts: await selectAttempts(client, runId),
-        items: await selectItems(client, runId),
-      } satisfies ExamRunDetail;
+      const keys = await loadExamFormKeys(run.form_id);
+      return attachExamReviewReveal(
+        {
+          run,
+          attempts: await selectAttempts(client, runId),
+          items: await selectItems(client, runId),
+        },
+        keys,
+      );
     },
 
     async beginExamSection(learnerId, runId, section, startedAt, deadlineAt) {
@@ -1517,6 +1526,12 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
     },
     // --- exam (W1-5). Shared merge + .onConflict; positional learnerId. ---
     ...createExamMethods(db, pg, "pg"),
+    async getExamFormForClient(_learnerId, formId) {
+      return loadExamFormForClient(formId);
+    },
+    async getExamFormKeys(formId) {
+      return loadExamFormKeys(formId);
+    },
   };
 }
 

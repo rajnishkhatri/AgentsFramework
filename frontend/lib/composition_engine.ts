@@ -33,10 +33,15 @@ import type { TestBlueprintRepo } from "./ports/engine/test_blueprint_repo";
 import type { TutorialRepo } from "./ports/engine/tutorial_repo";
 import type { ProgressRepo } from "./ports/engine/progress_repo";
 import type { ExamRunRepo } from "./ports/engine/exam_run_repo";
+import type { FormAssetStore } from "./ports/engine/form_asset_store";
 import type { QuizSubmitNotifier } from "./ports/quiz_submit_notifier";
+
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type { EngineDb } from "./adapters/engine/db/engine_db";
 import { pgEngineDb } from "./adapters/engine/db/drizzle_engine_db";
+import { LocalFileAssetStore } from "./adapters/engine/assets/local_file_asset_store";
 import { EngineRepoError } from "./ports/engine/errors";
 import { DrizzleSkillTaxonomy } from "./adapters/engine/repos/drizzle_skill_taxonomy";
 import { DrizzleQuestionRepo } from "./adapters/engine/repos/drizzle_question_repo";
@@ -94,6 +99,11 @@ export interface EnginePortBag {
    * always fill it.
    */
   readonly examRunRepo?: ExamRunRepo;
+  /**
+   * Official-form images (ADR-0042 / FR-P2-14). Server root only —
+   * the browser bag must not construct a store (C4/C5).
+   */
+  readonly formAssetStore?: FormAssetStore;
   /**
    * Fire-and-forget quiz-submit signal to the coach-session marker store
    * (ADR-0012 Amendment, FR-19). Optional: absent on the server root (the
@@ -164,5 +174,21 @@ export function buildEngineAdapters(
     tutorialRepo: new DrizzleTutorialRepo(db),
     progressRepo: new DrizzleProgressRepo(db),
     examRunRepo: new DrizzleExamRunRepo({ db, grader }),
+    formAssetStore: new LocalFileAssetStore(examAssetDir(options.env)),
   };
+}
+
+/**
+ * C4: the only EXAM_ASSET_DIR read. Blank/unset → repo private folder
+ * (not a fabricated store — LocalFileAssetStore still needs a real dir).
+ */
+function examAssetDir(
+  env: Readonly<Record<string, string | undefined>>,
+): string {
+  const fromEnv = env.EXAM_ASSET_DIR;
+  if (fromEnv != null && fromEnv.trim() !== "") return fromEnv;
+  return path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../../docs/preact9secure/json",
+  );
 }

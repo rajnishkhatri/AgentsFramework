@@ -13,8 +13,10 @@ import {
   selectEngineDb,
 } from "./composition_engine";
 import { InMemoryEngineDb } from "./adapters/engine/db/in_memory_engine_db";
+import { LocalFileAssetStore } from "./adapters/engine/assets/local_file_asset_store";
 import { EngineRepoError } from "./ports/engine/errors";
 import type { Question, Skill } from "./wire/engine_entities";
+import { buildBrowserEngineAdapters } from "./composition_engine_browser";
 
 describe("selectEngineDb — seam selection (FR-A3)", () => {
   it("throws typed EngineRepoError without DATABASE_URL (no in-memory fallback)", () => {
@@ -169,5 +171,19 @@ describe("buildEngineAdapters — full bag + end-to-end loop", () => {
     });
     expect(closed.ended_at).not.toBeNull();
     expect(closed.score_total).toBe(1);
+  });
+});
+
+describe("engine composition — FormAssetStore (B-7 / FR-P2-14)", () => {
+  it("server bag constructs LocalFileAssetStore; browser bag has none", () => {
+    const server = buildEngineAdapters({
+      env: { EXAM_ASSET_DIR: "/tmp/exam-assets-test" },
+      engineDb: new InMemoryEngineDb(),
+    });
+    expect(server.formAssetStore).toBeInstanceOf(LocalFileAssetStore);
+    const browser = buildBrowserEngineAdapters({
+      engineDb: new InMemoryEngineDb(),
+    });
+    expect(browser.formAssetStore).toBeUndefined();
   });
 });

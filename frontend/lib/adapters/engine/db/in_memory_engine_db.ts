@@ -26,6 +26,8 @@ import type {
   Tutorial,
 } from "../../../wire/engine_entities";
 import type {
+  ClientExamForm,
+  ExamForm,
   ExamRun,
   ExamRunItem,
   ExamSectionAttempt,
@@ -33,8 +35,16 @@ import type {
 } from "../../../wire/exam_entities";
 import { mergeExamDwell } from "../../../../components/exam/exam_dwell_merge";
 import { EngineNotFoundError, EngineRepoError } from "../../../ports/engine/errors";
+import {
+  attachExamReviewReveal,
+  extractExamFormKeys,
+  loadExamFormForClient,
+  loadExamFormKeys,
+  stripExamFormForClient,
+} from "../exam_form_load";
 import type {
   EngineDb,
+  ExamFormKeyMap,
   ExamRunDetail,
   ExamRunListEntry,
   ExamSectionFinishStatus,
@@ -83,6 +93,8 @@ export class InMemoryEngineDb implements EngineDb {
   private examRuns = new Map<string, ExamRun>();
   private examAttempts = new Map<string, ExamSectionAttempt>();
   private examItems = new Map<string, ExamRunItem>();
+  private examForms = new Map<string, ExamForm>();
+  private examKeys = new Map<string, ExamFormKeyMap>();
 
   // --- seeding helpers (test/dev only) ---
   seedSkills(skills: Skill[]): void {
@@ -120,6 +132,10 @@ export class InMemoryEngineDb implements EngineDb {
   }
   seedProgress(points: ProgressPoint[]): void {
     this.progress.push(...points.map((p) => ({ ...p })));
+  }
+  seedExamForm(form: ExamForm): void {
+    this.examForms.set(form.id, form);
+    this.examKeys.set(form.id, extractExamFormKeys(form));
   }
 
   // --- skill ---
@@ -591,11 +607,15 @@ export class InMemoryEngineDb implements EngineDb {
   ): Promise<ExamRunDetail | null> {
     const run = this.ownedExamRun(learnerId, runId);
     if (run == null) return null;
-    return {
-      run: { ...run },
-      attempts: this.attemptsForRun(runId),
-      items: this.itemsForRun(runId),
-    };
+    const keys = await this.getExamFormKeys(run.form_id);
+    return attachExamReviewReveal(
+      {
+        run: { ...run },
+        attempts: this.attemptsForRun(runId),
+        items: this.itemsForRun(runId),
+      },
+      keys,
+    );
   }
 
   async beginExamSection(
@@ -751,5 +771,20 @@ export class InMemoryEngineDb implements EngineDb {
           a.question_id.localeCompare(b.question_id),
       )
       .map((i) => ({ ...i }));
+  }
+
+  async getExamFormForClient(
+    _learnerId: string,
+    formId: string,
+  ): Promise<ClientExamForm | null> {
+    const seeded = this.examForms.get(formId);
+    if (seeded !== undefined) return stripExamFormForClient(seeded);
+    return loadExamFormForClient(formId);
+  }
+
+  async getExamFormKeys(formId: string): Promise<ExamFormKeyMap | null> {
+    const seeded = this.examKeys.get(formId);
+    if (seeded !== undefined) return seeded;
+    return loadExamFormKeys(formId);
   }
 }
