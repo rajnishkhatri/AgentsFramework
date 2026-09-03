@@ -61,6 +61,19 @@ const SESSION_FIELD_ARG: Partial<Record<EngineDbMethodName, number>> = {
   insertAttempt: 0,
 };
 
+/**
+ * Exam methods whose positional arg is a run id (FR-3 / W1-6).
+ * Ownership is probed via getExamRun(claim, runId) before the write.
+ */
+const EXAM_RUN_ID_ARG: Partial<Record<EngineDbMethodName, number>> = {
+  getExamRun: 1,
+  beginExamSection: 1,
+  upsertExamRunItems: 1,
+  finishExamSection: 1,
+  setExamRunComposite: 1,
+  setExamBookmark: 1,
+};
+
 function isMethodName(value: string): value is EngineDbMethodName {
   return Object.prototype.hasOwnProperty.call(ENGINE_DB_DISPOSITION, value);
 }
@@ -109,6 +122,19 @@ export async function POST(
   }
 
   const db = engineDb();
+
+  const examRunIdx = EXAM_RUN_ID_ARG[raw];
+  if (examRunIdx !== undefined) {
+    const runId = args[examRunIdx];
+    if (typeof runId !== "string" || runId.length === 0) {
+      return badRequest();
+    }
+    // Missing and foreign-owned runs share this 404 (FR-3) — do not leak
+    // existence. Probe before the write so a foreign upsert never lands.
+    const owned = await db.getExamRun(learnerId, runId);
+    if (owned == null) return notFound();
+    if (raw === "getExamRun") return jsonOk(owned);
+  }
 
   const sessionIdx = SESSION_ARG[raw];
   const sessionFieldIdx = SESSION_FIELD_ARG[raw];

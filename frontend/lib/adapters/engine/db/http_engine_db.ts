@@ -292,7 +292,7 @@ export class HttpEngineDb implements EngineDb {
     return this.call("listProgressPoints", [subject, learnerId]);
   }
 
-  // --- exam_run (ADR-0040 / W1-2; BFF wiring + foreign-learner is W1-6) ---
+  // --- exam_run (ADR-0040 / W1-2 + W1-6 foreign-learner 404) ---
   insertExamRun(learnerId: string, run: ExamRun): Promise<void> {
     return this.call("insertExamRun", [learnerId, run]);
   }
@@ -302,8 +302,20 @@ export class HttpEngineDb implements EngineDb {
   ): Promise<ExamRunListEntry[]> {
     return this.call("listExamRunsByLearner", [learnerId, formId]);
   }
-  getExamRun(learnerId: string, runId: string): Promise<ExamRunDetail | null> {
-    return this.call("getExamRun", [learnerId, runId]);
+  async getExamRun(
+    learnerId: string,
+    runId: string,
+  ): Promise<ExamRunDetail | null> {
+    try {
+      return await this.call("getExamRun", [learnerId, runId]);
+    } catch (err) {
+      // G9: BFF 404 = missing or foreign-owned run (same look, FR-3 / W1-6).
+      // EngineDb contract is null — never fabricate a detail.
+      if (err instanceof EngineRepoError && /\(404\)$/.test(err.message)) {
+        return null;
+      }
+      throw err;
+    }
   }
   beginExamSection(
     learnerId: string,
