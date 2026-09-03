@@ -537,7 +537,7 @@ export class InMemoryEngineDb implements EngineDb {
   private requireOwnedExamRun(learnerId: string, runId: string): ExamRun {
     const run = this.ownedExamRun(learnerId, runId);
     // Missing and foreign-learner both look like "not owned" — the BFF
-    // maps this to 403/404 in W1-6. Failure: run id is absent or stored
+    // maps this to 404 (W1-6 / FR-3). Failure: run id is absent or stored
     // learner_id ≠ positional claim (FR-3 join).
     if (run == null) {
       throw new EngineNotFoundError(`exam run not found: ${runId}`);

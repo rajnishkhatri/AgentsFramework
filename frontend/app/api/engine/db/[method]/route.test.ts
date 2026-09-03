@@ -19,6 +19,14 @@ const {
   listSessionSkillIds,
   upsertSkillState,
   insertExamRun,
+  listExamRunsByLearner,
+  getExamRun,
+  beginExamSection,
+  upsertExamRunItems,
+  finishExamSection,
+  setExamRunComposite,
+  setExamBookmark,
+  listExamRunItemsByLearner,
   engineDb,
 } = vi.hoisted(() => {
   const listSkills = vi.fn();
@@ -33,6 +41,14 @@ const {
   const listSessionSkillIds = vi.fn();
   const upsertSkillState = vi.fn();
   const insertExamRun = vi.fn();
+  const listExamRunsByLearner = vi.fn();
+  const getExamRun = vi.fn();
+  const beginExamSection = vi.fn();
+  const upsertExamRunItems = vi.fn();
+  const finishExamSection = vi.fn();
+  const setExamRunComposite = vi.fn();
+  const setExamBookmark = vi.fn();
+  const listExamRunItemsByLearner = vi.fn();
   return {
     getAuthSession: vi.fn(),
     getDbSession,
@@ -47,6 +63,14 @@ const {
     listSessionSkillIds,
     upsertSkillState,
     insertExamRun,
+    listExamRunsByLearner,
+    getExamRun,
+    beginExamSection,
+    upsertExamRunItems,
+    finishExamSection,
+    setExamRunComposite,
+    setExamBookmark,
+    listExamRunItemsByLearner,
     engineDb: vi.fn(() => ({
       listSkills,
       insertQuestion,
@@ -60,6 +84,14 @@ const {
       listSessionSkillIds,
       upsertSkillState,
       insertExamRun,
+      listExamRunsByLearner,
+      getExamRun,
+      beginExamSection,
+      upsertExamRunItems,
+      finishExamSection,
+      setExamRunComposite,
+      setExamBookmark,
+      listExamRunItemsByLearner,
     })),
   };
 });
@@ -71,6 +103,7 @@ vi.mock("@/lib/bff/server_composition", () => ({
   engineDb,
 }));
 
+import { EXAM_ENGINE_DB_METHODS } from "@/lib/adapters/engine/db/dispatcher_learner_arg";
 import { POST } from "./route";
 
 function req(method: string, args: unknown[]): NextRequest {
@@ -222,4 +255,85 @@ describe("POST /api/engine/db/[method]", () => {
     expect(res.status).toBe(204);
     expect(insertExamRun).toHaveBeenCalledWith("learner-A", run);
   });
+});
+
+const EXAM_STARTED = "2026-09-02T00:00:00.000Z";
+const EXAM_DEADLINE = "2026-09-02T00:45:00.000Z";
+const EXAM_GRADES = {
+  raw_correct: 0,
+  raw_scored_total: 1,
+  scale_score: null,
+};
+
+/** Run-scoped exam methods (arg1 = runId). FR-3 / W1-6. */
+const EXAM_RUN_SCOPED: Array<
+  [string, unknown[], ReturnType<typeof vi.fn>]
+> = [
+  ["getExamRun", ["learner-B", "run-B"], getExamRun],
+  [
+    "beginExamSection",
+    ["learner-B", "run-B", "english", EXAM_STARTED, EXAM_DEADLINE],
+    beginExamSection,
+  ],
+  ["upsertExamRunItems", ["learner-B", "run-B", "english", []], upsertExamRunItems],
+  [
+    "finishExamSection",
+    ["learner-B", "run-B", "english", "submitted", EXAM_GRADES, 0],
+    finishExamSection,
+  ],
+  ["setExamRunComposite", ["learner-B", "run-B", null], setExamRunComposite],
+  ["setExamBookmark", ["learner-B", "run-B", "english", "q1", true], setExamBookmark],
+];
+
+const EXAM_LEARNER_ONLY: Array<
+  [string, unknown[], ReturnType<typeof vi.fn>]
+> = [
+  ["insertExamRun", ["learner-B", { id: "run-new" }], insertExamRun],
+  ["listExamRunsByLearner", ["learner-B"], listExamRunsByLearner],
+  ["listExamRunItemsByLearner", ["learner-B"], listExamRunItemsByLearner],
+];
+
+describe("POST /api/engine/db/[method] exam (W1-6 / FR-3)", () => {
+  it("covers every exam EngineDb method (run-scoped 404 or learner-arg force)", () => {
+    const covered = [
+      ...EXAM_RUN_SCOPED.map(([method]) => method),
+      ...EXAM_LEARNER_ONLY.map(([method]) => method),
+    ].sort();
+    expect(covered).toEqual([...EXAM_ENGINE_DB_METHODS].sort());
+  });
+
+  it.each(EXAM_RUN_SCOPED)(
+    "returns 404 before dispatching foreign-learner exam %s",
+    async (method, args, dependentMethod) => {
+      getAuthSession.mockResolvedValue({ sub: "learner-A" });
+      getExamRun.mockResolvedValue(null);
+
+      const res = await POST(req(method, args), {
+        params: Promise.resolve({ method }),
+      });
+
+      expect(res.status).toBe(404);
+      expect(getExamRun).toHaveBeenCalledWith("learner-A", "run-B");
+      if (method === "getExamRun") {
+        expect(getExamRun).toHaveBeenCalledTimes(1);
+      } else {
+        expect(dependentMethod).not.toHaveBeenCalled();
+      }
+    },
+  );
+
+  it.each(EXAM_LEARNER_ONLY)(
+    "forces %s arg0 learnerId from the authenticated claim",
+    async (method, args, dependentMethod) => {
+      getAuthSession.mockResolvedValue({ sub: "learner-A" });
+      dependentMethod.mockResolvedValue(method === "insertExamRun" ? undefined : []);
+
+      const res = await POST(req(method, args), {
+        params: Promise.resolve({ method }),
+      });
+
+      expect(res.status).toBe(method === "insertExamRun" ? 204 : 200);
+      expect(dependentMethod.mock.calls[0]![0]).toBe("learner-A");
+    },
+  );
 });

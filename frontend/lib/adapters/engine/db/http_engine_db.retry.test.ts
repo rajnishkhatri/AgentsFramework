@@ -33,3 +33,14 @@ describe("HttpEngineDb retry (FR-A9.2)", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("HttpEngineDb exam 404 (W1-6 / FR-3)", () => {
+  it("getExamRun maps BFF 404 to null (missing or foreign-owned run)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: "not_found" }), { status: 404 }),
+    );
+    const db = new HttpEngineDb({ baseUrl: "http://x", fetchImpl });
+    await expect(db.getExamRun("learner-A", "run-B")).resolves.toBeNull();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+});
