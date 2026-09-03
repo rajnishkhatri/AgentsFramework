@@ -932,3 +932,21 @@ title: 'Lightweight decision log (intent debt, long tail)'
   Composer.tsx now PASSES (0 violations); meta reviewer over the coach range drops
   to 0 findings; 285 `tests/code_reviewer/` pass. Not an ADR — a bugfix to an
   existing predicate's tag-matching, no new abstraction/dep/service (G1 clear).
+
+- 2026-09-03 — **Exam image-necessary rule: text-first, official image only where lossy or figure-bound.**
+  For asset-served official forms (ADR-0042) a question renders its stem/choices as text
+  from the verified JSON and pulls the per-question PNG **iff** `text_fidelity ∈
+  {math-notation, low}` **or** its passage is a figure passage (`exam_image_rule.ts`, pure).
+  Grounded in PT2: Math 34/45 stems linearize to garbage (`√ _ 112` for √112), figure-based
+  Science items are unanswerable without the table, while English/Reading text is clean
+  (`ok`) ⇒ 0 images there, ~44 images total instead of 171. Rejected: image-first everywhere
+  (loses selectable text, 4× the bytes) and text-only (Math ~75 % unfaithful).
+
+- 2026-09-03 — **Exam phase-2 parallel cut: implementation by file ownership, validation by section.**
+  The proposed Science ∥ Math ∥ Reading worktrees were rejected for *implementation*: all
+  four sections flow through one converter, one renderer, one asset store, one server grade
+  path, so per-section lanes collide on the same files (the phase-1 plan §6.2 hotspot rule).
+  Adopted three worktrees by **disjoint directory**: converter (`scripts/`) ∥ server path
+  (`lib/adapters/engine/` + `app/api/engine/`) ∥ rendering (`components/exam/`), behind a
+  frozen Phase-0 base. "By section" **is** the right axis for *validation* (read-only, no
+  shared files) ⇒ Phase 3 runs E ∥ M ∥ R ∥ S. Plan §6.1/§6.4.

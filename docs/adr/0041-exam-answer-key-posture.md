@@ -3,15 +3,15 @@ type: decision-record
 title: 'ADR-0041: Exam module answer-key posture — client-grade phase-1 behind the ADR-0013 tripwire'
 status: accepted
 created: 2026-09-02
-updated: 2026-09-02
+updated: 2026-09-03
 owner: Rajnish Khatri
-related: exam-module-official-rules.spec.md, exam-module-official-rules.plan.md, 0040-exam-module-durable-runs-analytics.md, 0013-subject-coach-test-mode-blueprint-generation-integrity.md
+related: exam-module-official-rules.spec.md, exam-module-official-rules.plan.md, 0040-exam-module-durable-runs-analytics.md, 0013-subject-coach-test-mode-blueprint-generation-integrity.md, 0042-exam-official-forms-asset-served-server-graded.md
 tags: [decision-record]
 ---
 
 # ADR-0041: Exam module answer-key posture — client-grade phase-1 behind the ADR-0013 tripwire
 
-**Status:** Accepted — 2026-09-02 (arch-lifecycle stage-5 risk **R3** → arch-decide; **Option A** chosen).
+**Status:** Accepted — 2026-09-02 (arch-lifecycle stage-5 risk **R3** → arch-decide; **Option A** chosen). **Amended 2026-09-03 by [ADR-0042](0042-exam-official-forms-asset-served-server-graded.md):** the **delivery** tripwire fired (first real official form, `asset-served`) → Decision is **Option B** for asset-served forms (server-side grading, answer-bearing fields never client-served); the Test-01 client-bundled exemption is **retained**.
 **Related:** [spec](../plan/exam-module-official-rules.spec.md) · [plan](../plan/exam-module-official-rules.plan.md) · [ADR-0040](0040-exam-module-durable-runs-analytics.md) (the exam module this governs) · [ADR-0013 §integrity](0013-subject-coach-test-mode-blueprint-generation-integrity.md) (the client-integrity stance + `COACH_TEST_KEYS_CLIENT_SERVED` tripwire this extends).
 **Audience:** anyone building `components/exam/` grading, the form registry, or wiring `finishExamSection` — and anyone who assumes "the exam grades like Test Mode" without checking the triggers.
 
