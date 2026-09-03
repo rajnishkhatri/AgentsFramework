@@ -47,6 +47,7 @@
     "test:e2e:a1-reveal": "E2E_BYPASS_AUTH=1 playwright test --project=learn-e2e e2e/learn/validate_a1_reveal.spec.ts",
     "test:e2e:continuity": "E2E_BYPASS_AUTH=1 playwright test --project=learn-e2e e2e/learn/validate_continuity_fixes.spec.ts",
     "convert:test01": "tsx scripts/convert_test01_english.ts",
+    "convert:official": "tsx scripts/convert_official_form.ts",
     "test:e2e:matrix": "playwright test e2e/cross-browser/",
     "test:e2e:visual": "playwright test e2e/visual/ --project=chromium-desktop",
     "test:e2e:visual:update": "playwright test e2e/visual/ --project=chromium-desktop --update-snapshots",
