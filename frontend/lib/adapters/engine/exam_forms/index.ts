@@ -24,13 +24,22 @@ export type ExamFormEntry =
 const REGISTRY: readonly ExamFormEntry[] = [
   { form: TEST01_ENGLISH_FORM, delivery: TEST01_ENGLISH_DELIVERY },
   { formId: "fake-official-form", delivery: "asset-served" },
+  { formId: "act-practice-test-2", delivery: "asset-served" },
 ];
 
 /**
- * Generated client-form loaders. Phase 0 is empty — `_generated/` is
- * gitignored and absent in CI. S-I1 registers PT2 here.
+ * Generated client-form loaders. Empty in CI (`_generated/` gitignored).
+ * Server-only `generated_official_form.ts` registers PT2 when artifacts exist.
  */
 const GENERATED_LOADERS: Record<string, () => ExamForm> = {};
+
+/** Server-only: bind a generated asset-served form so `listExamForms` can list it. */
+export function registerGeneratedFormLoader(
+  formId: string,
+  load: () => ExamForm,
+): void {
+  GENERATED_LOADERS[formId] = load;
+}
 
 export function assertExamFormLoadable(form: ExamForm): void {
   if (form.sections.length === 0) {

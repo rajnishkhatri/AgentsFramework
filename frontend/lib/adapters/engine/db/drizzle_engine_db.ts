@@ -66,6 +66,7 @@ import {
   loadExamFormForClient,
   loadExamFormKeys,
 } from "../exam_form_load";
+import "../exam_forms/generated_official_form";
 import type {
   EngineDb,
   ExamRunDetail,

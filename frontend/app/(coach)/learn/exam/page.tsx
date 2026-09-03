@@ -3,19 +3,42 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEngine } from "@/app/engine-provider";
 import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
-import { listExamForms } from "@/lib/adapters/engine/exam_forms";
 import { ExamHomeView } from "@/components/exam/ExamHomeView";
 import { useExamHome } from "@/components/exam/use_exam_home";
+import type { ClientExamForm } from "@/lib/wire/exam_entities";
 
 export default function ExamHomePage(): React.JSX.Element {
   const { learnerId } = useLearnIdentity();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const forms = React.useMemo(() => listExamForms(), []);
-  const { vm, loading, start } = useExamHome({ learnerId, forms });
+  const ports = useEngine();
+  const [forms, setForms] = React.useState<readonly ClientExamForm[] | null>(
+    null,
+  );
 
-  if (loading || vm == null) {
+  React.useEffect(() => {
+    const repo = ports.examRunRepo;
+    if (repo == null) {
+      setForms([]);
+      return;
+    }
+    let cancelled = false;
+    void repo.listClientForms({ learnerId }).then((loaded) => {
+      if (!cancelled) setForms(loaded);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ports.examRunRepo, learnerId]);
+
+  const { vm, loading, start } = useExamHome({
+    learnerId,
+    forms: forms ?? [],
+  });
+
+  if (forms == null || loading || vm == null) {
     return (
       <div data-testid="exam-home-loading" className="p-6 text-sm text-muted">
         Loading exam…

@@ -12,10 +12,14 @@ import { useEngine } from "@/app/engine-provider";
 import type { ExamRunRepo } from "@/lib/ports/engine/exam_run_repo";
 import { EngineRepoError } from "@/lib/ports/engine/errors";
 import type {
+  ClientExamForm,
   ExamForm,
   ExamSectionAttemptStatus,
   ExamSectionCode,
 } from "@/lib/wire/exam_entities";
+
+/** Home listing only needs id/title/sections — ClientExamForm or ExamForm. */
+export type ExamHomeFormSource = Pick<ExamForm, "id" | "title" | "sections"> | ClientExamForm;
 
 export type ExamSectionStatusVM = {
   readonly code: ExamSectionCode;
@@ -42,13 +46,13 @@ export type ExamHomeVM = {
 
 export type LoadExamHomeArgs = {
   readonly learnerId: string;
-  readonly forms: readonly ExamForm[];
+  readonly forms: readonly ExamHomeFormSource[];
   readonly now: Date;
 };
 
 export type StartExamSectionArgs = {
   readonly learnerId: string;
-  readonly forms: readonly ExamForm[];
+  readonly forms: readonly ExamHomeFormSource[];
   readonly formId: string;
   readonly sectionCode: ExamSectionCode;
   /** Wall clock for the deadline-passed → expired check (injectable for tests). */
@@ -109,7 +113,7 @@ function effectiveStatusOf(
 
 function pickEntry(
   entries: Awaited<ReturnType<ExamRunRepo["listRunEntries"]>>,
-  form: ExamForm,
+  form: ExamHomeFormSource,
 ): (typeof entries)[number] | null {
   const forForm = entries.filter((e) => e.run.form_id === form.id);
   const open = forForm.find((e) =>
@@ -198,7 +202,7 @@ export async function startExamSection(
 
 export function useExamHome(args: {
   readonly learnerId: string;
-  readonly forms: readonly ExamForm[];
+  readonly forms: readonly ExamHomeFormSource[];
 }): {
   readonly vm: ExamHomeVM | null;
   readonly loading: boolean;

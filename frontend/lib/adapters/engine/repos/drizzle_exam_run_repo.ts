@@ -24,7 +24,11 @@ import type {
   ExamSectionCode,
 } from "../../../wire/exam_entities";
 import type { EngineDb } from "../db/engine_db";
-import { getExamForm, getExamFormDelivery } from "../exam_forms";
+import {
+  getExamForm,
+  getExamFormDelivery,
+  listRegisteredExamFormIds,
+} from "../exam_forms";
 import { newUuid } from "../../../new_uuid";
 import {
   examComposite,
@@ -275,6 +279,31 @@ export class DrizzleExamRunRepo implements ExamRunRepo {
       );
     } catch (err) {
       throw translate("setBookmark", err);
+    }
+  }
+
+  async listClientForms(args: {
+    learnerId: string;
+  }): Promise<ClientExamForm[]> {
+    const out: ClientExamForm[] = [];
+    for (const formId of listRegisteredExamFormIds()) {
+      const form = await this.getClientForm({
+        learnerId: args.learnerId,
+        formId,
+      });
+      if (form != null) out.push(form);
+    }
+    return out;
+  }
+
+  async getClientForm(args: {
+    learnerId: string;
+    formId: string;
+  }): Promise<ClientExamForm | null> {
+    try {
+      return await this.db.getExamFormForClient(args.learnerId, args.formId);
+    } catch (err) {
+      throw translate("getClientForm", err);
     }
   }
 

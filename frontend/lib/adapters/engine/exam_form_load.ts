@@ -20,8 +20,16 @@ import type {
   ExamRunDetail,
 } from "./db/engine_db";
 
-/** S-I1 registers PT2 here. Empty in CI — `_generated/` is gitignored. */
+/** Empty in CI. Server-only `generated_official_form.ts` registers PT2 keys. */
 const GENERATED_KEY_LOADERS: Record<string, () => ExamFormKeyMap> = {};
+
+/** Server-only: bind generated keys so `getExamFormKeys` can grade. */
+export function registerGeneratedKeyLoader(
+  formId: string,
+  load: () => ExamFormKeyMap,
+): void {
+  GENERATED_KEY_LOADERS[formId] = load;
+}
 
 export function stripExamFormForClient(form: ExamForm): ClientExamForm {
   return ClientExamFormSchema.parse({

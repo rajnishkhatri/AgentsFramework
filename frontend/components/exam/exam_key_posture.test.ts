@@ -22,3 +22,15 @@ describe("examKeyPosture (B0-4 / FR-P2-5)", () => {
     expect(EXAM_KEY_POSTURE).toBe("client");
   });
 });
+
+describe("S-I4 per-form posture with PT2 registered (FR-P2-5)", () => {
+  it("is server for PT2 and client for Test-01", async () => {
+    const { getExamFormDelivery } = await import(
+      "@/lib/adapters/engine/exam_forms"
+    );
+    expect(examKeyPosture(getExamFormDelivery("act-practice-test-2"))).toBe(
+      "server",
+    );
+    expect(examKeyPosture(getExamFormDelivery("test01-english"))).toBe("client");
+  });
+});

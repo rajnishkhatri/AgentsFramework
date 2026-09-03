@@ -98,3 +98,81 @@ test.describe("Official exam module (S-E1)", () => {
     await expect(page.locator("[data-selected='true']").first()).toBeVisible();
   });
 });
+
+test.describe("S-I3 PT2 official form (FR-P2-19 / P2-7 / P2-11/12)", () => {
+  test("direct POST getExamFormKeys is not client-served", async ({
+    request,
+  }) => {
+    const res = await request.post("/api/engine/db/getExamFormKeys", {
+      data: { args: ["act-practice-test-2"] },
+    });
+    expect([401, 404]).toContain(res.status());
+  });
+
+  test("PT2 listed; English answer+submit is server-graded; Math image; Science passage", async ({
+    page,
+  }) => {
+    await page.goto("/learn/exam");
+    await expect(page.locator("[data-testid='exam-home']")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(
+      page.locator("[data-testid='exam-form-test01-english']"),
+    ).toBeVisible();
+    const pt2 = page.locator("[data-testid='exam-form-act-practice-test-2']");
+    if ((await pt2.count()) === 0) {
+      test.skip(
+        true,
+        "PT2 not listed (T1 in-memory / _generated absent) — local durable+convert tier",
+      );
+      return;
+    }
+    await expect(pt2.locator("[data-testid='exam-section-start-english']")).toBeVisible();
+    await expect(pt2.locator("[data-testid='exam-section-start-math']")).toBeVisible();
+    await expect(pt2.locator("[data-testid='exam-section-start-reading']")).toBeVisible();
+    await expect(pt2.locator("[data-testid='exam-section-start-science']")).toBeVisible();
+
+    await pt2.locator("[data-testid='exam-section-start-english']").click();
+    await expect(page.locator("[data-testid='exam-directions']")).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.locator("[data-testid='exam-begin']").click();
+    await expect(page.locator("[data-testid='exam-runner']")).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.locator("[data-testid='choice-A']").click();
+    await page.locator("[data-testid='exam-submit']").click();
+    await page.locator("[data-testid='exam-confirm-submit']").click();
+    await expect(page.locator("[data-testid='exam-review']")).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await page.goto("/learn/exam");
+    await expect(page.locator("[data-testid='exam-home']")).toBeVisible({
+      timeout: 15_000,
+    });
+    await pt2.locator("[data-testid='exam-section-start-math']").click();
+    await page.locator("[data-testid='exam-begin']").click();
+    await expect(page.locator("[data-testid='exam-runner']")).toBeVisible({
+      timeout: 10_000,
+    });
+    const mathImg = page.locator('img[alt*="official image"]');
+    if ((await mathImg.count()) === 0) {
+      for (let i = 0; i < 45; i++) {
+        if ((await mathImg.count()) > 0) break;
+        await page.locator("[data-testid='exam-next']").click();
+      }
+    }
+    await expect(mathImg.first()).toBeVisible({ timeout: 5_000 });
+
+    await page.goto("/learn/exam");
+    await expect(page.locator("[data-testid='exam-home']")).toBeVisible({
+      timeout: 15_000,
+    });
+    await pt2.locator("[data-testid='exam-section-start-science']").click();
+    await page.locator("[data-testid='exam-begin']").click();
+    await expect(page.locator("[data-testid='exam-passage']")).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+});

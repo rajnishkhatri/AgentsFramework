@@ -7,6 +7,8 @@
 import * as React from "react";
 import type { ExamRunRepo } from "@/lib/ports/engine/exam_run_repo";
 import type {
+  ClientExamQuestion,
+  ClientExamSection,
   ExamQuestion,
   ExamRunItem,
   ExamSection,
@@ -27,10 +29,10 @@ export interface ExamSectionLiveProps {
   readonly repo: ExamRunRepo;
   readonly learnerId: string;
   readonly runId: string;
-  readonly section: ExamSection;
+  readonly section: ExamSection | ClientExamSection;
   readonly attempt: ExamSectionAttempt;
   readonly items: readonly ExamRunItem[];
-  readonly questions: readonly ExamQuestion[];
+  readonly questions: readonly (ExamQuestion | ClientExamQuestion)[];
 }
 
 function browserBeacon(): boolean {

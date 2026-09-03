@@ -5,9 +5,9 @@ import * as React from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEngine } from "@/app/engine-provider";
 import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
-import { getExamForm } from "@/lib/adapters/engine/exam_forms";
 import {
   ExamSectionCode,
+  type ClientExamForm,
   type ExamSectionAttempt,
 } from "@/lib/wire/exam_entities";
 import { ExamDirectionsView } from "@/components/exam/ExamDirectionsView";
@@ -37,6 +37,7 @@ export default function ExamSectionPage(): React.JSX.Element {
     Awaited<ReturnType<NonNullable<typeof ports.examRunRepo>["listItems"]>>
   >([]);
   const [formId, setFormId] = React.useState<string | null>(null);
+  const [form, setForm] = React.useState<ClientExamForm | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [filter, setFilter] = React.useState<ExamReviewFilter>("all");
   const [ready, setReady] = React.useState(false);
@@ -59,24 +60,35 @@ export default function ExamSectionPage(): React.JSX.Element {
           setReady(true);
           return;
         }
-        setFormId(detail.run.form_id);
-        setItems(detail.items.filter((i) => i.section_code === sectionCode));
-        const row = detail.attempts.find((a) => a.section_code === sectionCode);
-        setAttempt(
-          row ?? {
-            run_id: params.runId,
-            section_code: sectionCode,
-            status: "not_started",
-            started_at: null,
-            finished_at: null,
-            deadline_at: null,
-            raw_correct: null,
-            raw_scored_total: null,
-            scale_score: null,
-            time_remaining_ms_at_submit: null,
-          },
-        );
-        setReady(true);
+        return repo
+          .getClientForm({ learnerId, formId: detail.run.form_id })
+          .then((loaded) => {
+            if (cancelled) return;
+            if (loaded == null) {
+              setError("not-found");
+              setReady(true);
+              return;
+            }
+            setFormId(detail.run.form_id);
+            setForm(loaded);
+            setItems(detail.items.filter((i) => i.section_code === sectionCode));
+            const row = detail.attempts.find((a) => a.section_code === sectionCode);
+            setAttempt(
+              row ?? {
+                run_id: params.runId,
+                section_code: sectionCode,
+                status: "not_started",
+                started_at: null,
+                finished_at: null,
+                deadline_at: null,
+                raw_correct: null,
+                raw_scored_total: null,
+                scale_score: null,
+                time_remaining_ms_at_submit: null,
+              },
+            );
+            setReady(true);
+          });
       });
     return () => {
       cancelled = true;
@@ -91,7 +103,13 @@ export default function ExamSectionPage(): React.JSX.Element {
     );
   }
 
-  if (!parsed.success || error === "not-found" || formId == null || attempt == null) {
+  if (
+    !parsed.success ||
+    error === "not-found" ||
+    formId == null ||
+    form == null ||
+    attempt == null
+  ) {
     return (
       <div data-testid="exam-section-missing" className="p-6 text-sm text-muted">
         Section not found.
@@ -99,7 +117,6 @@ export default function ExamSectionPage(): React.JSX.Element {
     );
   }
 
-  const form = getExamForm(formId);
   const section = form.sections.find((s) => s.code === parsed.data);
   const repo = ports.examRunRepo;
   if (section == null || repo == null) {

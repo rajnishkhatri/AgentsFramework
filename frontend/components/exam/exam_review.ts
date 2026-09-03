@@ -2,7 +2,11 @@
  * Pure FR-25 / FR-29 review VM. Filterable to-revise = flagged ∪ bookmarked ∪ wrong.
  */
 
-import type { ExamQuestion, ExamRunItem } from "@/lib/wire/exam_entities";
+import type {
+  ClientExamQuestion,
+  ExamQuestion,
+  ExamRunItem,
+} from "@/lib/wire/exam_entities";
 
 export type ExamReviewFilter = "all" | "flagged" | "bookmarked" | "wrong";
 
@@ -37,15 +41,17 @@ export type ExamReviewVM = {
 };
 
 export function toExamReviewItem(
-  question: ExamQuestion,
+  question: ExamQuestion | ClientExamQuestion,
   item: ExamRunItem,
 ): ExamReviewItemVM {
   const chosen = item.chosen_letter;
-  const rationale =
-    chosen == null ? null : (question.per_choice_rationale[chosen] ?? null);
+  const rationales =
+    "per_choice_rationale" in question ? question.per_choice_rationale : {};
+  const rationale = chosen == null ? null : (rationales[chosen] ?? null);
   // Empty/absent key = asset-served pre-grade (FR-P2-9). Do not fabricate.
-  const answerLetter =
-    question.answer_letter === "" ? null : question.answer_letter;
+  const rawAnswer =
+    "answer_letter" in question ? question.answer_letter : undefined;
+  const answerLetter = rawAnswer === "" || rawAnswer == null ? null : rawAnswer;
   // FR-29: the live client review builds from ungraded reducer items (correct=null),
   // so derive correctness from the answer key when a stored verdict is absent. An
   // authoritative graded verdict, when present, still wins (`??` keeps a stored
@@ -107,7 +113,7 @@ export function filterExamReview(
 }
 
 export function buildExamReview(
-  questions: readonly ExamQuestion[],
+  questions: readonly (ExamQuestion | ClientExamQuestion)[],
   items: readonly ExamRunItem[],
   filter: ExamReviewFilter,
 ): ExamReviewVM {

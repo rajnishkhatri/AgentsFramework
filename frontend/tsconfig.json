@@ -45,6 +45,7 @@
     "dist",
     "vitest.config.ts",
     "e2e",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "lib/adapters/engine/exam_forms/_generated"
   ]
 }

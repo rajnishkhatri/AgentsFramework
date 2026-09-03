@@ -6,7 +6,7 @@
  * its isolation guard stay untouched.
  */
 
-import type { AssetRef, ExamQuestion } from "@/lib/wire/exam_entities";
+import type { AssetRef, ClientExamQuestion, ExamQuestion } from "@/lib/wire/exam_entities";
 
 export type ExamChoiceVM = {
   readonly letter: string;
@@ -26,7 +26,9 @@ export function assetRefToUrl(ref: AssetRef): string {
   return `/api/engine/asset/${ref.form_id}/${ref.key}`;
 }
 
-export function toExamItemVM(question: ExamQuestion): ExamItemVM {
+export function toExamItemVM(
+  question: ExamQuestion | ClientExamQuestion,
+): ExamItemVM {
   return {
     stem: question.stem,
     contextHtml: question.context_html,
