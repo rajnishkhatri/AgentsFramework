@@ -16,6 +16,7 @@ import type {
   ExamSectionAttempt,
   ExamSectionCode,
 } from "@/lib/wire/exam_entities";
+import { FAKE_OFFICIAL_FORM } from "@/lib/adapters/engine/exam_forms/fixtures/fake_official_form";
 import { examComposite, scoreExamSection } from "./exam_scoring";
 
 const grader = new ExactLetterGrader();
@@ -270,6 +271,67 @@ describe("exam_scoring — FR-28 composite = round(mean), .5 up", () => {
     expect(
       examComposite(form({ composite_sections: ["english"] }), [
         attempt("english", { status: "submitted", scale_score: null }),
+      ]),
+    ).toBeNull();
+  });
+});
+
+describe("exam_scoring — PT2-shaped fixture (C-5 / FR-P2-17, FR-P2-18)", () => {
+  const fixture = FAKE_OFFICIAL_FORM;
+  const math = fixture.sections.find((s) => s.code === "math")!;
+  const english = fixture.sections.find((s) => s.code === "english")!;
+
+  it("looks up scale from the fixture scale_table over scored raw", () => {
+    const allCorrect = scoreExamSection(
+      math,
+      math.questions.map((q) => item(q.id, "B")),
+      grader,
+    );
+    expect(math.scale_table).toEqual({ "0": 1, "1": 8, "2": 16 });
+    expect(allCorrect.raw_correct).toBe(2);
+    expect(allCorrect.raw_scored_total).toBe(2);
+    expect(allCorrect.scale_score).toBe(16);
+
+    const oneCorrect = scoreExamSection(
+      math,
+      [item("m-1", "B"), item("m-2", "A")],
+      grader,
+    );
+    expect(oneCorrect.raw_correct).toBe(1);
+    expect(oneCorrect.scale_score).toBe(8);
+  });
+
+  it("excludes unscored field-test items from raw and scale", () => {
+    const result = scoreExamSection(
+      english,
+      english.questions.map((q) => item(q.id, "B")),
+      grader,
+    );
+    expect(english.questions.some((q) => q.scored === false)).toBe(true);
+    // e-2 is unscored: counted for review grades, not in raw/scale.
+    expect(result.grades).toHaveLength(english.questions.length);
+    expect(result.raw_correct).toBe(1);
+    expect(result.raw_scored_total).toBe(1);
+    expect(result.scale_score).toBeNull();
+  });
+
+  it("composite is mean(E, M, R) with Science reported separately", () => {
+    expect(fixture.composite_sections).toEqual(["english", "math", "reading"]);
+    expect(
+      examComposite(fixture, [
+        attempt("english", { status: "submitted", scale_score: 20 }),
+        attempt("math", { status: "submitted", scale_score: 21 }),
+        attempt("reading", { status: "submitted", scale_score: 22 }),
+        attempt("science", { status: "submitted", scale_score: 36 }),
+      ]),
+    ).toBe(21); // mean of 20/21/22; science ignored (Enhanced ACT)
+
+    expect(
+      examComposite(fixture, [
+        attempt("english", { status: "submitted", scale_score: 20 }),
+        attempt("math", { status: "submitted", scale_score: 21 }),
+        attempt("reading", { status: "in_progress", scale_score: null }),
+        attempt("science", { status: "submitted", scale_score: 36 }),
       ]),
     ).toBeNull();
   });

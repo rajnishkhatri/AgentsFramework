@@ -5,7 +5,11 @@
 "use client";
 
 import * as React from "react";
-import type { ExamReviewFilter, ExamReviewItemVM } from "./exam_review";
+import {
+  reviewScoreSummary,
+  type ExamReviewFilter,
+  type ExamReviewItemVM,
+} from "./exam_review";
 
 export interface ExamReviewViewProps {
   readonly title: string;
@@ -23,6 +27,7 @@ const FILTERS: readonly { id: ExamReviewFilter; label: string }[] = [
 ];
 
 export function ExamReviewView(props: ExamReviewViewProps): React.JSX.Element {
+  const summary = reviewScoreSummary(props.items);
   return (
     <section
       data-testid="exam-review"
@@ -31,6 +36,15 @@ export function ExamReviewView(props: ExamReviewViewProps): React.JSX.Element {
     >
       <header>
         <h1 className="text-xl font-semibold text-fg">{props.title} review</h1>
+        <p
+          data-testid="exam-review-score-summary"
+          className="mt-1 text-sm text-muted"
+        >
+          {summary.scoredCorrect}/{summary.scoredTotal} scored
+          {summary.unscoredCount > 0
+            ? ` · ${summary.unscoredCount} field-test`
+            : ""}
+        </p>
       </header>
       <div
         data-testid="exam-review-filters"
@@ -64,9 +78,17 @@ export function ExamReviewView(props: ExamReviewViewProps): React.JSX.Element {
               dangerouslySetInnerHTML={{ __html: item.contextHtml }}
             />
             <p className="mt-2 font-medium">{item.stem}</p>
+            {!item.scored ? (
+              <p
+                data-testid={`exam-review-unscored-${item.questionId}`}
+                className="mt-2 text-xs font-medium uppercase tracking-wide text-muted"
+              >
+                unscored (field-test)
+              </p>
+            ) : null}
             <p data-testid={`exam-review-answer-${item.questionId}`} className="mt-2 text-sm">
-              Your answer: {item.chosenLetter ?? "unanswered"} · Correct:{" "}
-              {item.correctLetter}
+              Your answer: {item.chosenLetter ?? "unanswered"}
+              {item.correctLetter != null ? ` · Correct: ${item.correctLetter}` : ""}
             </p>
             {item.rationale ? (
               <p className="mt-1 text-sm text-muted">{item.rationale}</p>
