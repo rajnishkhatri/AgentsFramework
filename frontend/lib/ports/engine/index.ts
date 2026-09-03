@@ -26,6 +26,7 @@ export type { TestItemRepo } from "./test_item_repo";
 export type { TutorialRepo } from "./tutorial_repo";
 export type { ProgressRepo } from "./progress_repo";
 export type { ExamRunRepo } from "./exam_run_repo";
+export type { FormAssetStore } from "./form_asset_store";
 
 export {
   EngineError,

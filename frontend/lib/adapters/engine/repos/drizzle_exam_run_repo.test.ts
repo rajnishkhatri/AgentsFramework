@@ -44,6 +44,7 @@ function question(over: Partial<ExamQuestion> = {}): ExamQuestion {
     reporting_category: null,
     scored: true,
     passage: null,
+    image: null,
     ...over,
   };
 }
@@ -54,6 +55,7 @@ function twoSectionForm(): ExamForm {
     title: "Two section",
     blueprint: "test01",
     composite_sections: ["english"],
+    delivery: "client-bundled",
     sections: [
       {
         code: "english",
@@ -63,6 +65,7 @@ function twoSectionForm(): ExamForm {
         directions: "d",
         composite: true,
         scale_table: null,
+        passages: [],
         questions: [question()],
       },
       {
@@ -73,6 +76,7 @@ function twoSectionForm(): ExamForm {
         directions: "d",
         composite: false,
         scale_table: null,
+        passages: [],
         questions: [question({ id: "q-math" })],
       },
     ],

@@ -46,6 +46,7 @@ function question(over: Partial<ExamQuestion> = {}): ExamQuestion {
     reporting_category: "conventions-of-standard-english",
     scored: true,
     passage: null,
+    image: null,
     ...over,
   };
 }
@@ -59,6 +60,7 @@ function section(over: Partial<ExamSection> = {}): ExamSection {
     directions: "Begin when you are told.",
     composite: true,
     scale_table: null,
+    passages: [],
     questions: [
       question({ id: "q-1", answer_letter: "B" }),
       question({ id: "q-2", answer_letter: "A" }),
@@ -82,6 +84,7 @@ function form(over: Partial<ExamForm> = {}): ExamForm {
     title: "Legacy four-section",
     blueprint: "preact-secure-legacy",
     composite_sections: ["english", "math", "reading", "science"],
+    delivery: "client-bundled",
     sections: [],
     ...over,
   };

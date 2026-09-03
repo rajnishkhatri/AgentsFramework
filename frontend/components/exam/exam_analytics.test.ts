@@ -49,6 +49,7 @@ function question(over: Partial<ExamQuestion> = {}): ExamQuestion {
     reporting_category: "conventions",
     scored: true,
     passage: "p-1",
+    image: null,
     ...over,
   };
 }
@@ -65,6 +66,7 @@ function section(
     directions: "Begin when you are told.",
     composite: true,
     scale_table: null,
+    passages: [],
     questions,
     ...over,
   };

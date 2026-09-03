@@ -6,6 +6,7 @@ exports[`ExamForm / ExamRun / ExamRunItem / ExamAnalytics — round-trip + snaps
   "composite_sections": [
     "english",
   ],
+  "delivery": "client-bundled",
   "id": "test01",
   "sections": [
     {
@@ -14,6 +15,7 @@ exports[`ExamForm / ExamRun / ExamRunItem / ExamAnalytics — round-trip + snaps
       "composite": true,
       "directions": "Begin when you are told.",
       "minutes": 18,
+      "passages": [],
       "questions": [
         {
           "answer_letter": "B",
@@ -43,6 +45,7 @@ exports[`ExamForm / ExamRun / ExamRunItem / ExamAnalytics — round-trip + snaps
           "difficulty": 3,
           "generated_by": "test@run1",
           "id": "q-1",
+          "image": null,
           "item_type": "underlined-span-mc",
           "misconception": null,
           "passage": null,

@@ -5,7 +5,14 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { assertExamFormLoadable, getExamForm, listExamForms } from "./index";
+import {
+  SUPPORTED_CHOICE_COUNTS,
+  assertExamFormLoadable,
+  getExamForm,
+  listExamForms,
+  listRegisteredExamFormIds,
+  loadAssetServedForm,
+} from "./index";
 import type { ExamForm } from "@/lib/wire/exam_entities";
 
 function baseForm(over: Partial<ExamForm> = {}): ExamForm {
@@ -14,6 +21,7 @@ function baseForm(over: Partial<ExamForm> = {}): ExamForm {
     title: "Probe",
     blueprint: "test01",
     composite_sections: ["english"],
+    delivery: "client-bundled",
     sections: [
       {
         code: "english",
@@ -23,6 +31,7 @@ function baseForm(over: Partial<ExamForm> = {}): ExamForm {
         directions: "Begin.",
         composite: true,
         scale_table: null,
+        passages: [],
         questions: [
           {
             id: "q-1",
@@ -49,6 +58,7 @@ function baseForm(over: Partial<ExamForm> = {}): ExamForm {
             reporting_category: null,
             scored: true,
             passage: null,
+            image: null,
           },
         ],
       },
@@ -85,5 +95,15 @@ describe("exam_forms registry", () => {
     expect(test01.sections[0]!.code).toBe("english");
     expect(test01.sections[0]!.questions.length).toBeGreaterThan(0);
     expect(test01.sections[0]!.choice_count).toBe(4);
+  });
+});
+
+describe("exam_forms asset-served registry (B0-7 / FR-P2-19)", () => {
+  it("registers an asset-served entry and does not list it when _generated is absent", () => {
+    expect(listRegisteredExamFormIds()).toContain("fake-official-form");
+    expect(loadAssetServedForm("fake-official-form")).toBeNull();
+    expect(listExamForms().map((f) => f.id)).not.toContain("fake-official-form");
+    expect(listExamForms().map((f) => f.id)).toContain("test01-english");
+    expect(SUPPORTED_CHOICE_COUNTS).toEqual([4]);
   });
 });

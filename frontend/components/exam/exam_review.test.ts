@@ -36,6 +36,7 @@ function question(over: Partial<ExamQuestion> = {}): ExamQuestion {
     reporting_category: null,
     scored: true,
     passage: null,
+    image: null,
     ...over,
   };
 }
