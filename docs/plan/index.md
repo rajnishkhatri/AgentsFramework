@@ -2,6 +2,10 @@
 
 OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OKF.md](../CONVENTIONS_OKF.md).
 
+## Exam official forms (phase 2)
+
+- [Implement → code-review handover](exam-module-official-forms.implement.handover.md) — SDD Stage 6 done on `feat/exam-official-forms`; next session runs `/code-review` then `sdd-converge` for V-M-B1/B2. Do not review the dirty main checkout.
+
 ## Eng-coach Gen2 / v2 adoption
 
 - [Gen2 / v2 adoption — exploratory session + todo](eng-coach-gen2-v2-adoption.session.md) — Devil's-advocate + A/B + hybrid critique (2026-07-17): **do not ship Gen2 as-is**; recommend Path A (moment-based pedagogy + choice-conditional ladders on reviewed fuel → curated Gen2 batches → MiscLibrary). Phased todo P0–P4 + hard blockers. Awaiting human path lock → `sdd-spec`.
