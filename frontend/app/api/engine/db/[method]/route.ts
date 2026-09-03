@@ -7,7 +7,17 @@
  */
 
 import { NextRequest } from "next/server";
-import { engineDb, serverPortBag } from "@/lib/bff/server_composition";
+import {
+  engineDb,
+  enginePorts,
+  serverPortBag,
+} from "@/lib/bff/server_composition";
+import { finishExamSectionServer } from "@/lib/adapters/engine/exam_server_grade";
+import type { ExamSectionCode } from "@/lib/wire/exam_entities";
+import type {
+  ExamSectionFinishStatus,
+  ExamSectionGrades,
+} from "@/lib/adapters/engine/db/engine_db";
 import {
   badRequest,
   jsonOk,
@@ -152,6 +162,20 @@ export async function POST(
     }
     const owned = await requireOwnedSession(db, sessionId, learnerId);
     if (!owned.ok) return owned.response;
+  }
+
+  if (raw === "finishExamSection") {
+    const result = await finishExamSectionServer(
+      db,
+      enginePorts().grader,
+      args[0] as string,
+      args[1] as string,
+      args[2] as ExamSectionCode,
+      args[3] as ExamSectionFinishStatus,
+      args[4] as ExamSectionGrades,
+      args[5] as number | null,
+    );
+    return jsonOk(result);
   }
 
   const fn = db[raw] as (...a: unknown[]) => Promise<unknown>;

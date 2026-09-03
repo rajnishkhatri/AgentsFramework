@@ -43,16 +43,17 @@ const EXAM_ENGINE_DB_METHODS = [
 ] as const satisfies readonly EngineDbMethodName[];
 
 describe("HttpEngineDb — FR-A4 disposition totality", () => {
-  it("disposition table has exactly 41 methods (5 server-only)", () => {
-    expect(Object.keys(ENGINE_DB_DISPOSITION)).toHaveLength(41);
+  it("disposition table has exactly 43 methods (6 server-only)", () => {
+    expect(Object.keys(ENGINE_DB_DISPOSITION)).toHaveLength(43);
     expect(SERVER_ONLY_ENGINE_DB_METHODS).toEqual([
       "insertQuestion",
       "insertHint",
       "insertTestItem",
       "insertTestBlueprint",
       "listAlreadyCorrectQuestionIds",
+      "getExamFormKeys",
     ]);
-    expect(FINE_ENGINE_DB_METHODS).toHaveLength(36);
+    expect(FINE_ENGINE_DB_METHODS).toHaveLength(37);
   });
 
   it("exam methods are fine-grained and present (W1-2 / FR-3)", () => {
@@ -179,6 +180,7 @@ describe("HttpEngineDb — FR-A4 disposition totality", () => {
       ["setExamRunComposite", ["u1", "r1", null]],
       ["setExamBookmark", ["u1", "r1", "english", "q1", true]],
       ["listExamRunItemsByLearner", ["u1"]],
+      ["getExamFormForClient", ["u1", "test01-english"]],
     ];
 
     expect(calls.map(([m]) => m).sort()).toEqual([...FINE_ENGINE_DB_METHODS].sort());

@@ -27,7 +27,8 @@ const ENGINE_DB_SRC = fs.readFileSync(
 
 function dispositionExamMethods(): EngineDbMethodName[] {
   return (Object.keys(ENGINE_DB_DISPOSITION) as EngineDbMethodName[]).filter(
-    (name) => name.includes("Exam"),
+    (name) =>
+      name.includes("Exam") && ENGINE_DB_DISPOSITION[name] === "fine",
   );
 }
 
@@ -37,11 +38,13 @@ function firstParamName(method: string): string | undefined {
 }
 
 describe("dispatcher LEARNER_ARG — FR-38 (R4)", () => {
-  it("maps every exam method (completeness)", () => {
+  it("maps every fine exam method (completeness)", () => {
     const examMethods = dispositionExamMethods();
-    expect(examMethods).toHaveLength(9);
+    expect(examMethods).toHaveLength(10);
     expect([...EXAM_ENGINE_DB_METHODS].sort()).toEqual([...examMethods].sort());
     expect(Object.keys(EXAM_LEARNER_ARG).sort()).toEqual([...examMethods].sort());
+    expect(EXAM_LEARNER_ARG).not.toHaveProperty("getExamFormKeys");
+    expect(ENGINE_DB_DISPOSITION.getExamFormKeys).toBe("server-only");
   });
 
   it("pins LEARNER_ARG = 0 and names arg0 learnerId", () => {
