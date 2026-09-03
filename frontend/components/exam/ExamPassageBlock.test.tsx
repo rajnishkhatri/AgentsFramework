@@ -66,7 +66,7 @@ describe("ExamPassageBlock (C-3 / FR-P2-12)", () => {
     const img = doc.querySelector("img");
     expect(img).not.toBeNull();
     expect(img?.getAttribute("src")).toBe(
-      "/api/engine/asset/fake-official-form/science/p-figure.png",
+      "/api/engine/asset/fake-official-form/science%2Fp-figure.png",
     );
     expect(img?.getAttribute("alt")).toMatch(/figure|passage|official/i);
   });

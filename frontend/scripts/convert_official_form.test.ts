@@ -20,6 +20,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { assetRefToUrl } from "../components/exam/exam_item_vm";
+import { LocalFileAssetStore } from "../lib/adapters/engine/assets/local_file_asset_store";
 import { ClientExamForm } from "../lib/wire/exam_entities";
 import {
   OfficialFormIntegrityError,
@@ -480,13 +482,13 @@ describe("parseOfficialForm mapping (A-2 / FR-P2-2, FR-P2-17)", () => {
     expect(math!.questions[1]!.image).toEqual({
       store: "form-image",
       form_id: "synth-pt",
-      key: "synth-pt/questions/math-q02.png",
+      key: "questions/math-q02.png",
     });
     expect(reading!.questions[0]!.image).toBeNull();
     expect(science!.passages[0]!.image).toEqual({
       store: "form-image",
       form_id: "synth-pt",
-      key: "synth-pt/pages/p003.png",
+      key: "pages/p003.png",
     });
     expect(science!.questions[0]!.image).not.toBeNull();
     expect(science!.questions[1]!.image).not.toBeNull();
@@ -522,6 +524,103 @@ describe("parseOfficialForm mapping (A-2 / FR-P2-2, FR-P2-17)", () => {
       "science",
     ]);
     expect(clientForm.sections[0]!.composite).toBe(true);
+  });
+
+  it("emits store-relative AssetRef keys (CV4-1 / FR-P2-14)", () => {
+    const { clientForm } = parseOfficialForm(fourSectionSource());
+    const formId = clientForm.id;
+    const questionImages = clientForm.sections.flatMap((s) =>
+      s.questions.map((q) => q.image).filter((img) => img != null),
+    );
+    const passageImages = clientForm.sections.flatMap((s) =>
+      s.passages.map((p) => p.image).filter((img) => img != null),
+    );
+    expect(questionImages.length).toBeGreaterThan(0);
+    expect(passageImages.length).toBeGreaterThan(0);
+    for (const img of [...questionImages, ...passageImages]) {
+      expect(img.key.startsWith(`${formId}/`)).toBe(false);
+      expect(img.form_id).toBe(formId);
+    }
+    for (const img of questionImages) {
+      expect(img.key).toMatch(/^questions\//);
+    }
+    for (const img of passageImages) {
+      expect(img.key).toMatch(/^pages\//);
+    }
+  });
+
+  it("fallback image key is store-relative when JSON image is absent (CV4-1)", () => {
+    const { clientForm } = parseOfficialForm(
+      officialJson({
+        form_id: "synth-pt",
+        sections: [
+          section({
+            code: "math",
+            title: "MATHEMATICS TEST",
+            question_count: 1,
+            declared_question_count: 1,
+            passages: [],
+            questions: [
+              q({
+                number: 2,
+                stem: "notation item without image field",
+                choices: [
+                  { letter: "A", text: "1" },
+                  { letter: "B", text: "2" },
+                  { letter: "C", text: "3" },
+                  { letter: "D", text: "4" },
+                ],
+                text_fidelity: "math-notation",
+                answer: "A",
+                reporting_category: "F",
+                image: null,
+              }),
+            ],
+            scoring: {
+              raw_max: 1,
+              category_totals: { F: 1 },
+              scale_conversion: { "1": 36, "0": 1 },
+            },
+          }),
+        ],
+      }),
+    );
+    expect(clientForm.sections[0]!.questions[0]!.image).toEqual({
+      store: "form-image",
+      form_id: "synth-pt",
+      key: "questions/math-q02.png",
+    });
+  });
+
+  it("store-relative keys resolve at the official disk layout and encode as one route segment (CV4-3)", async () => {
+    const { clientForm } = parseOfficialForm(fourSectionSource());
+    const baseDir = mkdtempSync(join(tmpdir(), "exam-serve-"));
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+    const refs = [
+      ...clientForm.sections.flatMap((s) =>
+        s.questions.map((q) => q.image).filter((img) => img != null),
+      ),
+      ...clientForm.sections.flatMap((s) =>
+        s.passages.map((p) => p.image).filter((img) => img != null),
+      ),
+    ];
+    expect(refs.length).toBeGreaterThan(0);
+    for (const img of refs) {
+      const dest = join(baseDir, img.form_id, img.key);
+      mkdirSync(dirname(dest), { recursive: true });
+      writeFileSync(dest, png);
+    }
+    const store = new LocalFileAssetStore(baseDir);
+    const misses: string[] = [];
+    for (const img of refs) {
+      if (!(await store.has(img))) misses.push(img.key);
+      const url = assetRefToUrl(img);
+      const keySegment = url.split("/").pop()!;
+      expect(keySegment).toBe(encodeURIComponent(img.key));
+      expect(keySegment).not.toContain("/");
+      expect(decodeURIComponent(keySegment)).toBe(img.key);
+    }
+    expect(misses).toEqual([]);
   });
 });
 
@@ -589,6 +688,42 @@ describe.skipIf(!PT2_AVAILABLE)(
         }
       }
       expect(mismatches, mismatches.join("\n")).toEqual([]);
+    });
+
+    it("Math 34/34 + Science images resolve store→VM (CV4-3 / FR-P2-11/13/19)", async () => {
+      const raw = JSON.parse(readFileSync(PT2_JSON, "utf8")) as unknown;
+      const { clientForm } = parseOfficialForm(raw);
+      const store = new LocalFileAssetStore(join(PRIVATE_SRC, "json"));
+      const byCode = Object.fromEntries(
+        clientForm.sections.map((s) => [s.code, s]),
+      );
+      const mathImages = byCode.math!.questions
+        .map((q) => q.image)
+        .filter((img) => img != null);
+      const scienceQuestionImages = byCode.science!.questions
+        .map((q) => q.image)
+        .filter((img) => img != null);
+      const sciencePassageImages = byCode.science!.passages
+        .map((p) => p.image)
+        .filter((img) => img != null);
+      expect(mathImages).toHaveLength(34);
+      expect(scienceQuestionImages.length).toBeGreaterThan(0);
+      expect(sciencePassageImages.length).toBeGreaterThan(0);
+
+      const misses: string[] = [];
+      for (const img of [
+        ...mathImages,
+        ...scienceQuestionImages,
+        ...sciencePassageImages,
+      ]) {
+        if (!(await store.has(img))) misses.push(img.key);
+        const url = assetRefToUrl(img);
+        const keySegment = url.split("/").pop()!;
+        expect(keySegment).toBe(encodeURIComponent(img.key));
+        expect(keySegment).not.toContain("/");
+        expect(decodeURIComponent(keySegment)).toBe(img.key);
+      }
+      expect(misses, misses.join("\n")).toEqual([]);
     });
   },
 );

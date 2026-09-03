@@ -23,7 +23,7 @@ export type ExamItemVM = {
 
 /** String mapping only (C-1). WT-B serves the bytes. */
 export function assetRefToUrl(ref: AssetRef): string {
-  return `/api/engine/asset/${ref.form_id}/${ref.key}`;
+  return `/api/engine/asset/${ref.form_id}/${encodeURIComponent(ref.key)}`;
 }
 
 export function toExamItemVM(

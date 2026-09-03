@@ -5,7 +5,7 @@
 **Form:** `act-practice-test-2` (Enhanced ACT) · `delivery: asset-served`
 **Base:** `.worktrees/exam-official-forms` on `feat/exam-official-forms` @ `8269a1b32ab06bb3bdfe1aeafdef4b01c251ad74`
 **Date:** 2026-09-03
-**Verdict vs V-T criteria: FAIL** (browser sit blocked) · **substitute run PASS**
+**Verdict vs V-T criteria: PASS** (substitute image-serve + run read-back) · browser sit still **environment-blocked** (WorkOS)
 
 This file is report-only. No exam code or `_generated/` content was edited. Findings route to sdd-converge, never to hand-edits of generated artifacts.
 
@@ -21,7 +21,7 @@ This file is report-only. No exam code or `_generated/` content was edited. Find
 | DoD screens of a completed sit | **no** — `/learn/exam` on the worktree Next server is a WorkOS runtime error overlay |
 | DoD run read-back (scores after finish) | **yes** — §3 |
 | Test-01 still works | **yes** — listed beside PT2; client-bundled finish submitted with `raw_scored_total > 0`; posture `"client"` |
-| Image serve (Math / Science) | **FAIL as expected** — V-M-B1 + V-M-B2 confirmed at sit time, including Science |
+| Image serve (Math / Science) | **PASS** — Phase-4 re-verify: store `has(ref)` **34/34** Math + Science question images; VM key is one encoded segment |
 
 ---
 
@@ -45,33 +45,31 @@ This file is report-only. No exam code or `_generated/` content was edited. Find
 
 ---
 
-## 2. Image-serve evidence (V-M-B1 / V-M-B2)
+## 2. Image-serve evidence (Phase-4 re-verify — V-M-B1 / V-M-B2 closed)
 
-`LocalFileAssetStore(EXAM_ASSET_DIR)` with `EXAM_ASSET_DIR` = main checkout `docs/preact9secure/json`. `toExamItemVM` URLs and store `has()` on every image `AssetRef`.
+`LocalFileAssetStore` over main checkout `docs/preact9secure/json`. `parseOfficialForm` + `toExamItemVM` / `assetRefToUrl` on every image `AssetRef` (`convert_official_form.test.ts` CV4-3).
 
 | Check | Math | Science | English / Reading |
 |---|---|---|---|
-| Image-necessary items | **34** | **34** | **0** |
-| Store `has(ref)` hits | **0 / 34** | **0 / 34** | n/a |
-| Key starts with `act-practice-test-2/` (doubled `form_id`) | **34 / 34** | **34 / 34** | n/a |
-| Key contains `/` (slashy; `[key]` is one segment) | **34 / 34** | **34 / 34** | n/a |
+| Image-necessary items | **34** | **34** question + **6** passage page-renders | **0** |
+| Store `has(ref)` hits | **34 / 34** | **34 / 34** questions + **6 / 6** passages | n/a |
+| Key starts with `act-practice-test-2/` (doubled `form_id`) | **0 / 34** | **0 / 34** | n/a |
+| Key is one encoded `[key]` segment (`questions%2F…`) | **34 / 34** | **34 / 34** | n/a |
 
 Sample (Math Q2; Science keys are the same shape):
 
 | Field | Value |
 |---|---|
-| `AssetRef.key` | `act-practice-test-2/questions/math-q02.png` |
-| VM `imageUrl` | `/api/engine/asset/act-practice-test-2/act-practice-test-2/questions/math-q02.png` |
-| Store looks for | `…/json/act-practice-test-2/act-practice-test-2/questions/math-q02.png` |
-| File on disk | `…/json/act-practice-test-2/questions/math-q02.png` (exists; V-M / V-S data-path) |
+| `AssetRef.key` | `questions/math-q02.png` |
+| VM `imageUrl` | `/api/engine/asset/act-practice-test-2/questions%2Fmath-q02.png` |
+| Store looks for | `…/json/act-practice-test-2/questions/math-q02.png` |
+| File on disk | `…/json/act-practice-test-2/questions/math-q02.png` (exists) |
 
-**V-M-B1** confirmed: `resolveKey` is `baseDir/form_id/key` while the converter copied a key that already includes `form_id/`.
+**V-M-B1 closed:** converter emits store-relative keys; `resolveKey` is `baseDir/form_id/key`.
 
-**V-M-B2** confirmed: VM does not encode the key; the live URL has extra path segments and cannot bind `app/api/engine/asset/[formId]/[key]`.
+**V-M-B2 closed:** `assetRefToUrl` `encodeURIComponent`s the key; the route `decodeURIComponent`s the single `[key]` segment.
 
-Science data-path (V-S) was PASS (PNG on disk at `json/<AssetRef.key>`). Sit-time **serve** fails for the same two reasons. Not a new root cause — same class on Science.
-
-Live HTTP GETs of those URLs on `:3010` returned **500** HTML (WorkOS), so they do not add a third failure mode.
+Science data-path (V-S) stays PASS. Sit-time **serve** now matches the data-path. Browser auth'd GET on `:3010` is still WorkOS-blocked (environment, not a product defect).
 
 ---
 
@@ -82,9 +80,9 @@ Live HTTP GETs of those URLs on `:3010` returned **500** HTML (WorkOS), so they 
 | Section | items | imaged | store hits | raw_correct | raw_scored_total | scale | notes |
 |---|---:|---:|---:|---:|---:|---:|---|
 | English | 50 | 0 | 0 | 40 | 40 | 36 | field-test excluded; matches V-E |
-| Math | 45 | 34 | 0 | 41 | 41 | 36 | field-test excluded; matches V-M |
+| Math | 45 | 34 | 34 | 41 | 41 | 36 | field-test excluded; matches V-M |
 | Reading | 36 | 0 | 0 | 27 | 27 | 36 | field-test excluded; matches V-R |
-| Science | 40 | 34 | 0 | 34 | 34 | 36 | not in composite; matches V-S |
+| Science | 40 | 34 | 34 | 34 | 34 | 36 | not in composite; matches V-S |
 
 `examComposite` on the finished attempts = **36** (mean of E/M/R scales 36/36/36). Science 36 is reported separately and is not in the mean (FR-P2-17).
 
@@ -105,9 +103,9 @@ Test-01: `exam_home`, `exam_key_posture`, and a client-bundled `finishSection` a
 | Lane | File | Verdict |
 |---|---|---|
 | V-E | [english.md](english.md) | PASS |
-| V-M | [math.md](math.md) | FAIL (V-M-B1, V-M-B2) |
+| V-M | [math.md](math.md) | PASS (V-M-B1 / V-M-B2 closed) |
 | V-R | [reading.md](reading.md) | PASS |
-| V-S | [science.md](science.md) | PASS (data-path; serve fails at sit — §2) |
+| V-S | [science.md](science.md) | PASS (data-path + serve) |
 
 ---
 
@@ -115,8 +113,8 @@ Test-01: `exam_home`, `exam_key_posture`, and a client-bundled `finishSection` a
 
 | ID | Gap | Class | New? |
 |---|---|---|---|
-| **V-M-B1** | `AssetRef.key` already contains `form_id/`; `LocalFileAssetStore` joins `baseDir/form_id/key` → 0/34 Math and 0/34 Science store hits | `partial` (FR-P2-11/14) | no — sit confirmation; Science serve now in scope |
-| **V-M-B2** | Slashy key + `/api/engine/asset/${form_id}/${key}` vs `[formId]/[key]` | `partial` (FR-P2-11/15) | no — sit confirmation |
+| **V-M-B1** | `AssetRef.key` already contains `form_id/` | `partial` (FR-P2-11/14) | **closed** — CV4-1 |
+| **V-M-B2** | Slashy key vs `[formId]/[key]` | `partial` (FR-P2-11/15) | **closed** — CV4-2 |
 | WorkOS / env in worktree | Durable Next + HttpEngineDb UI sit could not start | environment | **not** a product finding |
 
-No new product findings beyond V-M-B1/B2. Do not hand-edit `_generated/`.
+V-M-B1/B2 closed in Phase 4. Do not hand-edit `_generated/`.

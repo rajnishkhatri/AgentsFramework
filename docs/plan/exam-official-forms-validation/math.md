@@ -1,16 +1,16 @@
 # V-M — PT2 Math discrepancy report
 
 > Phase 3 VALIDATE · task **V-M** · plan §6.4 · spec FR-P2-2 / P2-10 / P2-11 / P2-12 / P2-17 / P2-18.
-> **Report-only.** No exam code edits. Do not hand-edit `_generated/`. Findings → sdd-converge.
+> Phase 4 re-verify (CV4-3, 2026-09-03): image-serve gap closed. Do not hand-edit `_generated/`.
 
 | | |
 |---|---|
-| **Verdict** | **FAIL** |
-| **Why** | Data + keys + scale are clean. All **34** image-necessary items fail *serve-path* resolution (`LocalFileAssetStore` + `/api/engine/asset/[formId]/[key]`), so a local sit would show **"content unavailable"** instead of the official PNG (FR-P2-11 / FR-P2-13). |
+| **Verdict** | **PASS** |
+| **Why** | Data + keys + scale stay clean. CV4-1 emits store-relative keys (`questions/math-qNN.png`); CV4-2 encodes the slashy key as one `[key]` segment. Store→VM re-verify: **34/34** Math image items resolve (FR-P2-11 / FR-P2-13 / FR-P2-14 / FR-P2-15). |
 | **Key match (scripted set)** | **100 %** (45/45 PDF scoring-key page == JSON `answer` == generated `booklet_letter`; normalized A–D == generated `answer_letter`) |
 | **Item coverage** | **45/45** (`question_count`) |
-| **Mismatch counts** | keys **0** · stem/choices (`ok`) **0** · image-rule **0** · PNG-on-disk **0** · passages **0** · scale **0** · counts **0** · **store-resolve 34** (one root cause) |
-| **Blockers** | **1 class** (image key / store / route) — see §5 |
+| **Mismatch counts** | keys **0** · stem/choices (`ok`) **0** · image-rule **0** · PNG-on-disk **0** · passages **0** · scale **0** · counts **0** · **store-resolve 0** |
+| **Blockers** | none — V-M-B1 / V-M-B2 closed by CV4-1 / CV4-2 |
 
 ## 0. Method (oracles)
 
@@ -41,7 +41,7 @@ Compared generated artifacts in the worktree against the official PT2 JSON + PDF
 | Passages | none (Math) | `passages: []`; every `passage` null | PASS |
 | Image iff rule (text-first) | ~34 lossy/`math-notation` | **34** image refs (`math-notation` 32 + `low` 2); **11** `ok` → `image: null` | PASS |
 | Official PNG on disk | `json/<form>/questions/math-qNN.png` | 45/45 files exist (nonzero) | PASS |
-| Image is the *served* PNG | store resolves the official crop | **0/34** — see §5 | **FAIL** |
+| Image is the *served* PNG | store resolves the official crop | **34/34** — `questions/math-qNN.png` under `baseDir/form_id/` | PASS |
 | Server-graded `correct` == official key | scripted set = PDF p64 | 45/45 booklet+normalized match; raw 41 → scale 36 | PASS |
 | Unscored excluded + composite E/M/R | JSON `scored` + `scale_table`; `composite_sections` | unscored omitted from raw; Math `composite: true`; form `["english","math","reading"]` | PASS |
 | Scale table | PDF Conversion Table · JSON `scoring.scale_conversion` | 42 rows, identical to PDF and JSON; `0→1` … `41→36` | PASS |
@@ -69,72 +69,72 @@ One row per item (`rows = question_count`). Columns are the §6.4 checks. `stem/
 | item | fidelity | render | scored | stem | choices | image iff rule | PNG on disk | store resolve | passage | key vs PDF p64 | scored vs PDF | rollup |
 |---:|---|---|---|---|---|---|---|---|---|---|---|---|
 | 1 | ok | text | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| 2 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 3 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 4 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
+| 2 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 3 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 4 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | 5 | ok | text | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| 6 | low | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 7 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 8 | math-notation | image | unscored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 9 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 10 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
+| 6 | low | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 7 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 8 | math-notation | image | unscored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 9 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 10 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | 11 | ok | text | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | 12 | ok | text | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| 13 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
+| 13 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | 14 | ok | text | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| 15 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 16 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 17 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
+| 15 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 16 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 17 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | 18 | ok | text | unscored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| 19 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
+| 19 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | 20 | ok | text | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | 21 | ok | text | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| 22 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 23 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 24 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
+| 22 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 23 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 24 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | 25 | ok | text | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| 26 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 27 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 28 | math-notation | image | unscored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 29 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 30 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
+| 26 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 27 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 28 | math-notation | image | unscored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 29 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 30 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | 31 | ok | text | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| 32 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 33 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 34 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 35 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 36 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 37 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
+| 32 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 33 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 34 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 35 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 36 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 37 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | 38 | ok | text | unscored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| 39 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 40 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 41 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 42 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 43 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 44 | math-notation | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
-| 45 | low | image | scored | PASS | PASS | PASS | PASS | **FAIL** | PASS | PASS | PASS | **FAIL** |
+| 39 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 40 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 41 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 42 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 43 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 44 | math-notation | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| 45 | low | image | scored | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 
-Image-necessary rollup FAIL set: **2–4, 6–10, 13, 15–17, 19, 22–24, 26–30, 32–37, 39–45** (34).
+Image-necessary rollup FAIL set: **none** (0). Phase-3 FAIL set (34 items) closed by CV4-1 / CV4-2.
 
-## 4. Discrepancy detail (FAIL rows only)
+## 4. Discrepancy detail (closed)
 
 | item | check | expected [PDF/JSON] | actual | verdict |
 |---|---|---|---|---|
-| SECTION | `LocalFileAssetStore` resolve | PNG at composition default | 0/45 at `json/<form_id>/<key>` because `key` already contains `form_id/` | FAIL |
-| 2–4, 6–10, 13, 15–17, 19, 22–24, 26–30, 32–37, 39–45 | `image_store_resolve` | official crop `act-practice-test-2/questions/math-qNN.png` served | file exists at `json/act-practice-test-2/questions/math-qNN.png`; store looks for `json/act-practice-test-2/act-practice-test-2/questions/math-qNN.png` (missing) | FAIL |
+| SECTION | `LocalFileAssetStore` resolve | PNG at composition default | 34/34 at `json/<form_id>/questions/math-qNN.png` after store-relative keys | PASS |
+| 2–4, 6–10, 13, 15–17, 19, 22–24, 26–30, 32–37, 39–45 | `image_store_resolve` | official crop served | `AssetRef.key` is `questions/math-qNN.png`; store joins `baseDir/form_id/key` | PASS |
 
-Same root cause on every FAIL row. Converter copies JSON `image` (`<form_id>/questions/math-qNN.png`) into `AssetRef.key`. Fixture convention (and `local_file_asset_store.test`) is `key` *relative to* `form_id` (e.g. `math/q-2.png` → `baseDir/form_id/key`). PT2 keys therefore double the form id.
+Phase-3 root cause (closed): converter copied JSON `image` (`<form_id>/questions/math-qNN.png`) into `AssetRef.key`, so the store looked under `json/<form_id>/<form_id>/questions/…`. CV4-1 strips the leading `form_id/`.
 
-Second, independent serve break (not per-item data): `toExamItemVM` builds `/api/engine/asset/${form_id}/${key}` **without** encoding. Key contains slashes. Route is `app/api/engine/asset/[formId]/[key]` (single segment, not `[...key]`). Request path `/api/engine/asset/act-practice-test-2/act-practice-test-2/questions/math-q02.png` does not bind to `[key]`.
+Phase-3 second break (closed): VM built `/api/engine/asset/${form_id}/${key}` without encoding. CV4-2 uses `encodeURIComponent(ref.key)` so `[key]` binds one segment; the route already `decodeURIComponent`s.
 
-Worktree note (environment, not a form mismatch): `docs/preact9secure/` is not in the worktree. Composition default is `frontend/lib/../../docs/preact9secure/json` relative to the worktree file. Local sit needs `EXAM_ASSET_DIR` → main checkout `docs/preact9secure/json` *and* the key/store fix above.
+Worktree note (environment, not a form mismatch): `docs/preact9secure/` is not in the worktree. Local sit still needs `EXAM_ASSET_DIR` → main checkout `docs/preact9secure/json`.
 
-## 5. Blockers → sdd-converge (do not hand-edit `_generated/`)
+## 5. Blockers (closed)
 
-| ID | Gap | Class | Suggested fix task (not done here) |
+| ID | Gap | Class | Status |
 |---|---|---|---|
-| **V-M-B1** | 34/34 Math image items would not serve: `AssetRef.key` is `act-practice-test-2/questions/math-qNN.png` but `LocalFileAssetStore.resolveKey` is `baseDir/form_id/key`. Official PNG *is* the right file on disk. | `partial` (FR-P2-11/14) | Converter: emit store-relative keys (`questions/math-qNN.png`) matching the fixture **or** store: resolve `baseDir/key` when `key` already starts with `form_id/`. Tests vs real PT2 key shape, not only `math/q-2.png`. |
-| **V-M-B2** | Asset route `[formId]/[key]` cannot bind a slashy key; VM does not `encodeURIComponent`. | `partial` (FR-P2-11/15) | Catch-all `[...key]` **or** encode the key in `assetRefToUrl` and decode in the route (route already `decodeURIComponent`). |
+| **V-M-B1** | `AssetRef.key` doubled `form_id/` | `partial` (FR-P2-11/14) | **closed** — CV4-1 store-relative keys |
+| **V-M-B2** | Slashy key did not bind `[key]` | `partial` (FR-P2-11/15) | **closed** — CV4-2 `encodeURIComponent` |
 
 No key, count, scale, passage, or `ok`-item text blockers.
 
@@ -142,7 +142,7 @@ No key, count, scale, passage, or `ok`-item text blockers.
 
 | Finding | gap-type | Route |
 |---|---|---|
-| Image serve-path (B1+B2) | `partial` | fix task → sdd-implement (shared converter/store/route — not Math-only data) |
+| Image serve-path (B1+B2) | — (closed) | CV4-1 / CV4-2 landed; re-verify 34/34 |
 | Counts 45/41, keys 45/45, scale, passages, text-first 11/34 | — | none |
 
-**V-M is not a data-conversion miss.** The generated Math form is faithful to the official JSON/PDF. It is not sit-ready for image items until B1/B2 land.
+**V-M is not a data-conversion miss.** The generated Math form is faithful to the official JSON/PDF. Image items are sit-ready on the store→VM path after CV4-1 / CV4-2.

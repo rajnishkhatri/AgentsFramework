@@ -62,4 +62,18 @@ describe("LocalFileAssetStore (B-1 / FR-P2-14)", () => {
     await expect(store.getImage(escape)).rejects.toBeInstanceOf(EngineRepoError);
     await expect(store.has(escape)).rejects.toBeInstanceOf(EngineRepoError);
   });
+
+  it("resolves a PT2-shaped multi-segment key under baseDir/form_id/ (CV4-1 / FR-P2-14)", async () => {
+    baseDir = await mkdtemp(path.join(tmpdir(), "exam-assets-"));
+    const dest = path.join(baseDir, "act-practice-test-2", "questions");
+    await mkdir(dest, { recursive: true });
+    await writeFile(path.join(dest, "math-q02.png"), PNG);
+    const store = new LocalFileAssetStore(baseDir);
+    const image = ref({
+      form_id: "act-practice-test-2",
+      key: "questions/math-q02.png",
+    });
+    expect(await store.has(image)).toBe(true);
+    expect(await store.getImage(image)).toEqual(PNG);
+  });
 });

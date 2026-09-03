@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { FAKE_OFFICIAL_FORM } from "@/lib/adapters/engine/exam_forms/fixtures/fake_official_form";
 import type { ExamQuestion } from "@/lib/wire/exam_entities";
-import { toExamItemVM } from "./exam_item_vm";
+import { assetRefToUrl, toExamItemVM } from "./exam_item_vm";
 
 function questionById(id: string): ExamQuestion {
   const found = FAKE_OFFICIAL_FORM.sections
@@ -49,7 +49,7 @@ describe("toExamItemVM (C-1 / FR-P2-10/11)", () => {
       key: "math/q-2.png",
     });
     expect(vm.imageUrl).toBe(
-      "/api/engine/asset/fake-official-form/math/q-2.png",
+      "/api/engine/asset/fake-official-form/math%2Fq-2.png",
     );
     expect(vm.stem).toBe(q.stem);
     expect(vm.choices).toHaveLength(4);
@@ -60,9 +60,7 @@ describe("toExamItemVM (C-1 / FR-P2-10/11)", () => {
     const q = questionById("s-1");
     const vm = toExamItemVM(q);
     expect(q.image).not.toBeNull();
-    expect(vm.imageUrl).toBe(
-      `/api/engine/asset/${q.image!.form_id}/${q.image!.key}`,
-    );
+    expect(vm.imageUrl).toBe(assetRefToUrl(q.image!));
     expect(vm.passageLabel).toBe("P1");
   });
 
@@ -71,5 +69,19 @@ describe("toExamItemVM (C-1 / FR-P2-10/11)", () => {
     for (const id of ids) {
       expect(toExamItemVM(questionById(id)).imageUrl).toBeNull();
     }
+  });
+
+  it("slashy store-relative key is a single encoded URL segment (CV4-2 / FR-P2-11)", () => {
+    const url = assetRefToUrl({
+      store: "form-image",
+      form_id: "act-practice-test-2",
+      key: "questions/math-q02.png",
+    });
+    expect(url).toBe(
+      "/api/engine/asset/act-practice-test-2/questions%2Fmath-q02.png",
+    );
+    const keySegment = url.split("/").pop();
+    expect(keySegment).toBe(encodeURIComponent("questions/math-q02.png"));
+    expect(keySegment).not.toContain("/");
   });
 });

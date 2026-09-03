@@ -21,6 +21,7 @@ vi.mock("@/lib/bff/server_composition", () => ({
   }),
 }));
 
+import { assetRefToUrl } from "@/components/exam/exam_item_vm";
 import { GET } from "./route";
 
 function req(formId: string, key: string): NextRequest {
@@ -70,6 +71,33 @@ describe("GET /api/engine/asset/[formId]/[key] (B-6 / FR-P2-15)", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("image/png");
     expect(res.headers.get("cache-control")).toBe("private");
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(PNG);
+  });
+
+  it("VM-built slashy key decodes to the store key and 200s (CV4-2 / FR-P2-15)", async () => {
+    getAuthSession.mockResolvedValue({ sub: "learner-A" });
+    getImage.mockResolvedValue(PNG);
+    const storeKey = "questions/math-q02.png";
+    const url = assetRefToUrl({
+      store: "form-image",
+      form_id: "act-practice-test-2",
+      key: storeKey,
+    });
+    const keySegment = url.split("/").pop()!;
+    expect(keySegment).toBe(encodeURIComponent(storeKey));
+    expect(keySegment).not.toContain("/");
+    const res = await GET(req("act-practice-test-2", keySegment), {
+      params: Promise.resolve({
+        formId: "act-practice-test-2",
+        key: keySegment,
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(getImage).toHaveBeenCalledWith({
+      store: "form-image",
+      form_id: "act-practice-test-2",
+      key: storeKey,
+    });
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(PNG);
   });
 });

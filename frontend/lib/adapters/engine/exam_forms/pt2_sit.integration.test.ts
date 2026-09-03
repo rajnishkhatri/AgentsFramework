@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { examKeyPosture } from "@/components/exam/exam_key_posture";
-import { toExamItemVM } from "@/components/exam/exam_item_vm";
+import { assetRefToUrl, toExamItemVM } from "@/components/exam/exam_item_vm";
 import { ExactLetterGrader } from "@/lib/adapters/engine/grader/exact_letter_grader";
 import { InMemoryEngineDb } from "@/lib/adapters/engine/db/in_memory_engine_db";
 import { HttpEngineDb } from "@/lib/adapters/engine/db/http_engine_db";
@@ -104,9 +104,7 @@ describe.skipIf(!localOnly)("S-I3 PT2 server sit (FR-P2-19/7/11/12)", () => {
     const imaged = math.questions.find((q) => q.image != null);
     expect(imaged).toBeDefined();
     const vm = toExamItemVM(imaged!);
-    expect(vm.imageUrl).toBe(
-      `/api/engine/asset/${imaged!.image!.form_id}/${imaged!.image!.key}`,
-    );
+    expect(vm.imageUrl).toBe(assetRefToUrl(imaged!.image!));
 
     const science = pt2!.sections.find((s) => s.code === "science")!;
     expect(science.passages.length).toBeGreaterThan(0);

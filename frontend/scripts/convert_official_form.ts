@@ -215,6 +215,12 @@ function asset(formId: string, key: string): AssetRef {
   return { store: "form-image", form_id: formId, key };
 }
 
+/** Store joins `baseDir/form_id/key`; strip a leading `<form_id>/` the JSON carries. */
+function storeRelativeKey(formId: string, key: string): string {
+  const prefix = `${formId}/`;
+  return key.startsWith(prefix) ? key.slice(prefix.length) : key;
+}
+
 function padPage(n: number): string {
   return String(n).padStart(3, "0");
 }
@@ -313,7 +319,7 @@ export function parseOfficialForm(
         : [];
       const pageKey =
         pages[0] !== undefined
-          ? `${formId}/pages/p${padPage(pages[0])}.png`
+          ? `pages/p${padPage(pages[0])}.png`
           : null;
       return {
         label,
@@ -333,10 +339,12 @@ export function parseOfficialForm(
       const fidelity =
         typeof q.text_fidelity === "string" ? q.text_fidelity : "ok";
       const wantsImage = needsImage({ text_fidelity: fidelity }, { is_figure: figure });
-      const imageKey =
+      const imageKey = storeRelativeKey(
+        formId,
         typeof q.image === "string" && q.image.length > 0
           ? q.image
-          : `${formId}/questions/${code}-q${padQuestion(number)}.png`;
+          : `questions/${code}-q${padQuestion(number)}.png`,
+      );
       const rawChoices = Array.isArray(q.choices) ? q.choices : [];
       const choices = rawChoices.map((cRaw) => {
         const c = asRecord(cRaw, "choice");
@@ -509,4 +517,3 @@ const invokedDirectly =
   process.argv[1] != null &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) main();
-
