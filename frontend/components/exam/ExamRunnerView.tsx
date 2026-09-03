@@ -7,13 +7,16 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import type { QuizItemVM } from "@/lib/translators/quiz_item_vm";
 import { CountdownTimer } from "@/components/test/CountdownTimer";
 import { ExamNavigator } from "./ExamNavigator";
+import type { ExamPassage } from "@/lib/wire/exam_entities";
 import type { NavigatorCell } from "./exam_section_reducer";
+import type { ExamItemVM } from "./exam_item_vm";
+import { ExamPassageBlock } from "./ExamPassageBlock";
 
 export interface ExamRunnerViewProps {
-  readonly vm: QuizItemVM;
+  readonly vm: ExamItemVM;
+  readonly passages?: readonly ExamPassage[];
   readonly selectedLetter: string | null;
   readonly flagged: boolean;
   readonly index: number;
@@ -39,6 +42,13 @@ export interface ExamRunnerViewProps {
 export function ExamRunnerView(props: ExamRunnerViewProps): React.JSX.Element {
   const atFirst = props.index <= 0;
   const atLast = props.index >= props.count - 1;
+  const [failedImageUrl, setFailedImageUrl] = React.useState<string | null>(
+    null,
+  );
+  const imageUrl = props.vm.imageUrl;
+  // Compare to the current URL so a prior onError cannot leak to the next item.
+  const showOfficialImage = imageUrl != null && failedImageUrl !== imageUrl;
+  const showImagePlaceholder = imageUrl != null && failedImageUrl === imageUrl;
 
   return (
     <section
@@ -73,12 +83,40 @@ export function ExamRunnerView(props: ExamRunnerViewProps): React.JSX.Element {
         </p>
       ) : null}
 
-      <p
-        data-testid="quiz-context"
-        className="text-[1.25rem] leading-[1.8]"
-        dangerouslySetInnerHTML={{ __html: props.vm.contextHtml }}
+      <ExamPassageBlock
+        passages={props.passages ?? []}
+        passageLabel={props.vm.passageLabel}
       />
-      <p className="text-base font-medium">{props.vm.stem}</p>
+
+      {props.vm.contextHtml ? (
+        <p
+          data-testid="quiz-context"
+          className="text-[1.25rem] leading-[1.8]"
+          dangerouslySetInnerHTML={{ __html: props.vm.contextHtml }}
+        />
+      ) : null}
+      {showOfficialImage && imageUrl != null ? (
+        <img
+          src={imageUrl}
+          alt={`Question ${props.index + 1} (official image)`}
+          data-testid="exam-official-image"
+          onError={() => setFailedImageUrl(imageUrl)}
+        />
+      ) : null}
+      {showImagePlaceholder ? (
+        <p
+          data-testid="exam-content-unavailable"
+          role="status"
+          className="rounded-md border border-border px-3 py-2 text-sm text-muted"
+        >
+          content unavailable
+        </p>
+      ) : null}
+      {!showOfficialImage && !showImagePlaceholder ? (
+        <p data-testid="exam-item-stem" className="text-base font-medium">
+          {props.vm.stem}
+        </p>
+      ) : null}
 
       <ul className="flex flex-col gap-2">
         {props.vm.choices.map((c) => {

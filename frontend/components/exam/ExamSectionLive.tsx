@@ -12,8 +12,8 @@ import type {
   ExamSection,
   ExamSectionAttempt,
 } from "@/lib/wire/exam_entities";
-import { toQuizItemVM } from "@/lib/translators/quiz_item_vm";
 import { createExamClock } from "./exam_clock";
+import { toExamItemVM } from "./exam_item_vm";
 import { navigatorCells } from "./exam_section_reducer";
 import { useExamSection } from "./use_exam_section";
 import { ExamRunnerView } from "./ExamRunnerView";
@@ -130,7 +130,8 @@ export function ExamSectionLive(props: ExamSectionLiveProps): React.JSX.Element 
 
   return (
     <ExamRunnerView
-      vm={toQuizItemVM(currentQuestion)}
+      vm={toExamItemVM(currentQuestion)}
+      passages={props.section.passages}
       selectedLetter={currentItem?.chosen_letter ?? null}
       flagged={currentItem?.flagged_in_section === true}
       index={state.currentIndex}
