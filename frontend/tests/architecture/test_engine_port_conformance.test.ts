@@ -63,6 +63,8 @@ const REQUIRED_PORTS: ReadonlyArray<{
   { file: "progress_repo.ts", interfaceName: "ProgressRepo" },
   // ADR-0040: exam-run seam (14th). Phase-0 stub; adapter lands in WT-1.
   { file: "exam_run_repo.ts", interfaceName: "ExamRunRepo" },
+  // ADR-0042: form-image seam (15th). LocalFileAssetStore lands in WT-B; GCS is design-only.
+  { file: "form_asset_store.ts", interfaceName: "FormAssetStore" },
 ];
 
 // Vendor acronyms a port name must never contain (P2).
@@ -91,7 +93,7 @@ function findInterface(sf: SourceFile, name: string) {
 }
 
 describe("Engine port conformance suite [ADR-0006 / P7]", () => {
-  it("ports/engine/ contains exactly the fourteen engine ports (+ helper modules)", () => {
+  it("ports/engine/ contains exactly the fifteen engine ports (+ helper modules)", () => {
     expect(fs.existsSync(ENGINE_PORTS_DIR), `${ENGINE_PORTS_DIR} must exist`).toBe(true);
     const interfaceFiles = fs
       .readdirSync(ENGINE_PORTS_DIR)

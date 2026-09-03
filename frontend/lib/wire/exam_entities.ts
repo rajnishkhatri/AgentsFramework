@@ -24,12 +24,31 @@ export const ExamSectionCode = z.enum([
 ]);
 export type ExamSectionCode = z.infer<typeof ExamSectionCode>;
 
+/** Opaque server-resolved image ref (ADR-0042 / spec §4.1). */
+export const AssetRef = z.object({
+  store: z.literal("form-image"),
+  form_id: z.string().min(1),
+  key: z.string().min(1),
+});
+export type AssetRef = z.infer<typeof AssetRef>;
+
 export const ExamQuestion = Question.extend({
   reporting_category: z.string().nullable(),
   scored: z.boolean(),
   passage: z.string().nullable(),
+  image: AssetRef.nullable().default(null),
 });
 export type ExamQuestion = z.infer<typeof ExamQuestion>;
+
+export const ExamPassage = z.object({
+  label: z.string(),
+  title: z.string().nullable(),
+  intro: z.string().nullable(),
+  text: z.string().nullable(),
+  image: AssetRef.nullable(),
+  question_numbers: z.array(z.number().int()),
+});
+export type ExamPassage = z.infer<typeof ExamPassage>;
 
 export const ExamSection = z.object({
   code: ExamSectionCode,
@@ -40,8 +59,12 @@ export const ExamSection = z.object({
   composite: z.boolean(),
   scale_table: z.record(z.string(), z.number()).nullable(),
   questions: z.array(ExamQuestion),
+  passages: z.array(ExamPassage).default([]),
 });
 export type ExamSection = z.infer<typeof ExamSection>;
+
+export const ExamFormDelivery = z.enum(["client-bundled", "asset-served"]);
+export type ExamFormDelivery = z.infer<typeof ExamFormDelivery>;
 
 export const ExamForm = z.object({
   id: z.string().min(1),
@@ -49,8 +72,28 @@ export const ExamForm = z.object({
   blueprint: ExamBlueprint,
   composite_sections: z.array(ExamSectionCode),
   sections: z.array(ExamSection),
+  delivery: ExamFormDelivery.default("client-bundled"),
 });
 export type ExamForm = z.infer<typeof ExamForm>;
+
+/** Client-facing asset-served payload: .strict() and no answer-bearing fields (FR-P2-3/8). */
+export const ClientExamQuestion = ExamQuestion.omit({
+  answer_letter: true,
+  per_choice_rationale: true,
+  why_correct_md: true,
+  why_tempted_md: true,
+}).strict();
+export type ClientExamQuestion = z.infer<typeof ClientExamQuestion>;
+
+export const ClientExamSection = ExamSection.extend({
+  questions: z.array(ClientExamQuestion),
+});
+export type ClientExamSection = z.infer<typeof ClientExamSection>;
+
+export const ClientExamForm = ExamForm.extend({
+  sections: z.array(ClientExamSection),
+}).strict();
+export type ClientExamForm = z.infer<typeof ClientExamForm>;
 
 export const ExamRun = z.object({
   id: z.string().min(1),

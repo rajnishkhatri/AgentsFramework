@@ -15,6 +15,7 @@ const QUESTIONS: ExamQuestion[] = TEST01_SERVED_QUESTIONS.map((q) => ({
   reporting_category: null,
   scored: true,
   passage: null,
+  image: null,
 }));
 
 export const TEST01_ENGLISH_FORM_ID = "test01-english";
@@ -25,6 +26,7 @@ export const TEST01_ENGLISH_FORM: ExamForm = {
   title: "Test 01 — English",
   blueprint: "test01",
   composite_sections: ["english"],
+  delivery: "client-bundled",
   sections: [
     {
       code: "english",
@@ -38,6 +40,7 @@ export const TEST01_ENGLISH_FORM: ExamForm = {
         "there is no guessing penalty.",
       composite: true,
       scale_table: null,
+      passages: [],
       questions: QUESTIONS,
     },
   ],

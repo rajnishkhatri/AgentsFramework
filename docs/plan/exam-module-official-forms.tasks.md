@@ -112,3 +112,43 @@
 
 **Route → sdd-implement** (create the base branch + the three worktrees per plan §6; execute
 BASE, then A ∥ B ∥ C, then SERIAL, then VALIDATE ∥×4).
+
+---
+
+## Phase 4 — Convergence (iteration 1 · 2026-09-03 · from code-review + VALIDATE)
+
+> **sdd-converge Stage 9.** Append-only. Classification of the gaps left after implement +
+> Phase-3 VALIDATE + the deterministic code-review (approve, 0 findings — but the reviewer
+> cannot see runtime path bugs; the frontend key-safety/conformance suites I re-ran are green:
+> py-arch **254 passed**, targeted vitest **8 files / 118 tests passed**). **Not converged** —
+> the image-serve path is a `partial` gap; route to **sdd-implement**. Do **not** hand-edit
+> `_generated/` (©ACT). RED-FIRST every task.
+
+### Classification
+
+| Finding | Source | gap-type | Route |
+|---|---|---|---|
+| Image serve doubles `form_id` (Math 34 + Science) | V-M-B1 ([math.md](exam-official-forms-validation/math.md) §5) | **partial** (FR-P2-11/14) | fix → sdd-implement |
+| Slashy asset key doesn't bind the `[key]` route (Math + Science) | V-M-B2 ([math.md](exam-official-forms-validation/math.md) §5) | **partial** (FR-P2-11/15) | fix → sdd-implement |
+| Data-path E/R/S, keys, scale, counts, text-first, key-safety, conformance | V-E/V-R/V-S, code-review | — (PASS) | none |
+| Reading line-numbers dropped; dual-passage PDF headings not in JSON `text` | V-R observations | **deferred** (product call, not a §6.4 mismatch) | defer — not a fix task |
+| Browser sit 500s on `:3010` (WorkOS env absent in worktree) | V-T | **environment** (not a product defect) | none |
+
+### Fix tasks (→ sdd-implement)
+
+| ID | Task (files) | source-ref / gap-type | Pass/fail (RED-FIRST test → FR) |
+|---|---|---|---|
+| **CV4-1** | Make `AssetRef.key` **store-relative** (strip the leading `<form_id>/` the JSON `image` carries) so `LocalFileAssetStore.resolveKey` (`baseDir/form_id/key`, [local_file_asset_store.ts:47](../../frontend/lib/adapters/engine/assets/local_file_asset_store.ts)) lands on the real PNG. Edit `scripts/convert_official_form.ts` key derivation; **regenerate** `_generated/` locally (gitignored, not committed). | V-M-B1 / **partial** | `convert_official_form.test`: emitted `key` does NOT start with `form_id`; `local_file_asset_store.test`: add the **real PT2 multi-segment** key `questions/math-q02.png` resolving under `baseDir/<form_id>/` (not only `math/q-2.png`) → **FR-P2-14** |
+| **CV4-2** | Bind slashy keys end-to-end: `encodeURIComponent(ref.key)` in `assetRefToUrl` ([exam_item_vm.ts:26](../../frontend/components/exam/exam_item_vm.ts)) — the route already `decodeURIComponent`s a single `[key]` segment ([route.ts:33](../../frontend/app/api/engine/asset/[formId]/[key]/route.ts)) — **or** switch the route to catch-all `[formId]/[...key]` + join in the handler. Pick one; do not do both. | V-M-B2 / **partial** | `exam_item_vm.test`: slashy key → single encoded segment; `route.test`: the VM-built URL decodes back to the exact store key and 200s (missing ⇒ 404, unauth ⇒ 401 unchanged) → **FR-P2-11/15** |
+| **CV4-3** | Integration re-verify (closes the gap): after CV4-1+CV4-2, prove **Math 34/34 + Science** image items resolve store→route→VM end-to-end; re-run the V-M / V-S **serve** checks and re-sit the substitute (or a real auth'd sit with `EXAM_ASSET_DIR` → main-checkout `docs/preact9secure/json`). Update [math.md](exam-official-forms-validation/math.md) / [tester.md](exam-official-forms-validation/tester.md) verdicts. | V-M rollup + V-T / **partial** | Math image rollup FAIL set → 0; a full-run sit renders official PNGs, no "content unavailable" → **FR-P2-11/13/19** (DoD evidence pasted) |
+
+### Convergence status (Stage 10 — iteration 1 **CLOSED · converged** · verified 2026-09-03)
+
+- [x] **(1) Converged** — CV4-1/2/3 CLOSED and **verified this pass** (not merely claimed): `storeRelativeKey` ([convert_official_form.ts:219,342](../../frontend/scripts/convert_official_form.ts)) + `encodeURIComponent(ref.key)` ([exam_item_vm.ts:26](../../frontend/components/exam/exam_item_vm.ts)) on disk; `_generated/act-practice-test-2.client.ts` regenerated 15:42 → **74 image keys = 68 `questions/` + 6 `pages/` + 0 doubled `act-practice-test-2/questions`**; `math.md`/`tester.md` FAIL→PASS. No `missing`/`partial`/`contradicts` gap remains.
+- [x] **(2) gates** — `make check` **5372 passed, 55 skipped**; `pytest tests/architecture/ -q` **254 passed, 3 skipped**; `pnpm typecheck` clean; blast-radius `pnpm vitest run components/exam lib/adapters/engine app/api/engine` **410 passed** + CV4 suites **40 passed** (2026-09-03). (Full `pnpm vitest run` skipped to avoid the nested-worktree ts-morph parallel-timeout *artifact*; scoped runs are authoritative.)
+- [x] **(3) ADR** — ADR-0042 **Accepted**; ADR-0041 amended; `test_adr_ratchet` green.
+- [ ] **(4) comprehension gates — HUMAN** — G1 (`FormAssetStore`, `exam_server_grade`, `ClientExamForm`) recorded in ADR-0042/decisions; **G9** on the CV4 diff = no new `try/except`/`return None` (`storeRelativeKey` only strips a leading `form_id/`; store/route keep their existing G9 comments). Owner confirms in their own words.
+- [x] **(5) eval-capture** — N/A (no LLM seam in this change).
+- [x] **(6) blast-radius cleanup** — checked: the fix is minimal (converter `storeRelativeKey`, 1 caller + a 1-line VM encode); no scaffold/dead branch introduced, nothing to delete. `LocalFileAssetStore.resolveKey` was correct all along and is unchanged.
+
+**Bounded loop:** iteration 1 **CLOSED — converged**. Remaining before production: the human answer on (4) + the commit/PR decision (commit only when the human asks; no PR unless asked).

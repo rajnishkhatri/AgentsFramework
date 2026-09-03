@@ -16,6 +16,7 @@ import type {
 import type { Grader } from "../../../ports/engine/grader";
 import { EngineNotFoundError, EngineRepoError } from "../../../ports/engine/errors";
 import type {
+  ClientExamForm,
   ExamForm,
   ExamRun,
   ExamRunItem,
@@ -23,7 +24,11 @@ import type {
   ExamSectionCode,
 } from "../../../wire/exam_entities";
 import type { EngineDb } from "../db/engine_db";
-import { getExamForm } from "../exam_forms";
+import {
+  getExamForm,
+  getExamFormDelivery,
+  listRegisteredExamFormIds,
+} from "../exam_forms";
 import { newUuid } from "../../../new_uuid";
 import {
   examComposite,
@@ -75,7 +80,7 @@ export class DrizzleExamRunRepo implements ExamRunRepo {
     sectionCode: ExamSectionCode;
   }): Promise<ExamSectionAttempt> {
     const detail = await this.requireDetail(args.learnerId, args.runId);
-    const form = this.getForm(detail.run.form_id);
+    const form = await this.resolveForm(args.learnerId, detail.run.form_id);
     const section = form.sections.find((s) => s.code === args.sectionCode);
     if (section == null) {
       throw new EngineRepoError(
@@ -143,7 +148,7 @@ export class DrizzleExamRunRepo implements ExamRunRepo {
     if (existing.status === "submitted" || existing.status === "expired") {
       return existing;
     }
-    const form = this.getForm(detail.run.form_id);
+    const form = await this.resolveForm(args.learnerId, detail.run.form_id);
     const section = form.sections.find((s) => s.code === args.sectionCode);
     if (section == null) {
       throw new EngineRepoError(
@@ -151,18 +156,27 @@ export class DrizzleExamRunRepo implements ExamRunRepo {
       );
     }
     const items = detail.items.filter((i) => i.section_code === args.sectionCode);
-    const score = scoreExamSection(section, items, this.grader);
-    const graded = items.map((row) => {
-      const hit = score.grades.find((g) => g.question_id === row.question_id);
-      return { ...row, correct: hit?.correct ?? null };
-    });
     const remainingMs =
       existing.deadline_at == null
         ? null
         : Math.max(0, Date.parse(existing.deadline_at) - this.now().getTime());
     const status = remainingMs === 0 ? "expired" : "submitted";
+    const assetServed = form.delivery === "asset-served";
+    const score = assetServed
+      ? null
+      : scoreExamSection(
+          section as ExamForm["sections"][number],
+          items,
+          this.grader,
+        );
+    const graded = assetServed
+      ? items
+      : items.map((row) => {
+          const hit = score!.grades.find((g) => g.question_id === row.question_id);
+          return { ...row, correct: hit?.correct ?? null };
+        });
     try {
-      if (graded.length > 0) {
+      if (!assetServed && graded.length > 0) {
         await this.db.upsertExamRunItems(
           args.learnerId,
           args.runId,
@@ -175,11 +189,15 @@ export class DrizzleExamRunRepo implements ExamRunRepo {
         args.runId,
         args.sectionCode,
         status,
-        {
-          raw_correct: score.raw_correct,
-          raw_scored_total: score.raw_scored_total,
-          scale_score: score.scale_score,
-        },
+        assetServed
+          ? // Placeholder only — server finishExamSectionServer overwrites
+            // these for asset-served forms (FR-P2-6). Not a fabricated score.
+            { raw_correct: 0, raw_scored_total: 0, scale_score: null }
+          : {
+              raw_correct: score!.raw_correct,
+              raw_scored_total: score!.raw_scored_total,
+              scale_score: score!.scale_score,
+            },
         remainingMs,
       );
       const after = await this.db.getExamRun(args.learnerId, args.runId);
@@ -261,6 +279,58 @@ export class DrizzleExamRunRepo implements ExamRunRepo {
       );
     } catch (err) {
       throw translate("setBookmark", err);
+    }
+  }
+
+  async listClientForms(args: {
+    learnerId: string;
+  }): Promise<ClientExamForm[]> {
+    const out: ClientExamForm[] = [];
+    for (const formId of listRegisteredExamFormIds()) {
+      const form = await this.getClientForm({
+        learnerId: args.learnerId,
+        formId,
+      });
+      if (form != null) out.push(form);
+    }
+    return out;
+  }
+
+  async getClientForm(args: {
+    learnerId: string;
+    formId: string;
+  }): Promise<ClientExamForm | null> {
+    try {
+      return await this.db.getExamFormForClient(args.learnerId, args.formId);
+    } catch (err) {
+      throw translate("getClientForm", err);
+    }
+  }
+
+  private async resolveForm(
+    learnerId: string,
+    formId: string,
+  ): Promise<ExamForm | ClientExamForm> {
+    try {
+      if (getExamFormDelivery(formId) === "asset-served") {
+        const client = await this.db.getExamFormForClient(learnerId, formId);
+        if (client != null) return client;
+      }
+    } catch {
+      // G9: unknown registry id — fall through to getForm / client fetch.
+    }
+    try {
+      const bundled = this.getForm(formId);
+      if (bundled.delivery === "asset-served") {
+        const client = await this.db.getExamFormForClient(learnerId, formId);
+        if (client != null) return client;
+        return bundled;
+      }
+      return bundled;
+    } catch (err) {
+      const client = await this.db.getExamFormForClient(learnerId, formId);
+      if (client != null) return client;
+      throw translate("resolveForm", err);
     }
   }
 

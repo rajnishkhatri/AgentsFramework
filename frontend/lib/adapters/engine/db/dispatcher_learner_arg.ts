@@ -23,6 +23,7 @@ export const EXAM_ENGINE_DB_METHODS = [
   "setExamRunComposite",
   "setExamBookmark",
   "listExamRunItemsByLearner",
+  "getExamFormForClient",
 ] as const satisfies readonly EngineDbMethodName[];
 
 export type ExamEngineDbMethod = (typeof EXAM_ENGINE_DB_METHODS)[number];
@@ -38,6 +39,7 @@ export const EXAM_LEARNER_ARG = {
   setExamRunComposite: 0,
   setExamBookmark: 0,
   listExamRunItemsByLearner: 0,
+  getExamFormForClient: 0,
 } as const satisfies Record<ExamEngineDbMethod, 0>;
 
 export function isExamEngineDbMethod(

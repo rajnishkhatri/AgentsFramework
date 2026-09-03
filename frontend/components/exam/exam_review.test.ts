@@ -9,6 +9,7 @@ import {
   buildExamReview,
   filterExamReview,
   isToRevise,
+  reviewScoreSummary,
   toExamReviewItem,
 } from "./exam_review";
 
@@ -36,6 +37,7 @@ function question(over: Partial<ExamQuestion> = {}): ExamQuestion {
     reporting_category: null,
     scored: true,
     passage: null,
+    image: null,
     ...over,
   };
 }
@@ -165,5 +167,43 @@ describe("exam_review (FR-25 / FR-29)", () => {
       item({ chosen_letter: "B", correct: true }),
     );
     expect(graded.correct).toBe(true);
+  });
+});
+
+describe("exam_review — unscored + post-grade reveal (C-4 / FR-P2-18, FR-P2-9)", () => {
+  it("marks an unscored field-test item on the VM", () => {
+    const vm = toExamReviewItem(question({ scored: false }), item());
+    expect(vm.scored).toBe(false);
+    expect(toExamReviewItem(question({ scored: true }), item()).scored).toBe(
+      true,
+    );
+  });
+
+  it("excludes unscored items from the score summary", () => {
+    const scoredRight = toExamReviewItem(
+      question({ id: "q-s", scored: true }),
+      item({ question_id: "q-s", chosen_letter: "A", correct: true }),
+    );
+    const scoredWrong = toExamReviewItem(
+      question({ id: "q-w", scored: true }),
+      item({ question_id: "q-w", chosen_letter: "B", correct: false }),
+    );
+    const fieldTest = toExamReviewItem(
+      question({ id: "q-ft", scored: false }),
+      item({ question_id: "q-ft", chosen_letter: "A", correct: true }),
+    );
+    const summary = reviewScoreSummary([scoredRight, scoredWrong, fieldTest]);
+    expect(summary.scoredCorrect).toBe(1);
+    expect(summary.scoredTotal).toBe(2);
+    expect(summary.unscoredCount).toBe(1);
+  });
+
+  it("pre-grade item has no correct field (asset-served, keys not merged)", () => {
+    const vm = toExamReviewItem(
+      question({ answer_letter: "" }),
+      item({ chosen_letter: "B", correct: null }),
+    );
+    expect(vm.correctLetter).toBeNull();
+    expect(vm.correct).toBeNull();
   });
 });

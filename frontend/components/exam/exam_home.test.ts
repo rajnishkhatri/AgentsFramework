@@ -38,6 +38,7 @@ function question(over: Partial<ExamQuestion> = {}): ExamQuestion {
     reporting_category: null,
     scored: true,
     passage: null,
+    image: null,
     ...over,
   };
 }
@@ -48,6 +49,7 @@ function form(): ExamForm {
     title: "Two section",
     blueprint: "test01",
     composite_sections: ["english"],
+    delivery: "client-bundled",
     sections: [
       {
         code: "english",
@@ -57,6 +59,7 @@ function form(): ExamForm {
         directions: "English directions",
         composite: true,
         scale_table: null,
+        passages: [],
         questions: [question()],
       },
       {
@@ -67,6 +70,7 @@ function form(): ExamForm {
         directions: "Math directions",
         composite: false,
         scale_table: null,
+        passages: [],
         questions: [question({ id: "q-math" })],
       },
     ],
@@ -191,5 +195,43 @@ describe("exam_home (FR-10–12)", () => {
         now: AFTER_DEADLINE,
       }),
     ).resolves.toMatchObject({ sectionCode: "math" });
+  });
+});
+
+describe("S-I2 exam home lists PT2 (FR-P2-19)", () => {
+  it("lists PT2 beside Test-01 with four section statuses via getExamFormForClient", async () => {
+    await import("@/lib/adapters/engine/exam_forms/generated_official_form");
+    const db = new InMemoryEngineDb();
+    const repo = new DrizzleExamRunRepo({
+      db,
+      grader: new ExactLetterGrader(),
+    });
+    const forms = await repo.listClientForms({ learnerId: LEARNER });
+    const vm = await loadExamHome(repo, {
+      learnerId: LEARNER,
+      forms,
+      now: NOW,
+    });
+    const ids = vm.forms.map((f) => f.formId);
+    expect(ids).toContain("test01-english");
+    expect(ids).toContain("act-practice-test-2");
+    const pt2 = vm.forms.find((f) => f.formId === "act-practice-test-2");
+    expect(pt2).toBeDefined();
+    expect(pt2!.sections).toHaveLength(4);
+    expect(pt2!.sections.map((s) => s.code)).toEqual([
+      "english",
+      "math",
+      "reading",
+      "science",
+    ]);
+    expect(pt2!.sections.every((s) => s.status === "not_started")).toBe(true);
+
+    const client = await repo.getClientForm({
+      learnerId: LEARNER,
+      formId: "act-practice-test-2",
+    });
+    expect(client).not.toBeNull();
+    expect(client!.sections).toHaveLength(4);
+    expect(JSON.stringify(client)).not.toContain('"answer_letter"');
   });
 });

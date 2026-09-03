@@ -164,3 +164,10 @@ docs/plan/eng-coach-gcp-deploy.tasks.md
 # emitter (scripts/pack_skills.py), the install guide (docs/skills/_sdd/INSTALL.md),
 # and the six tracked per-skill docs/skills/sdd-*.skill archives stay tracked.
 docs/skills/sdd-skills-bundle.zip
+
+# ©ACT official-form artifacts — never commit (FR-P2-4 / ADR-0042).
+# `_generated/` is converter output; `docs/preact9secure/` is the private
+# ingestion folder (nested .gitignore=`*` locally; pin it at repo root too
+# so a fresh worktree without that folder still check-ignores).
+frontend/lib/adapters/engine/exam_forms/_generated/
+docs/preact9secure/

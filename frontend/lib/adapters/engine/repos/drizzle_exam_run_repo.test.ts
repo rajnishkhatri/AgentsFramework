@@ -5,7 +5,7 @@
  * these rows pin the adapter's behavioral contract.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ExactLetterGrader } from "../grader/exact_letter_grader";
 import { InMemoryEngineDb } from "../db/in_memory_engine_db";
 import { EngineRepoError } from "../../../ports/engine/errors";
@@ -14,6 +14,8 @@ import type {
   ExamQuestion,
   ExamRunItem,
 } from "../../../wire/exam_entities";
+import { FAKE_OFFICIAL_FORM } from "../exam_forms/fixtures/fake_official_form";
+import { stripExamFormForClient } from "../exam_form_load";
 import { DrizzleExamRunRepo } from "./drizzle_exam_run_repo";
 
 const LEARNER = "learner-1";
@@ -44,6 +46,7 @@ function question(over: Partial<ExamQuestion> = {}): ExamQuestion {
     reporting_category: null,
     scored: true,
     passage: null,
+    image: null,
     ...over,
   };
 }
@@ -54,6 +57,7 @@ function twoSectionForm(): ExamForm {
     title: "Two section",
     blueprint: "test01",
     composite_sections: ["english"],
+    delivery: "client-bundled",
     sections: [
       {
         code: "english",
@@ -63,6 +67,7 @@ function twoSectionForm(): ExamForm {
         directions: "d",
         composite: true,
         scale_table: null,
+        passages: [],
         questions: [question()],
       },
       {
@@ -73,6 +78,7 @@ function twoSectionForm(): ExamForm {
         directions: "d",
         composite: false,
         scale_table: null,
+        passages: [],
         questions: [question({ id: "q-math" })],
       },
     ],
@@ -174,5 +180,72 @@ describe("DrizzleExamRunRepo (W1-7 / FR-2 / FR-12)", () => {
         sectionCode: "english",
       }),
     ).rejects.toBeInstanceOf(EngineRepoError);
+  });
+
+  it("asset-served finishSection skips local scoring and delegates (FR-P2-5)", async () => {
+    const db = new InMemoryEngineDb();
+    db.seedExamForm(FAKE_OFFICIAL_FORM);
+    const finish = vi.spyOn(db, "finishExamSection");
+    const clientForm = stripExamFormForClient(FAKE_OFFICIAL_FORM);
+    const r = new DrizzleExamRunRepo({
+      db,
+      grader: new ExactLetterGrader(),
+      getForm: (id) => {
+        if (id === FAKE_OFFICIAL_FORM.id) return clientForm as unknown as ExamForm;
+        throw new Error(`unknown form ${id}`);
+      },
+      newId: () => "run-1",
+      now: () => NOW,
+    });
+    await r.startRun({ learnerId: LEARNER, formId: FAKE_OFFICIAL_FORM.id });
+    await r.beginSection({
+      learnerId: LEARNER,
+      runId: "run-1",
+      sectionCode: "english",
+    });
+    const q = FAKE_OFFICIAL_FORM.sections[0]!.questions[0]!;
+    await r.upsertItems({
+      learnerId: LEARNER,
+      items: [item({ question_id: q.id, chosen_letter: q.answer_letter })],
+    });
+    const finished = await r.finishSection({
+      learnerId: LEARNER,
+      runId: "run-1",
+      sectionCode: "english",
+    });
+    expect(finish).toHaveBeenCalled();
+    const grades = finish.mock.calls[0]![4];
+    expect(grades).toEqual({
+      raw_correct: 0,
+      raw_scored_total: 0,
+      scale_score: null,
+    });
+    expect(finished.status).toBe("submitted");
+    const detail = await r.getRunDetail({ learnerId: LEARNER, runId: "run-1" });
+    expect(detail!.items.every((row) => row.correct === null)).toBe(true);
+  });
+
+  it("getForm for asset-served resolves via getExamFormForClient", async () => {
+    const db = new InMemoryEngineDb();
+    db.seedExamForm(FAKE_OFFICIAL_FORM);
+    const r = new DrizzleExamRunRepo({
+      db,
+      grader: new ExactLetterGrader(),
+      getForm: () => {
+        throw new Error("bundled getForm must not run for asset-served");
+      },
+      newId: () => "run-1",
+      now: () => NOW,
+    });
+    await r.startRun({ learnerId: LEARNER, formId: FAKE_OFFICIAL_FORM.id });
+    const begun = await r.beginSection({
+      learnerId: LEARNER,
+      runId: "run-1",
+      sectionCode: "english",
+    });
+    expect(begun.status).toBe("in_progress");
+    expect(begun.deadline_at).toBe(
+      new Date(NOW.getTime() + 10 * 60_000).toISOString(),
+    );
   });
 });

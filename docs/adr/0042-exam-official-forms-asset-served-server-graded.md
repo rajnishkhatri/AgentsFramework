@@ -1,7 +1,7 @@
 ---
 type: decision-record
 title: 'ADR-0042: Exam content source of truth — real official-form JSON, asset-served, server-graded (fires the ADR-0041 tripwire)'
-status: proposed
+status: accepted
 created: 2026-09-03
 updated: 2026-09-03
 owner: Rajnish Khatri
@@ -11,7 +11,7 @@ tags: [decision-record]
 
 # ADR-0042: Exam content source of truth — real official-form JSON, asset-served, server-graded (fires the ADR-0041 tripwire)
 
-**Status:** Proposed — 2026-09-03 (Stage-2 plan gate).
+**Status:** Accepted — 2026-09-03 (S-F1; Phase 2 SERIAL green — PT2 loadable when `_generated` exists, keys stay server-only).
 **Related:** [spec](../plan/exam-module-official-forms.spec.md) · [plan](../plan/exam-module-official-forms.plan.md) · [ADR-0041](0041-exam-answer-key-posture.md) (the tripwire this fires — **amended** here to Option B for asset-served forms) · [ADR-0040](0040-exam-module-durable-runs-analytics.md) (the runtime this loads content into) · [ADR-0038](0038-durable-engine-seam.md) (`"server-only"` disposition slot) · private ingestion [README](../../docs/preact9secure/README.md).
 **Audience:** anyone adding an exam form, touching `exam_forms/`, `FormAssetStore`, the exam grade path, or the `no_client_served_keys` guard — and anyone who assumes the exam "already serves the real forms."
 

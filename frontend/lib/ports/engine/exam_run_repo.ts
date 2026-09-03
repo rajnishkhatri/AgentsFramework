@@ -7,6 +7,7 @@
  */
 
 import type {
+  ClientExamForm,
   ExamRun,
   ExamRunItem,
   ExamSectionAttempt,
@@ -82,4 +83,11 @@ export interface ExamRunRepo {
     questionId: string;
     bookmarked: boolean;
   }): Promise<void>;
+  /** Key-stripped forms the learner may sit (FR-P2-19). Omits unloadable asset-served. */
+  listClientForms(args: { learnerId: string }): Promise<ClientExamForm[]>;
+  /** One key-stripped form via getExamFormForClient (FR-P2-7/19). */
+  getClientForm(args: {
+    learnerId: string;
+    formId: string;
+  }): Promise<ClientExamForm | null>;
 }

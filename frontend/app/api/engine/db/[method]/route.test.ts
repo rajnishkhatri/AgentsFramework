@@ -27,6 +27,8 @@ const {
   setExamRunComposite,
   setExamBookmark,
   listExamRunItemsByLearner,
+  getExamFormForClient,
+  getExamFormKeys,
   engineDb,
 } = vi.hoisted(() => {
   const listSkills = vi.fn();
@@ -49,6 +51,8 @@ const {
   const setExamRunComposite = vi.fn();
   const setExamBookmark = vi.fn();
   const listExamRunItemsByLearner = vi.fn();
+  const getExamFormForClient = vi.fn();
+  const getExamFormKeys = vi.fn();
   return {
     getAuthSession: vi.fn(),
     getDbSession,
@@ -71,6 +75,8 @@ const {
     setExamRunComposite,
     setExamBookmark,
     listExamRunItemsByLearner,
+    getExamFormForClient,
+    getExamFormKeys,
     engineDb: vi.fn(() => ({
       listSkills,
       insertQuestion,
@@ -92,6 +98,8 @@ const {
       setExamRunComposite,
       setExamBookmark,
       listExamRunItemsByLearner,
+      getExamFormForClient,
+      getExamFormKeys,
     })),
   };
 });
@@ -101,6 +109,7 @@ vi.mock("@/lib/bff/server_composition", () => ({
     authProvider: { getSession: getAuthSession },
   }),
   engineDb,
+  enginePorts: () => ({ grader: { grade: () => null } }),
 }));
 
 import { EXAM_ENGINE_DB_METHODS } from "@/lib/adapters/engine/db/dispatcher_learner_arg";
@@ -135,6 +144,15 @@ describe("POST /api/engine/db/[method]", () => {
     });
     expect(res.status).toBe(404);
     expect(insertQuestion).not.toHaveBeenCalled();
+  });
+
+  it("404 for getExamFormKeys (server-only; never dispatched)", async () => {
+    getAuthSession.mockResolvedValue({ sub: "learner-A" });
+    const res = await POST(req("getExamFormKeys", ["test01-english"]), {
+      params: Promise.resolve({ method: "getExamFormKeys" }),
+    });
+    expect(res.status).toBe(404);
+    expect(getExamFormKeys).not.toHaveBeenCalled();
   });
 
   it("dispatches a fine-grained read", async () => {
@@ -291,6 +309,7 @@ const EXAM_LEARNER_ONLY: Array<
   ["insertExamRun", ["learner-B", { id: "run-new" }], insertExamRun],
   ["listExamRunsByLearner", ["learner-B"], listExamRunsByLearner],
   ["listExamRunItemsByLearner", ["learner-B"], listExamRunItemsByLearner],
+  ["getExamFormForClient", ["learner-B", "test01-english"], getExamFormForClient],
 ];
 
 describe("POST /api/engine/db/[method] exam (W1-6 / FR-3)", () => {

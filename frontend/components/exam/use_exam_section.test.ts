@@ -159,6 +159,8 @@ function fakeRepo(clock: ExamClock) {
     },
     listItemsByLearner: unused,
     setBookmark: unused,
+    listClientForms: unused,
+    getClientForm: unused,
   };
 
   return {

@@ -5,8 +5,11 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  AssetRef,
+  ClientExamForm,
   ExamAnalytics,
   ExamForm,
+  ExamPassage,
   ExamRun,
   ExamRunItem,
   ExamSectionAttempt,
@@ -169,5 +172,111 @@ describe("ExamForm / ExamRun / ExamRunItem / ExamAnalytics — round-trip + snap
     expect(attempt.status).toBe("in_progress");
     expect(item.dwell_ms).toBe(1200);
     expect(analytics.facets[0]!.label).toBe("strength");
+  });
+});
+
+describe("ExamForm phase-2 wire (B0-1 / §4.1) — back-compat + ClientExamForm", () => {
+  it("parses Test-01-shaped input unchanged (no image/passages/delivery)", () => {
+    const parsed = ExamForm.parse(form());
+    expect(parsed.delivery).toBe("client-bundled");
+    expect(parsed.sections[0]!.passages).toEqual([]);
+    expect(parsed.sections[0]!.questions[0]!.image).toBeNull();
+  });
+
+  it("round-trips AssetRef / ExamPassage / asset-served delivery", () => {
+    const image = AssetRef.parse({
+      store: "form-image",
+      form_id: "pt2",
+      key: "math/q-12.png",
+    });
+    const passage = ExamPassage.parse({
+      label: "P1",
+      title: "Figure 1",
+      intro: null,
+      text: null,
+      image,
+      question_numbers: [1, 2],
+    });
+    const parsed = ExamForm.parse(
+      form({
+        delivery: "asset-served",
+        sections: [
+          section({
+            passages: [passage],
+            questions: [question({ image })],
+          }),
+        ],
+      }),
+    );
+    expect(parsed.delivery).toBe("asset-served");
+    expect(parsed.sections[0]!.passages[0]!.label).toBe("P1");
+    expect(parsed.sections[0]!.questions[0]!.image).toEqual(image);
+  });
+
+  it("ClientExamForm is .strict() and omits the four answer-bearing fields", () => {
+    const clientSafe = {
+      id: "pt2",
+      title: "PT2",
+      blueprint: "act-enhanced",
+      composite_sections: ["english", "math", "reading"],
+      delivery: "asset-served",
+      sections: [
+        {
+          code: "english",
+          title: "English",
+          minutes: 35,
+          choice_count: 4,
+          directions: "Begin.",
+          composite: true,
+          scale_table: null,
+          passages: [],
+          questions: [
+            {
+              id: "q-1",
+              subject: "act-english",
+              skill_id: "s-gram",
+              difficulty: 3,
+              context_html: "<p>x</p>",
+              stem: "stem",
+              choices: [
+                { letter: "A", label: "A", is_no_change: false },
+                { letter: "B", label: "B", is_no_change: false },
+                { letter: "C", label: "C", is_no_change: false },
+                { letter: "D", label: "D", is_no_change: false },
+              ],
+              rule_md: "r",
+              item_type: "mc",
+              reviewed: true,
+              generated_by: "test",
+              reporting_category: null,
+              scored: true,
+              passage: null,
+              image: null,
+            },
+          ],
+        },
+      ],
+    };
+    const parsed = ClientExamForm.parse(clientSafe);
+    expect(parsed.delivery).toBe("asset-served");
+    expect(() =>
+      ClientExamForm.parse({
+        ...clientSafe,
+        sections: [
+          {
+            ...clientSafe.sections[0]!,
+            questions: [
+              {
+                ...clientSafe.sections[0]!.questions[0]!,
+                answer_letter: "B",
+              },
+            ],
+          },
+        ],
+      }),
+    ).toThrow();
+    expect(() =>
+      ClientExamForm.parse({ ...clientSafe, extra_key: true }),
+    ).toThrow();
   });
 });
