@@ -21,25 +21,63 @@ import { registerGeneratedFormLoader } from "./index";
 
 export const PT2_FORM_ID = "act-practice-test-2";
 
-const GENERATED_DIR = join(dirname(fileURLToPath(import.meta.url)), "_generated");
+/**
+ * Pick the first candidate directory that exists. Extracted + `exists`-injectable
+ * so the fallback logic (CV5-1) is unit-testable without a real Next bundle.
+ * When none exist, returns the first candidate → callers get null (CI /
+ * fresh-checkout, spec §6). G9: not masking an error — one real directory
+ * addressed two ways, and total absence is the legitimate no-artifact case.
+ */
+export function firstExistingDir(
+  candidates: readonly string[],
+  exists: (p: string) => boolean = existsSync,
+): string {
+  for (const dir of candidates) {
+    if (exists(dir)) return dir;
+  }
+  return candidates[0] ?? "";
+}
+
+/**
+ * The physical `_generated/` sits beside this module, but two runtimes address it
+ * differently: node/vitest resolve `import.meta.url` to the source file, while
+ * Next's server bundle resolves it under `.next/server/…` (where `_generated/`
+ * does not exist). Try the module-relative path first, then the app-root-relative
+ * path (Next runs with cwd = the frontend app dir).
+ */
+function resolveGeneratedDir(): string {
+  return firstExistingDir([
+    join(dirname(fileURLToPath(import.meta.url)), "_generated"),
+    join(process.cwd(), "lib/adapters/engine/exam_forms/_generated"),
+  ]);
+}
+
+const GENERATED_DIR = resolveGeneratedDir();
 
 function readGeneratedExport(filePath: string, exportName: string): unknown {
   const text = readFileSync(filePath, "utf8");
   const marker = `export const ${exportName}`;
   const start = text.indexOf(marker);
   if (start < 0) {
-    throw new Error(`generated_official_form: missing ${exportName} in ${filePath}`);
+    throw new Error(
+      `generated_official_form: missing ${exportName} in ${filePath}`,
+    );
   }
   const eq = text.indexOf("=", start);
   if (eq < 0) {
-    throw new Error(`generated_official_form: missing assignment for ${exportName}`);
+    throw new Error(
+      `generated_official_form: missing assignment for ${exportName}`,
+    );
   }
   let body = text.slice(eq + 1).trim();
   if (body.endsWith(";")) body = body.slice(0, -1);
   return JSON.parse(body);
 }
 
-function hydrateExamForm(client: ClientExamForm, keys: ExamFormKeyMap): ExamForm {
+function hydrateExamForm(
+  client: ClientExamForm,
+  keys: ExamFormKeyMap,
+): ExamForm {
   return ExamForm.parse({
     ...client,
     sections: client.sections.map((section) => ({
