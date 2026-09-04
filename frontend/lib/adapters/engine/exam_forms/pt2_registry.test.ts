@@ -32,34 +32,35 @@ describe("S-I1 PT2 asset-served registry (FR-P2-19)", () => {
     expect(getExamFormDelivery(PT2)).toBe("asset-served");
   });
 
-  it("lists PT2 and returns a 4-section ClientExamForm when _generated exists", async () => {
-    expect(
-      existsSync(GENERATED_CLIENT),
-      "run `pnpm convert:official -- act-practice-test-2 --src <preact9secure>`",
-    ).toBe(true);
+  // Local-only tier: the ©ACT `_generated/` artifact is gitignored and absent in
+  // CI (tasks §"real ©ACT JSON is a local-only test tier"), so this skips there
+  // and runs locally once `pnpm convert:official` has produced the artifact.
+  it.skipIf(!existsSync(GENERATED_CLIENT))(
+    "lists PT2 and returns a 4-section ClientExamForm when _generated exists",
+    async () => {
+      await import("./generated_official_form");
 
-    await import("./generated_official_form");
+      expect(listExamForms().map((f) => f.id)).toContain(PT2);
 
-    expect(listExamForms().map((f) => f.id)).toContain(PT2);
-
-    const db = new InMemoryEngineDb();
-    const payload = await db.getExamFormForClient("learner-si1", PT2);
-    expect(payload).not.toBeNull();
-    const parsed = ClientExamForm.safeParse(payload);
-    expect(parsed.success, parsed.success ? "" : String(parsed.error)).toBe(
-      true,
-    );
-    expect(payload!.delivery).toBe("asset-served");
-    expect(payload!.sections).toHaveLength(4);
-    expect(payload!.sections.map((s) => s.code)).toEqual([
-      "english",
-      "math",
-      "reading",
-      "science",
-    ]);
-    const raw = JSON.stringify(payload);
-    for (const field of ANSWER_BEARING_FIELDS) {
-      expect(raw).not.toContain(`"${field}"`);
-    }
-  });
+      const db = new InMemoryEngineDb();
+      const payload = await db.getExamFormForClient("learner-si1", PT2);
+      expect(payload).not.toBeNull();
+      const parsed = ClientExamForm.safeParse(payload);
+      expect(parsed.success, parsed.success ? "" : String(parsed.error)).toBe(
+        true,
+      );
+      expect(payload!.delivery).toBe("asset-served");
+      expect(payload!.sections).toHaveLength(4);
+      expect(payload!.sections.map((s) => s.code)).toEqual([
+        "english",
+        "math",
+        "reading",
+        "science",
+      ]);
+      const raw = JSON.stringify(payload);
+      for (const field of ANSWER_BEARING_FIELDS) {
+        expect(raw).not.toContain(`"${field}"`);
+      }
+    },
+  );
 });

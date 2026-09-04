@@ -152,3 +152,18 @@ BASE, then A ∥ B ∥ C, then SERIAL, then VALIDATE ∥×4).
 - [x] **(6) blast-radius cleanup** — checked: the fix is minimal (converter `storeRelativeKey`, 1 caller + a 1-line VM encode); no scaffold/dead branch introduced, nothing to delete. `LocalFileAssetStore.resolveKey` was correct all along and is unchanged.
 
 **Bounded loop:** iteration 1 **CLOSED — converged**. Remaining before production: the human answer on (4) + the commit/PR decision (commit only when the human asks; no PR unless asked).
+
+## Phase 5 — Convergence (iteration 2 · 2026-09-03 · from MANUAL validation in a real Next server)
+
+> Manual sit-through (port 3003, `NEXT_PUBLIC_FF_DURABLE_ENGINE=1` + `EXAM_ASSET_DIR`) caught a
+> gap the automated suite could not: **PT2 loading was only ever exercised under vitest, never a
+> real Next server**, so a server-bundle path bug slipped through green tests.
+
+| ID | Gap | gap-type | Route |
+|---|---|---|---|
+| **CV5-1** | `generated_official_form.ts` resolved `_generated/` via `import.meta.url`, which does not point at the source dir inside Next's server bundle → registration no-op'd → PT2 excluded → "old questions only". **FIXED** (uncommitted): `resolveGeneratedDir()` = module-relative → `process.cwd()`-relative fallback. | **partial** (P2-19) | test + commit → PR #189 |
+| **CV5-2** | No test covers PT2 loading in a **real Next runtime** — vitest resolves `import.meta.url` to source, so it cannot reproduce the bundle-path failure. | **test-gap** | add a resolver unit test (mock `existsSync`/`cwd`) now; a real-server e2e when auth-in-CI is solved (tracks S-I3) |
+| Image serve (CV4) end-to-end | `GET …/asset/act-practice-test-2/questions%2Fmath-q02.png` → **official PNG 200**; `getExamFormForClient` 200; keys server-side | — (PASS, manual) | none |
+| Full click-through sit (start/navigate/grade) | needs exam tables in a **local/dev** `DATABASE_URL` (`pnpm db:migrate:engine`; server has NO in-memory fallback; 0006 DROPs `exam_run_item` → never vs prod) | **env** (not a code defect) | not a fix task |
+
+**Status:** NOT re-converged — CV5-1 fix is uncommitted and CV5-2 test is unwritten. Route → write the resolver test (red/green) + fold the fix onto PR #189, then re-run converge.

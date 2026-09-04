@@ -31,8 +31,7 @@ import {
   SyntaxKind,
 } from "ts-morph";
 
-const TEST_DIR =
-  (import.meta as { dirname?: string }).dirname ?? __dirname;
+const TEST_DIR = (import.meta as { dirname?: string }).dirname ?? __dirname;
 const FRONTEND_ROOT = path.resolve(TEST_DIR, "..", "..");
 const TSCONFIG = path.join(FRONTEND_ROOT, "tsconfig.json");
 
@@ -66,8 +65,7 @@ const PAIRS: ReadonlyArray<PortAdapterPair> = [
   {
     port_file: "lib/ports/agent_runtime_client.ts",
     port_interface: "AgentRuntimeClient",
-    adapter_file:
-      "lib/adapters/runtime/self_hosted_langgraph_dev_client.ts",
+    adapter_file: "lib/adapters/runtime/self_hosted_langgraph_dev_client.ts",
     adapter_class: "SelfHostedLangGraphDevClient",
   },
   {
@@ -118,15 +116,13 @@ const PAIRS: ReadonlyArray<PortAdapterPair> = [
   {
     port_file: "lib/ports/feature_flag_provider.ts",
     port_interface: "FeatureFlagProvider",
-    adapter_file:
-      "lib/adapters/feature_flags/env_var_flags_adapter.ts",
+    adapter_file: "lib/adapters/feature_flags/env_var_flags_adapter.ts",
     adapter_class: "EnvVarFlagsAdapter",
   },
   {
     port_file: "lib/ports/tool_renderer_registry.ts",
     port_interface: "ToolRendererRegistry",
-    adapter_file:
-      "lib/adapters/tool_renderer/copilotkit_registry_adapter.ts",
+    adapter_file: "lib/adapters/tool_renderer/copilotkit_registry_adapter.ts",
     adapter_class: "CopilotKitRegistryAdapter",
   },
   {
@@ -296,7 +292,8 @@ describe("Adapter conformance suite [FD6.PORT adapter side / A3 / A4]", () => {
       const familyDir = path.join(adaptersRoot, family);
       for (const f of fs.readdirSync(familyDir)) {
         if (!f.endsWith(".ts")) continue;
-        if (f.endsWith(".test.ts") || f === "errors.ts" || f.startsWith("_")) continue;
+        if (f.endsWith(".test.ts") || f === "errors.ts" || f.startsWith("_"))
+          continue;
         const rel = path.join("lib", "adapters", family, f);
         if (!knownAdapterFiles.has(rel)) orphans.push(rel);
       }
@@ -319,6 +316,8 @@ describe("Adapter conformance suite [FD6.PORT adapter side / A3 / A4]", () => {
       // unit-tested in node_pg_url.test.ts; consumed by migrate_engine.mjs + the BFF seam.
       "lib/adapters/db/node_pg_url.ts",
       "lib/adapters/engine/engine_client.ts", // FR-A6 coarse HTTP loader facade; it is not an EngineDb implementation, and its one-fetch contracts are covered by engine_client.test.ts
+      "lib/adapters/engine/exam_form_load.ts", // ADR-0042 server-only form/key strip+extract+reveal helpers over the registry — pure functions, not a lib/ports/ PAIR; covered by exam_form_methods/exam_review_reveal tests
+      "lib/adapters/engine/exam_server_grade.ts", // ADR-0042 server-side grade helper for asset-served forms — pure fn over scoreExamSection + keys, not a port-adapter PAIR; covered by exam_server_grade.test.ts
       "lib/adapters/native/capacitor_native_feel.ts", // Capacitor SDK seam (P6 Step 3) — wires @capacitor/{status-bar,keyboard}+safe-area into the pure helper; not a lib/ports/ PAIR
       "lib/adapters/native/ios_native_feel.ts", // pure helpers (no SDK/port) — P6 Step 3 status-bar/keyboard decision logic
       // pgDrizzleDb is a DrizzleLike *factory* (option B, Cloud SQL), the same
