@@ -34,6 +34,9 @@ __all__ = [
 ]
 
 _MAX_DETAIL_VALUE_LEN = 200
+# Extra characters scanned past the cap so a secret straddling it is redacted
+# whole (longest supported secret shapes are well under this).
+_REDACTION_LOOKAHEAD = 512
 
 _SAFE_NUMERIC_KEYS: frozenset[str] = frozenset(
     {
@@ -135,11 +138,20 @@ for _rule in pii_rules() + api_key_rules():
 
 
 def redact_text(text: str, *, max_len: int | None = _MAX_DETAIL_VALUE_LEN) -> str:
-    """Apply PII/API-key scrubbing to a free-form string (relay + bridge)."""
-    if max_len is not None and len(text) > max_len:
-        text = text[:max_len]
+    """Apply PII/API-key scrubbing to a free-form string (relay + bridge).
+
+    Redaction runs BEFORE the length cap: cutting first can slice a secret so
+    its pattern no longer matches, leaking the leading part. To keep the regex
+    cost bounded on huge inputs, only a window of ``max_len`` plus
+    ``_REDACTION_LOOKAHEAD`` characters is scanned — enough for any secret that
+    starts inside the kept region to be seen whole.
+    """
+    if max_len is not None and len(text) > max_len + _REDACTION_LOOKAHEAD:
+        text = text[: max_len + _REDACTION_LOOKAHEAD]
     for pattern, replacement in _REDACTION_PATTERNS:
         text = pattern.sub(replacement, text)
+    if max_len is not None and len(text) > max_len:
+        text = text[:max_len]
     return text
 
 
@@ -156,9 +168,9 @@ def redact_details(details: dict[str, Any]) -> dict[str, Any]:
       - Every other value is coerced to ``str`` so PII/API-key redaction
         applies to arbitrary content and nested structures stay flat.
 
-    Processing order for redacted strings: coerce → truncate → redact.
-    Truncation before redaction caps a long PII-tailed string first (losing the
-    tail is acceptable — better than leaking secrets).
+    Processing order for redacted strings: coerce → redact → truncate, so a
+    secret straddling the length cap is scrubbed whole rather than cut into an
+    unmatched (leaked) prefix.
     """
     result: dict[str, Any] = {}
     for key, value in details.items():
@@ -196,8 +208,39 @@ def _redact_phase_events(phase_events: list[Any]) -> list[Any]:
     return redacted
 
 
+# Free-text fields of a PhaseLogger ``Decision`` row. Only these are scrubbed:
+# structural fields (timestamp, decision_id, confidence) stay byte-identical so
+# the cross-pillar join key and ordering survive.
+_DECISION_FREE_TEXT_KEYS: frozenset[str] = frozenset(
+    {"description", "rationale", "alternatives"}
+)
+
+
+def _redact_phase_decisions(phase_decisions: list[Any]) -> list[Any]:
+    """Scrub PII / API keys from decision free text without truncating it."""
+    redacted: list[Any] = []
+    for record in phase_decisions:
+        if isinstance(record, dict):
+            clean = dict(record)
+            for key in _DECISION_FREE_TEXT_KEYS & clean.keys():
+                value = clean[key]
+                if isinstance(value, str):
+                    clean[key] = redact_text(value, max_len=None)
+                elif isinstance(value, (list, tuple)):
+                    clean[key] = [
+                        redact_text(item, max_len=None)
+                        if isinstance(item, str)
+                        else item
+                        for item in value
+                    ]
+            record = clean
+        redacted.append(record)
+    return redacted
+
+
 def redact_compliance_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
-    """Redact event and phase-event detail payloads before publishing a compliance bundle."""
+    """Redact event details, phase-event details and phase-decision free text
+    before publishing a compliance bundle."""
     redacted = dict(bundle)
     events = redacted.get("events")
     if isinstance(events, list):
@@ -211,6 +254,10 @@ def redact_compliance_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     phase_events = redacted.get("phase_events")
     if isinstance(phase_events, list):
         redacted["phase_events"] = _redact_phase_events(phase_events)
+
+    phase_decisions = redacted.get("phase_decisions")
+    if isinstance(phase_decisions, list):
+        redacted["phase_decisions"] = _redact_phase_decisions(phase_decisions)
 
     return redacted
 

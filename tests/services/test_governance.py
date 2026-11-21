@@ -761,3 +761,48 @@ class TestBinaryOutcomeDecisionLog:
         routing = [e for e in entries if e["phase"] == "routing"]
         assert routing
         assert all(len(e["alternatives"]) > 0 for e in routing)
+
+
+class TestAgentFactsExpiry:
+    def test_should_fail_verification_when_card_expired(self, tmp_path):
+        from datetime import timedelta
+
+        from services.governance.agent_facts_registry import AgentFactsRegistry
+
+        registry = AgentFactsRegistry(storage_dir=tmp_path, secret="test-secret")
+        registry.register(
+            _make_facts(
+                agent_id="agent-expired",
+                valid_until=datetime.now(UTC) - timedelta(days=1),
+            ),
+            registered_by="admin",
+        )
+
+        assert registry.verify("agent-expired") is False
+
+    def test_should_pass_verification_when_card_not_yet_expired(self, tmp_path):
+        from datetime import timedelta
+
+        from services.governance.agent_facts_registry import AgentFactsRegistry
+
+        registry = AgentFactsRegistry(storage_dir=tmp_path, secret="test-secret")
+        registry.register(
+            _make_facts(
+                agent_id="agent-live",
+                valid_until=datetime.now(UTC) + timedelta(days=1),
+            ),
+            registered_by="admin",
+        )
+
+        assert registry.verify("agent-live") is True
+
+
+class TestAgentFactsCorruptCard:
+    def test_should_fail_verification_when_card_file_is_corrupt(self, tmp_path):
+        from services.governance.agent_facts_registry import AgentFactsRegistry
+
+        registry = AgentFactsRegistry(storage_dir=tmp_path, secret="test-secret")
+        registry.register(_make_facts(agent_id="agent-corrupt"), registered_by="admin")
+        (tmp_path / "agent-corrupt.json").write_text("{not json")
+
+        assert registry.verify("agent-corrupt") is False

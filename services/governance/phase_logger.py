@@ -4,6 +4,7 @@ Captures why decisions were made with structured Decision records.
 
 Storage layout (split-file contract — Phase 3 schema gate):
   - ``decisions.jsonl``: routing/evaluation decisions only (``export_workflow_log``).
+    Rows carry a chained ``integrity_hash`` (``verify_decision_log``).
   - ``phases.jsonl``: phase boundary events only (``export_phase_events``).
 
 ``phases.jsonl`` row shape (``phase_log_schema_version`` ``"1"``):
@@ -13,6 +14,7 @@ Storage layout (split-file contract — Phase 3 schema gate):
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -23,6 +25,12 @@ from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseModel, Field
+
+from services.governance.hash_chain import append_chained, verify_chain
+from services.governance.path_safety import (
+    is_safe_path_component,
+    require_safe_path_component,
+)
 
 logger = logging.getLogger("services.governance.phase_logger")
 
@@ -73,6 +81,7 @@ class PhaseLogger:
         return f"{workflow_id}:{step_count}:{phase.value}"
 
     def _workflow_dir(self, workflow_id: str) -> Path:
+        require_safe_path_component(workflow_id, "workflow_id")
         wf_dir = self._storage_dir / workflow_id
         wf_dir.mkdir(parents=True, exist_ok=True)
         return wf_dir
@@ -124,16 +133,28 @@ class PhaseLogger:
     def log_decision(self, workflow_id: str, decision: Decision) -> Decision:
         """Persist a decision row; returns the decision with ``decision_id`` assigned."""
         decision = self.ensure_decision_id(decision)
-        wf_dir = self._workflow_dir(workflow_id)
-        log_file = wf_dir / "decisions.jsonl"
+        require_safe_path_component(workflow_id, "workflow_id")
+        log_file = self._storage_dir / workflow_id / "decisions.jsonl"
 
         record = {
             "timestamp": datetime.now(UTC).isoformat(),
             "workflow_id": workflow_id,
             **decision.model_dump(mode="json"),
         }
-        with open(log_file, "a") as f:
-            f.write(json.dumps(record) + "\n")
+        try:
+            # Chained like the BlackBox trace (hash_chain.py): each row's
+            # integrity_hash covers the previous row's, so an edited rationale
+            # is detectable by verify_decision_log().
+            append_chained(log_file, record)
+        except OSError as exc:
+            # Same posture as phase events: a storage failure must not take
+            # the workflow node down. The decision keeps its id so the
+            # BlackBox mirror of it still joins; the gap is logged loudly.
+            logger.error(
+                "Failed to write decisions.jsonl for workflow %s: %s",
+                workflow_id,
+                exc,
+            )
 
         logger.info(
             "Decision [%s]: %s (decision_id=%s)",
@@ -196,11 +217,19 @@ class PhaseLogger:
         *,
         outcome: str = "ok",
     ) -> AsyncIterator[None]:
-        """Async context manager that balances start/end even on exceptions."""
+        """Async context manager that balances start/end even on exceptions.
+
+        Catches ``BaseException`` so task cancellation (a client disconnect
+        mid-stream raises ``CancelledError``, which is not an ``Exception``)
+        still writes the matching ``phase_end`` with outcome ``cancelled``.
+        """
         self.start_phase(workflow_id, phase, step_count)
         try:
             yield
-        except Exception:
+        except asyncio.CancelledError:
+            self.end_phase(workflow_id, phase, "cancelled", step_count)
+            raise
+        except BaseException:
             self.end_phase(workflow_id, phase, "error", step_count)
             raise
         else:
@@ -208,17 +237,38 @@ class PhaseLogger:
 
     def export_workflow_log(self, workflow_id: str) -> list[dict]:
         """Return decision records from ``decisions.jsonl`` only (never phase events)."""
+        if not is_safe_path_component(workflow_id):
+            return []
         log_file = self._storage_dir / workflow_id / "decisions.jsonl"
         if not log_file.exists():
             return []
-        entries = []
-        for line in log_file.read_text().strip().split("\n"):
-            if line:
-                entries.append(json.loads(line))
-        return entries
+        # Unparseable lines (torn writes) are skipped here and reported by
+        # verify_decision_log().
+        return verify_chain(log_file).rows
+
+    def verify_decision_log(self, workflow_id: str) -> dict:
+        """Integrity report for a workflow's ``decisions.jsonl``.
+
+        ``chain_valid`` is ``False`` when a row was edited or reordered;
+        ``truncated`` when rows are missing from the end; ``corrupt_line_count``
+        counts unparseable lines. Rows logged before decisions were chained
+        carry no hash and are counted in ``unhashed_row_count``.
+        """
+        if not is_safe_path_component(workflow_id):
+            raise ValueError(f"unsafe workflow_id: {workflow_id!r}")
+        report = verify_chain(self._storage_dir / workflow_id / "decisions.jsonl")
+        return {
+            "chain_valid": report.chain_valid,
+            "truncated": report.truncated,
+            "corrupt_line_count": report.corrupt_line_count,
+            "unhashed_row_count": report.unhashed_row_count,
+            "decision_count": len(report.rows),
+        }
 
     def export_phase_events(self, workflow_id: str) -> list[dict]:
         """Return phase boundary records from ``phases.jsonl``."""
+        if not is_safe_path_component(workflow_id):
+            return []
         log_file = self._storage_dir / workflow_id / "phases.jsonl"
         if not log_file.exists():
             return []

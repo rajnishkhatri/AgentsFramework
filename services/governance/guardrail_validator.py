@@ -15,12 +15,17 @@ from __future__ import annotations
 
 import logging
 import re
+from collections import deque
 from datetime import UTC, datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger("services.governance.guardrail_validator")
+
+# A validator is built once per graph and reused across requests, so its
+# per-check trace keeps only the most recent entries instead of growing forever.
+MAX_TRACE_ENTRIES = 1000
 
 
 class FailAction(str, Enum):
@@ -51,6 +56,24 @@ class GuardRail(BaseModel):
     flags: int = 0
     match_redaction: str = "[REDACTED]"
     max_length: int | None = None
+    # When True, a regex match only counts if its digits pass the Luhn
+    # checksum — keeps timestamps and order ids from reading as card numbers.
+    luhn_check: bool = False
+
+
+def luhn_valid(candidate: str) -> bool:
+    """Whether the digits in ``candidate`` satisfy the Luhn checksum."""
+    digits = [int(ch) for ch in candidate if ch.isdigit()]
+    if not digits:
+        return False
+    total = 0
+    for index, digit in enumerate(reversed(digits)):
+        if index % 2 == 1:
+            digit *= 2
+            if digit > 9:
+                digit -= 9
+        total += digit
+    return total % 10 == 0
 
 
 class ValidationResult(BaseModel):
@@ -65,7 +88,7 @@ class ValidationResult(BaseModel):
 class GuardRailValidator:
     """Runs a list of :class:`GuardRail` rules against content strings.
 
-    Maintains an append-only ``trace`` of every check for explainability.
+    Maintains a bounded ``trace`` of the most recent checks for explainability.
     Call :meth:`validate` to get per-rule results and :meth:`redact` to
     apply any ``REDACT``-type guardrails that produced matches.
     """
@@ -75,7 +98,7 @@ class GuardRailValidator:
         self._compiled: list[tuple[GuardRail, re.Pattern[str]]] = [
             (rule, re.compile(rule.pattern, rule.flags)) for rule in rules
         ]
-        self._trace: list[dict] = []
+        self._trace: deque[dict] = deque(maxlen=MAX_TRACE_ENTRIES)
 
     @property
     def rules(self) -> list[GuardRail]:
@@ -86,6 +109,8 @@ class GuardRailValidator:
         results: list[ValidationResult] = []
         for rule, regex in self._compiled:
             matches = regex.findall(content) if content else []
+            if rule.luhn_check:
+                matches = [m for m in matches if luhn_valid(str(m))]
 
             length_violation = (
                 rule.max_length is not None and len(content or "") > rule.max_length
@@ -149,7 +174,7 @@ class GuardRailValidator:
         return redacted
 
     def get_validation_trace(self) -> list[dict]:
-        """Return a copy of the per-check trace (append-only)."""
+        """Return a copy of the most recent ``MAX_TRACE_ENTRIES`` checks."""
         return list(self._trace)
 
     def reset_trace(self) -> None:
@@ -177,6 +202,7 @@ def pii_rules() -> list[GuardRail]:
             pattern=r"\b(?:\d[ -]*?){13,19}\b",
             severity=Severity.CRITICAL,
             fail_action=FailAction.BLOCK,
+            luhn_check=True,
         ),
         GuardRail(
             name="pii.email",
@@ -204,7 +230,15 @@ def api_key_rules() -> list[GuardRail]:
             # The optional ``proj-`` segment plus an 8-char floor catches
             # short project keys (e.g. sk-proj-abc123456789) that the old
             # {20,} quantifier silently let through — see walkthrough G1.2.
-            pattern=r"\bsk-(?:proj-)?[A-Za-z0-9_-]{8,}\b",
+            # A key body either contains a digit or opens with an unbroken run
+            # of 20+ characters, and the token must not be the tail of a longer
+            # hyphenated word — so ``sk-learn-contrib`` and
+            # ``task-sk-learn-pipeline`` are not withheld as leaked secrets.
+            pattern=(
+                r"(?<![\w-])sk-(?:proj-)?"
+                r"(?:(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{8,}"
+                r"|[A-Za-z0-9_]{20,}[A-Za-z0-9_-]*)\b"
+            ),
             severity=Severity.CRITICAL,
             fail_action=FailAction.BLOCK,
         ),
@@ -242,6 +276,8 @@ __all__ = [
     "GuardRail",
     "ValidationResult",
     "GuardRailValidator",
+    "MAX_TRACE_ENTRIES",
+    "luhn_valid",
     "pii_rules",
     "api_key_rules",
     "length_rule",

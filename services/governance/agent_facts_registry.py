@@ -11,11 +11,28 @@ import os
 from datetime import UTC, datetime
 from pathlib import Path
 
+from services.governance.path_safety import (
+    is_safe_path_component,
+    require_safe_path_component,
+)
 from trust.enums import IdentityStatus
 from trust.models import AgentFacts, AuditEntry
 from trust.signature import compute_signature, verify_signature
 
 logger = logging.getLogger("services.governance.agent_facts")
+
+
+def is_expired(facts: AgentFacts, now: datetime | None = None) -> bool:
+    """Whether the card's ``valid_until`` has passed (``None`` never expires).
+
+    A naive ``valid_until`` is read as UTC so the comparison cannot raise.
+    """
+    if facts.valid_until is None:
+        return False
+    valid_until = facts.valid_until
+    if valid_until.tzinfo is None:
+        valid_until = valid_until.replace(tzinfo=UTC)
+    return valid_until <= (now or datetime.now(UTC))
 
 
 class AgentFactsRegistry:
@@ -43,6 +60,7 @@ class AgentFactsRegistry:
         return d
 
     def register(self, facts: AgentFacts, registered_by: str) -> AgentFacts:
+        require_safe_path_component(facts.agent_id, "agent_id")
         path = self._facts_path(facts.agent_id)
         if path.exists():
             raise ValueError(f"Agent '{facts.agent_id}' already registered")
@@ -67,12 +85,25 @@ class AgentFactsRegistry:
         return registered
 
     def verify(self, agent_id: str) -> bool:
+        if not is_safe_path_component(agent_id):
+            return False
         path = self._facts_path(agent_id)
         if not path.exists():
             return False
 
-        facts = AgentFacts.model_validate_json(path.read_text())
+        try:
+            facts = AgentFacts.model_validate_json(path.read_text())
+        except ValueError as exc:
+            # Covers malformed JSON and schema violations (pydantic's
+            # ValidationError is a ValueError): an unreadable card is unverified.
+            logger.warning(
+                "Agent %s failed verification: corrupt card (%s)", agent_id, exc
+            )
+            return False
         if facts.status != IdentityStatus.ACTIVE:
+            return False
+        if is_expired(facts):
+            logger.warning("Agent %s failed verification: card expired", agent_id)
             return False
 
         facts_dict = facts.model_dump(mode="json")
@@ -84,6 +115,8 @@ class AgentFactsRegistry:
         )
 
     def get(self, agent_id: str) -> AgentFacts:
+        if not is_safe_path_component(agent_id):
+            raise KeyError(f"Agent '{agent_id}' not found")
         path = self._facts_path(agent_id)
         if not path.exists():
             raise KeyError(f"Agent '{agent_id}' not found")
@@ -132,6 +165,8 @@ class AgentFactsRegistry:
         logger.info("Restored agent %s: %s", agent_id, reason)
 
     def audit_trail(self, agent_id: str) -> list[AuditEntry]:
+        if not is_safe_path_component(agent_id):
+            return []
         path = self._audit_path(agent_id)
         if not path.exists():
             return []

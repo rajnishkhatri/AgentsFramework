@@ -803,3 +803,61 @@ class TestLayeringInvariant:
                     assert not node.module.startswith("langgraph"), (
                         f"Forbidden import from: {node.module}"
                     )
+
+
+def test_should_redact_phase_decision_free_text_when_bundle_published() -> None:
+    from services.governance.black_box_publisher import redact_compliance_bundle
+
+    long_rationale = "r" * 400
+    bundle = {
+        "events": [],
+        "phase_decisions": [
+            {
+                "timestamp": "2026-11-21T10:00:00.123456+00:00",
+                "workflow_id": "wf-1",
+                "phase": "routing",
+                "description": "route for jane.doe@example.com",
+                "alternatives": ["use key sk-proj-abc123456789", "fast"],
+                "rationale": "SSN 123-45-6789 was mentioned",
+                "confidence": 0.9,
+                "decision_id": "d-1",
+            },
+            {"rationale": long_rationale},
+        ],
+    }
+
+    redacted = redact_compliance_bundle(bundle)["phase_decisions"]
+
+    first = redacted[0]
+    assert "jane.doe@example.com" not in first["description"]
+    assert "sk-proj-abc123456789" not in first["alternatives"][0]
+    assert first["alternatives"][1] == "fast"
+    assert "123-45-6789" not in first["rationale"]
+    assert first["timestamp"] == "2026-11-21T10:00:00.123456+00:00"
+    assert first["confidence"] == 0.9
+    assert first["decision_id"] == "d-1"
+    # Reasoning is the pillar's payload: it is scrubbed, never truncated.
+    assert redacted[1]["rationale"] == long_rationale
+    # The caller's bundle is left untouched.
+    assert "jane.doe@example.com" in bundle["phase_decisions"][0]["description"]
+
+
+class TestRedactBeforeTruncate:
+    """A secret straddling the length cap must not leak its leading part."""
+
+    def test_should_not_leak_partial_token_when_secret_straddles_cap(self) -> None:
+        from services.governance.black_box_publisher import redact_details
+
+        token = "ghp_" + "A1b2C3d4E5" * 3 + "f6G7h8"
+        result = redact_details({"error": "x" * 170 + " token=" + token})
+
+        assert "ghp_" not in result["error"]
+        assert len(result["error"]) <= 200
+
+    def test_should_not_leak_partial_email_when_address_straddles_cap(self) -> None:
+        from services.governance.black_box_publisher import redact_details
+
+        result = redact_details({"e": "y" * 185 + " jane.doe@example.com"})
+
+        assert "jane.doe" not in result["e"]
+        assert len(result["e"]) <= 200

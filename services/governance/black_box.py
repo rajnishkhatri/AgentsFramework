@@ -6,8 +6,6 @@ export() and replay() deferred to Phase 2.
 
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
 from datetime import UTC, datetime
 from enum import Enum
@@ -15,6 +13,12 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
+
+from services.governance.hash_chain import append_chained, tail_hash, verify_chain
+from services.governance.path_safety import (
+    is_safe_path_component,
+    require_safe_path_component,
+)
 
 logger = logging.getLogger("services.governance.black_box")
 
@@ -102,6 +106,20 @@ class BlackBoxRecorder:
     def __init__(self, storage_dir: Path | str) -> None:
         self._storage_dir = Path(storage_dir)
 
+    def _trace_file(self, workflow_id: str) -> Path:
+        """Trace path for a workflow; raises ``ValueError`` on an unsafe id."""
+        require_safe_path_component(workflow_id, "workflow_id")
+        return self._storage_dir / workflow_id / "trace.jsonl"
+
+    def _existing_trace_file(self, workflow_id: str) -> Path:
+        """Trace path for reads; an unsafe or unknown id is ``KeyError``."""
+        if not is_safe_path_component(workflow_id):
+            raise KeyError(f"No trace found for workflow_id={workflow_id!r}")
+        trace_file = self._storage_dir / workflow_id / "trace.jsonl"
+        if not trace_file.exists():
+            raise KeyError(f"No trace found for workflow_id={workflow_id!r}")
+        return trace_file
+
     def _prev_hash(self, trace_file: Path) -> str:
         """Previous chain hash from the file tail, never a memory cache.
 
@@ -110,36 +128,14 @@ class BlackBoxRecorder:
         PARAMETER_CHANGED mid-run); a per-instance cache would fork the
         chain at the first cross-instance write.
         """
-        if not trace_file.exists():
-            return "0" * 64
-        last_line = ""
-        with open(trace_file, "rb") as f:
-            for raw in f:
-                line = raw.strip()
-                if line:
-                    last_line = line.decode("utf-8")
-        if not last_line:
-            return "0" * 64
-        try:
-            return json.loads(last_line).get("integrity_hash", "0" * 64)
-        except json.JSONDecodeError:
-            return "0" * 64
+        return tail_hash(trace_file)
 
     def record(self, event: TraceEvent) -> None:
-        wf_dir = self._storage_dir / event.workflow_id
-        wf_dir.mkdir(parents=True, exist_ok=True)
-        trace_file = wf_dir / "trace.jsonl"
-
-        prev_hash = self._prev_hash(trace_file)
-        event_data = event.model_dump(mode="json")
-        event_data.pop("integrity_hash", None)
-        payload = json.dumps(event_data, sort_keys=True, default=str) + prev_hash
-        integrity_hash = hashlib.sha256(payload.encode()).hexdigest()
-
-        event_data["integrity_hash"] = integrity_hash
-
-        with open(trace_file, "a") as f:
-            f.write(json.dumps(event_data, default=str) + "\n")
+        trace_file = self._trace_file(event.workflow_id)
+        # Tail read + append + anchor update are one locked critical section
+        # (services/governance/hash_chain.py), so interleaved recorder
+        # instances and processes extend a single chain.
+        append_chained(trace_file, event.model_dump(mode="json"))
 
         logger.info(
             "Recorded %s for workflow %s",
@@ -151,73 +147,58 @@ class BlackBoxRecorder:
         """Export a workflow's trace as a structured JSON bundle with integrity verification.
 
         Returns a dict containing events, metadata, and a verification status
-        indicating whether the hash chain is intact.  When the chain is broken,
+        indicating whether the trace is intact.  When the chain is broken,
         the dict also exposes the FIRST broken event's id along with the
         expected and actual hashes so explainability surfaces can report the
         break location explicitly without re-hashing.
+
+        ``hash_chain_valid`` is ``False`` when the chain is broken, when a
+        line is unparseable (``corrupt_line_count``), or when the trace holds
+        fewer events than were recorded (``truncated``).
         """
-        trace_file = self._storage_dir / workflow_id / "trace.jsonl"
-        if not trace_file.exists():
-            raise KeyError(f"No trace found for workflow_id={workflow_id!r}")
+        trace_file = self._existing_trace_file(workflow_id)
+        report = verify_chain(trace_file)
+        events = report.rows
 
-        events = []
-        chain_valid = True
-        prev_hash = "0" * 64
         broken_at_event_id: str | None = None
-        broken_expected_hash: str | None = None
-        broken_actual_hash: str | None = None
-
-        for line in trace_file.read_text().strip().split("\n"):
-            if not line:
-                continue
-            event_data = json.loads(line)
-            stored_hash = event_data.get("integrity_hash", "")
-
-            verify_data = dict(event_data)
-            verify_data.pop("integrity_hash", None)
-            payload = json.dumps(verify_data, sort_keys=True, default=str) + prev_hash
-            expected_hash = hashlib.sha256(payload.encode()).hexdigest()
-
-            if stored_hash != expected_hash:
-                chain_valid = False
-                if broken_at_event_id is None:
-                    broken_at_event_id = event_data.get("event_id", "unknown")
-                    broken_expected_hash = expected_hash
-                    broken_actual_hash = stored_hash
-                logger.warning(
-                    "Hash chain broken for workflow %s at event %s",
-                    workflow_id,
-                    event_data.get("event_id", "unknown"),
-                )
-
-            prev_hash = stored_hash
-            events.append(event_data)
+        if report.broken_at_index is not None:
+            broken_at_event_id = events[report.broken_at_index].get(
+                "event_id", "unknown"
+            )
+        if not report.intact:
+            logger.warning(
+                "Trace integrity failed for workflow %s "
+                "(broken_at=%s, corrupt_lines=%d, truncated=%s)",
+                workflow_id,
+                broken_at_event_id,
+                report.corrupt_line_count,
+                report.truncated,
+            )
 
         return {
             "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
             "workflow_id": workflow_id,
             "event_count": len(events),
             "events": events,
-            "hash_chain_valid": chain_valid,
+            "hash_chain_valid": report.intact,
             "broken_at_event_id": broken_at_event_id,
-            "broken_expected_hash": broken_expected_hash,
-            "broken_actual_hash": broken_actual_hash,
+            "broken_expected_hash": report.broken_expected_hash,
+            "broken_actual_hash": report.broken_actual_hash,
+            "corrupt_line_count": report.corrupt_line_count,
+            "truncated": report.truncated,
             "exported_at": datetime.now(UTC).isoformat() if events else None,
         }
 
     def replay(self, workflow_id: str) -> list[TraceEvent]:
-        """Reconstruct the event timeline for a workflow in chronological order."""
-        trace_file = self._storage_dir / workflow_id / "trace.jsonl"
-        if not trace_file.exists():
-            raise KeyError(f"No trace found for workflow_id={workflow_id!r}")
+        """Reconstruct the event timeline for a workflow in chronological order.
 
-        events: list[TraceEvent] = []
-        for line in trace_file.read_text().strip().split("\n"):
-            if not line:
-                continue
-            event_data = json.loads(line)
-            events.append(TraceEvent.model_validate(event_data))
+        Unparseable lines (torn writes) are skipped; ``export`` reports them.
+        """
+        trace_file = self._existing_trace_file(workflow_id)
 
+        events = [
+            TraceEvent.model_validate(row) for row in verify_chain(trace_file).rows
+        ]
         events.sort(key=lambda e: e.timestamp)
         return events
 
@@ -296,6 +277,14 @@ class BlackBoxRecorder:
             except Exception as exc:
                 logger.warning(
                     "Failed to include phase decisions in compliance bundle: %s", exc
+                )
+            try:
+                bundle["phase_decisions_integrity"] = phase_logger.verify_decision_log(
+                    workflow_id
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to verify phase decisions for compliance bundle: %s", exc
                 )
             try:
                 bundle["phase_events"] = phase_logger.export_phase_events(workflow_id)
