@@ -80,12 +80,30 @@ OPAQUE_TOKEN_MIN_ENTROPY = 3.0  # Shannon bits/char
 # legitimate domain prompts (shell/tool requests, retries, PII repeat-back).
 # Scope mirrors the narrow judge: override / exfiltration / jailbreak only.
 _INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
-    # Override (directional): "ignore/disregard the above|previous|system…".
-    # The directional word is itself the attack target (the prior context).
+    # Override (directional + target): "ignore the previous instructions",
+    # "disregard the above rules". The directional word alone is NOT enough —
+    # "ignore the previous error", "forget the earlier draft" are ordinary
+    # requests — so a hard reject needs an instruction-like noun within two
+    # words. The bare directional form is deferred (see _SOFT_DEFER_PATTERNS).
     re.compile(
         r"\b(ignore|disregard|forget|override)\b\s+"
         r"(all\s+|any\s+|the\s+|everything\s+|your\s+)*"
-        r"(previous|prior|earlier|above|preceding|foregoing|system)\b",
+        r"(previous|prior|earlier|above|preceding|foregoing|system)\b"
+        r"(?:\s+\w+){0,2}?\s+"
+        r"(instruction|instructions|prompt|prompts|rule|rules|"
+        r"directive|directives|context|guideline|guidelines|"
+        r"message|messages|command|commands|constraints|conversation)\b",
+        re.IGNORECASE,
+    ),
+    # Override (bare directional object): "disregard the above and …",
+    # "ignore everything above." — the directional word IS the object, i.e. it
+    # is followed by punctuation, a conjunction, or the end of the input rather
+    # than by a noun it merely modifies ("the previous error").
+    re.compile(
+        r"\b(ignore|disregard|forget|override)\b\s+"
+        r"(all\s+|any\s+|the\s+|everything\s+|your\s+)*"
+        r"(previous|prior|earlier|above|preceding|foregoing)\b"
+        r"(?=\s*(?:[.,;:!?]|$)|\s+(?:and|then|but)\b)",
         re.IGNORECASE,
     ),
     # Override (noun): "ignore/disregard … instructions|prompt|rules".
@@ -97,11 +115,16 @@ _INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
         re.IGNORECASE,
     ),
     # Exfiltration: extracting the hidden system prompt / developer rules.
+    # A determiner pointing at THIS agent's prompt ("your", "the", …) is
+    # required: "write a good system prompt for my bot" is a normal request.
+    # The determiner-less form is deferred (see _SOFT_DEFER_PATTERNS).
     re.compile(
         r"\b(reveal|show|print|display|repeat|output|tell\s+me)\b"
-        r"[^.\n]{0,30}\b(your\s+|the\s+|initial\s+)?"
-        r"(system\s+prompt|system\s+instruction|system\s+instructions|"
-        r"initial\s+instructions|developer\s+(prompt|instructions))\b",
+        r"[^.\n]{0,30}\b(?:"
+        r"(?:your|the|its|hidden|original|secret)\s+(?:initial\s+)?"
+        r"(?:system\s+prompt|system\s+instruction|system\s+instructions|"
+        r"initial\s+instructions|developer\s+(?:prompt|instructions))"
+        r"|initial\s+instructions)\b",
         re.IGNORECASE,
     ),
     re.compile(
@@ -111,9 +134,21 @@ _INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
     ),
     # Jailbreak: persona / mode tricks that remove safety constraints.
     re.compile(r"\byou\s+are\s+now\s+(dan|an?\s+\w+\s+with\s+no\b)", re.IGNORECASE),
+    # "developer mode" / "dev mode" are real product features (Android,
+    # Chrome, …) and are deferred; only the unambiguous personas hard-reject.
     re.compile(
-        r"\b(developer|dev|god|jailbreak(?:en)?|unrestricted)\s+mode\b", re.IGNORECASE
+        r"\b(god|jailbreak(?:en)?|jailbroken|unrestricted)\s+mode\b", re.IGNORECASE
     ),
+    # "developer mode" as a jailbreak: paired with dropping safety constraints,
+    # or asserted as the model's own state.
+    re.compile(
+        r"\b(developer|dev)\s+mode\b[^.\n]{0,60}"
+        r"\b(bypass|disable|ignore|remove|without|no)\b[^.\n]{0,20}"
+        r"\b(safety|restriction|restrictions|rule|rules|filter|filters|"
+        r"guideline|guidelines|limit|limits|guardrail|guardrails)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\byou\s+are\s+(now\s+)?in\s+(developer|dev)\s+mode\b", re.IGNORECASE),
     re.compile(r"\bdo\s+anything\s+now\b", re.IGNORECASE),
     re.compile(
         r"\b(pretend|act\s+as\s+if|imagine)\b[^.\n]{0,40}\b"
@@ -132,6 +167,25 @@ _SOFT_DEFER_PATTERNS: tuple[re.Pattern[str], ...] = (
         r"\[/?(inst|system)\]|###\s*(instruction|system)",
         re.IGNORECASE,
     ),
+    # Directional override without an instruction-like target ("ignore the
+    # above", "forget the earlier draft"): ambiguous → judge.
+    re.compile(
+        r"\b(ignore|disregard|forget|override)\b\s+"
+        r"(all\s+|any\s+|the\s+|everything\s+|your\s+)*"
+        r"(previous|prior|earlier|above|preceding|foregoing|system)\b",
+        re.IGNORECASE,
+    ),
+    # Exfiltration verb near "system prompt" without a determiner tying it to
+    # this agent ("show me how to write a system prompt"): ambiguous → judge.
+    re.compile(
+        r"\b(reveal|show|print|display|repeat|output|tell\s+me)\b"
+        r"[^.\n]{0,30}\b"
+        r"(system\s+prompt|system\s+instruction|system\s+instructions|"
+        r"developer\s+(prompt|instructions))\b",
+        re.IGNORECASE,
+    ),
+    # "developer mode" / "dev mode": a jailbreak trope and a product feature.
+    re.compile(r"\b(developer|dev)\s+mode\b", re.IGNORECASE),
     # Bare override phrasing without a clear target ("ignore everything").
     re.compile(
         r"\b(ignore|disregard|forget)\s+(everything|all|this|that|it)\b",

@@ -167,3 +167,55 @@ if _HYPOTHESIS_AVAILABLE:
         )
         results = v.validate(clean_text)
         assert all(r.passed for r in results)
+
+
+class TestFalsePositiveRegressions:
+    """Benign digit runs and ``sk-`` words must not trip CRITICAL BLOCK rules."""
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "The event timestamp is 1732147200000 ms.",
+            "Order id 20261121000123456 shipped.",
+        ],
+    )
+    def test_should_pass_credit_card_rule_when_digits_fail_luhn(self, text):
+        v = GuardRailValidator(pii_rules())
+        card = next(
+            r for r in v.validate(text) if r.guardrail_name == "pii.credit_card"
+        )
+        assert card.passed is True
+        assert card.matches == []
+
+    @pytest.mark.parametrize(
+        "text",
+        ["Card 4111 1111 1111 1111 on file", "Card 4111-1111-1111-1111 on file"],
+    )
+    def test_should_block_credit_card_rule_when_digits_pass_luhn(self, text):
+        v = GuardRailValidator(pii_rules())
+        card = next(
+            r for r in v.validate(text) if r.guardrail_name == "pii.credit_card"
+        )
+        assert card.passed is False
+
+    @pytest.mark.parametrize(
+        "text",
+        ["pip install sk-learn-contrib", "Run `task-sk-learn-pipeline` first"],
+    )
+    def test_should_pass_openai_rule_when_sk_token_is_a_plain_word(self, text):
+        v = GuardRailValidator(api_key_rules())
+        key = next(r for r in v.validate(text) if r.guardrail_name == "api_key.openai")
+        assert key.passed is True
+
+
+class TestValidationTraceIsBounded:
+    def test_should_cap_trace_when_validator_is_long_lived(self):
+        from services.governance.guardrail_validator import MAX_TRACE_ENTRIES
+
+        v = GuardRailValidator([length_rule(10)])
+        for _ in range(MAX_TRACE_ENTRIES + 50):
+            v.validate("ok")
+
+        trace = v.get_validation_trace()
+        assert len(trace) == MAX_TRACE_ENTRIES
+        assert isinstance(trace, list)

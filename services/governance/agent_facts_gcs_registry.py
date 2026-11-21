@@ -16,6 +16,11 @@ import os
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from services.governance.agent_facts_registry import is_expired
+from services.governance.path_safety import (
+    is_safe_path_component,
+    require_safe_path_component,
+)
 from trust.enums import IdentityStatus
 from trust.models import AgentFacts, AuditEntry
 from trust.signature import compute_signature, verify_signature
@@ -24,6 +29,9 @@ if TYPE_CHECKING:
     from google.cloud.storage import Client as StorageClient
 
 logger = logging.getLogger("services.governance.agent_facts_gcs")
+
+# Bounded retries for the conditional audit append (see ``_append_audit``).
+_AUDIT_APPEND_ATTEMPTS = 5
 
 
 class AgentFactsGcsRegistry:
@@ -67,6 +75,8 @@ class AgentFactsGcsRegistry:
         return d
 
     def get(self, agent_id: str) -> AgentFacts:
+        if not is_safe_path_component(agent_id):
+            raise KeyError(f"Agent '{agent_id}' not found in gs://{self._bucket_name}")
         client = self._get_client()
         bucket = client.bucket(self._bucket_name)
         blob = bucket.blob(self._blob_path(agent_id))
@@ -82,8 +92,17 @@ class AgentFactsGcsRegistry:
             facts = self.get(agent_id)
         except KeyError:
             return False
+        except ValueError as exc:
+            # Malformed JSON or a schema violation: an unreadable card is unverified.
+            logger.warning(
+                "Agent %s failed verification: corrupt card (%s)", agent_id, exc
+            )
+            return False
 
         if facts.status != IdentityStatus.ACTIVE:
+            return False
+        if is_expired(facts):
+            logger.warning("Agent %s failed verification: card expired", agent_id)
             return False
 
         facts_dict = facts.model_dump(mode="json")
@@ -95,6 +114,7 @@ class AgentFactsGcsRegistry:
         )
 
     def register(self, facts: AgentFacts, registered_by: str) -> AgentFacts:
+        require_safe_path_component(facts.agent_id, "agent_id")
         client = self._get_client()
         bucket = client.bucket(self._bucket_name)
         blob = bucket.blob(self._blob_path(facts.agent_id))
@@ -107,10 +127,19 @@ class AgentFactsGcsRegistry:
         facts_dict["signature_hash"] = sig
         registered = AgentFacts.model_validate(facts_dict)
 
-        blob.upload_from_string(
-            registered.model_dump_json(indent=2),
-            content_type="application/json",
-        )
+        from google.api_core.exceptions import PreconditionFailed
+
+        try:
+            # ``if_generation_match=0`` makes the create atomic: if another
+            # writer registered this id after the existence check above, GCS
+            # rejects the upload instead of overwriting their card.
+            blob.upload_from_string(
+                registered.model_dump_json(indent=2),
+                content_type="application/json",
+                if_generation_match=0,
+            )
+        except PreconditionFailed as exc:
+            raise ValueError(f"Agent '{facts.agent_id}' already registered") from exc
 
         self._append_audit(
             facts.agent_id,
@@ -196,16 +225,42 @@ class AgentFactsGcsRegistry:
         return ids
 
     def _append_audit(self, agent_id: str, entry: AuditEntry) -> None:
+        """Append one audit line, retrying when another writer got in first.
+
+        GCS has no append, so this is read-modify-write. The upload is
+        conditional on the generation that was read; a conflicting write
+        fails the precondition and the append is retried on fresh content
+        instead of overwriting the other writer's entry.
+        """
+        from google.api_core.exceptions import PreconditionFailed
+
         client = self._get_client()
         bucket = client.bucket(self._bucket_name)
-        blob = bucket.blob(self._audit_blob_path(agent_id))
+        line = entry.model_dump_json() + "\n"
 
-        existing = ""
-        if blob.exists():
-            existing = blob.download_as_text()
+        for _attempt in range(_AUDIT_APPEND_ATTEMPTS):
+            blob = bucket.blob(self._audit_blob_path(agent_id))
+            if blob.exists():
+                blob.reload()
+                generation = blob.generation
+                existing = blob.download_as_text()
+            else:
+                generation = 0
+                existing = ""
+            try:
+                blob.upload_from_string(
+                    existing + line,
+                    content_type="application/x-ndjson",
+                    if_generation_match=generation,
+                )
+                return
+            except PreconditionFailed:
+                continue
 
-        updated = existing + entry.model_dump_json() + "\n"
-        blob.upload_from_string(updated, content_type="application/x-ndjson")
+        raise RuntimeError(
+            f"Could not append audit entry for agent '{agent_id}' after "
+            f"{_AUDIT_APPEND_ATTEMPTS} conflicting writes"
+        )
 
 
 __all__ = ["AgentFactsGcsRegistry"]

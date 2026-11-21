@@ -383,3 +383,127 @@ class TestCrossInstanceChainContinuity:
         bundle = BlackBoxRecorder(storage_dir=tmp_path).export(wf)
         assert bundle["event_count"] == 4
         assert bundle["hash_chain_valid"] is True
+
+
+def test_should_keep_hash_chain_valid_when_recorders_append_concurrently(tmp_path):
+    """Several recorder instances on one trace must not fork the chain."""
+    import threading
+    import uuid
+    from datetime import UTC, datetime
+
+    from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
+
+    def _write(writer: int) -> None:
+        recorder = BlackBoxRecorder(tmp_path)
+        for i in range(100):
+            recorder.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id="wf-concurrent",
+                    event_type=EventType.STEP_EXECUTED,
+                    timestamp=datetime.now(UTC),
+                    details={"writer": writer, "i": i},
+                )
+            )
+
+    threads = [threading.Thread(target=_write, args=(n,)) for n in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    bundle = BlackBoxRecorder(tmp_path).export("wf-concurrent")
+    assert bundle["event_count"] == 400
+    assert bundle["hash_chain_valid"] is True
+
+
+def _event(event_id: str, workflow_id: str = "wf"):
+    from datetime import UTC, datetime
+
+    from services.governance.black_box import EventType, TraceEvent
+
+    return TraceEvent(
+        event_id=event_id,
+        workflow_id=workflow_id,
+        event_type=EventType.STEP_EXECUTED,
+        timestamp=datetime.now(UTC),
+        details={},
+    )
+
+
+def test_should_flag_corrupt_line_when_trace_has_torn_write(tmp_path):
+    from services.governance.black_box import BlackBoxRecorder
+
+    recorder = BlackBoxRecorder(tmp_path)
+    recorder.record(_event("e0"))
+    trace = tmp_path / "wf" / "trace.jsonl"
+    trace.write_text(trace.read_text() + '{"torn')
+
+    bundle = recorder.export("wf")
+
+    assert bundle["event_count"] == 1
+    assert bundle["corrupt_line_count"] == 1
+    assert bundle["hash_chain_valid"] is False
+    assert [e.event_id for e in recorder.replay("wf")] == ["e0"]
+
+
+def test_should_chain_from_last_valid_event_when_tail_is_torn(tmp_path):
+    import json
+
+    from services.governance.black_box import BlackBoxRecorder
+
+    recorder = BlackBoxRecorder(tmp_path)
+    recorder.record(_event("e0"))
+    trace = tmp_path / "wf" / "trace.jsonl"
+    trace.write_text(trace.read_text() + '{"torn')
+
+    recorder.record(_event("e1"))
+
+    lines = trace.read_text().splitlines()
+    assert lines[1] == '{"torn'
+    assert json.loads(lines[2])["event_id"] == "e1"
+    bundle = recorder.export("wf")
+    assert bundle["event_count"] == 2
+    assert bundle["broken_at_event_id"] is None
+
+
+def test_should_report_truncation_when_tail_events_removed(tmp_path):
+    from services.governance.black_box import BlackBoxRecorder
+
+    recorder = BlackBoxRecorder(tmp_path)
+    for i in range(5):
+        recorder.record(_event(f"e{i}"))
+    trace = tmp_path / "wf" / "trace.jsonl"
+    trace.write_text("\n".join(trace.read_text().splitlines()[:3]) + "\n")
+
+    bundle = recorder.export("wf")
+
+    assert bundle["truncated"] is True
+    assert bundle["hash_chain_valid"] is False
+
+
+def test_should_export_clean_bundle_when_trace_untouched(tmp_path):
+    from services.governance.black_box import BlackBoxRecorder
+
+    recorder = BlackBoxRecorder(tmp_path)
+    for i in range(3):
+        recorder.record(_event(f"e{i}"))
+
+    bundle = recorder.export("wf")
+
+    assert bundle["hash_chain_valid"] is True
+    assert bundle["truncated"] is False
+    assert bundle["corrupt_line_count"] == 0
+
+
+@pytest.mark.parametrize("bad_id", ["../escaped", "a/b", "..", "a\\b"])
+def test_should_reject_workflow_id_when_it_escapes_storage_dir(tmp_path, bad_id):
+    from services.governance.black_box import BlackBoxRecorder
+
+    recorder = BlackBoxRecorder(tmp_path / "store")
+
+    with pytest.raises(ValueError, match="workflow_id"):
+        recorder.record(_event("e0", workflow_id=bad_id))
+    with pytest.raises(KeyError):
+        recorder.export(bad_id)
+    assert not (tmp_path / "escaped").exists()

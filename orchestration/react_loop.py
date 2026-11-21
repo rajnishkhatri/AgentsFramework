@@ -110,6 +110,7 @@ from services.governance.guardrail_validator import (
     api_key_rules,
     pii_rules,
 )
+from services.governance.black_box_publisher import redact_text
 from services.governance.carrier_gate import (
     CarrierGateViolation,
     decide_enforcement,
@@ -1335,7 +1336,10 @@ def build_graph(
                     event_type=EventType.TASK_STARTED,
                     timestamp=datetime.now(UTC),
                     details={
-                        "task_input": task_input[:200],
+                        # Scrubbed before it reaches disk: the trace is
+                        # written ahead of the input guardrail, so raw PII or
+                        # a pasted key would otherwise sit at rest.
+                        "task_input": redact_text(task_input, max_len=200),
                         "agent_name": agent_config.agent_name,
                         "agent_version": agent_config.agent_version,
                         "agent_facts_id": registered_agent_id,
@@ -1401,8 +1405,42 @@ def build_graph(
         agent_capabilities: list[str] = []
         rejection_payload: dict[str, Any] | None = None
         if agent_facts_registry is not None:
-            if registered_agent_id:
-                agent_facts_verified = agent_facts_registry.verify(registered_agent_id)
+            if not registered_agent_id:
+                # A registry is configured but the run names no agent: nothing
+                # was verified. Say so in the state and leave a carrier, rather
+                # than reporting "verified" for a check that never ran.
+                agent_facts_verified = False
+                black_box.record(
+                    TraceEvent(
+                        event_id=str(uuid.uuid4()),
+                        workflow_id=workflow_id,
+                        event_type=EventType.GUARDRAIL_CHECKED,
+                        timestamp=datetime.now(UTC),
+                        details={
+                            "guardrail": "agent_facts",
+                            "agent_id": "",
+                            "verified": False,
+                            "skipped": True,
+                            "reason": "no_registered_agent_id",
+                        },
+                    )
+                )
+            else:
+                verification_reason: str | None = None
+                try:
+                    agent_facts_verified = agent_facts_registry.verify(
+                        registered_agent_id
+                    )
+                except Exception as exc:
+                    # Fail closed: an unreachable or broken registry must not
+                    # admit an unverified agent, and must not crash the node.
+                    logger.warning(
+                        "AgentFacts verification errored for %s: %s",
+                        registered_agent_id,
+                        exc,
+                    )
+                    agent_facts_verified = False
+                    verification_reason = "verification_error"
                 if agent_facts_verified:
                     try:
                         facts = agent_facts_registry.get(registered_agent_id)
@@ -1419,6 +1457,11 @@ def build_graph(
                             "guardrail": "agent_facts",
                             "agent_id": registered_agent_id,
                             "verified": agent_facts_verified,
+                            **(
+                                {"reason": verification_reason}
+                                if verification_reason
+                                else {}
+                            ),
                         },
                     )
                 )
